@@ -1089,9 +1089,16 @@ def render(projet_dir, cfg, preview=False, start=None, duration=None, workers=No
     # file bornée : Pool.imap n'a pas de contre-pression → les frames (6 Mo) s'accumulent en RAM
     # si ffmpeg encode moins vite que les workers ne rendent, et le pipe Windows finit par casser
     # chaque worker charge ses propres images (~250-400 Mo) : on en lance autant que la mémoire le permet
-    workers = workers or max(1, min(12, os.cpu_count() or 4, int((_memoire_dispo() - 700) // 450)))
+    # CLIP_WORKERS / CLIP_THREADS : forcer ces valeurs (mesures de performance)
+    workers = (workers or int(os.environ.get("CLIP_WORKERS") or 0)
+               or max(1, min(12, os.cpu_count() or 4, int((_memoire_dispo() - 700) // 450))))
     print(f"  {workers} processus de rendu")
     pending = deque()
+    # threads de calcul par worker = cœurs / workers : sinon numpy / OpenCV en lancent chacun autant que de cœurs,
+    # et les workers se gênent (mesuré : rendu 2× plus lent sur 32 threads). Hérité par les workers au démarrage.
+    th = os.environ.get("CLIP_THREADS") or str(-(-(os.cpu_count() or 4) // workers))     # arrondi au-dessus
+    for k in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "OPENCV_FOR_THREADS_NUM"):
+        os.environ[k] = th
     # « spawn » partout : sous Linux, le « fork » par défaut copie les threads et le pipe de ffmpeg
     # du processus principal, et les workers restent bloqués (aucune image rendue)
     with multiprocessing.get_context("spawn").Pool(workers, initializer=_init, initargs=(state,)) as pool:

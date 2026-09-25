@@ -155,7 +155,8 @@ Conservés d'un rendu à l'autre ; tous les effets sont désactivés par défaut
   (jamais bloquant). Retouches ≥ 1400 px non agrandies. Ensuite OCR (`ocr.py`) : lignes d'au moins 3 lettres.
 - **Montage** (`plan.py`) : 1 vers = son image, coupes calées au beat, passages sans paroles remplis.
 - **Rendu** (`render.py`) : images PIL calculées en parallèle (processus démarrés en « spawn » sur tous les systèmes,
-  file bornée, ≤ 12 processus selon la mémoire disponible, ~450 Mo chacun), envoyées en rawvideo à ffmpeg. Karaoké en
+  file bornée, ≤ 12 processus selon la mémoire disponible, ~450 Mo chacun ; threads numpy / OpenCV par processus =
+  cœurs ÷ processus, arrondi au-dessus, sinon les processus se gênent et le rendu est 2× plus lent), envoyées en rawvideo à ffmpeg. Karaoké en
   sous-titres ASS incrustés, audio AAC 192k muxé, `+faststart`. H.264 `yuv420p` 30 fps : h264_amf (GPU AMD) si
   disponible, sinon libx264 `fast` CRF 20 ; débit plafonné à ~12 Mb/s. Aperçu 960×540 à 15 fps, `ultrafast`.
 - Ajouter l'audio à une vidéo produite hors de Clip Studio :
@@ -211,5 +212,10 @@ Le même code tourne sur les deux systèmes :
 
   L'action `.github/workflows/release.yml` crée alors la Release avec deux zips (`…-Windows.zip` sans les `.sh`,
   `…-Linux.zip` sans les `.bat` ni `ocr.ps1`) et reprend la section du CHANGELOG comme notes.
+- **Performances** : temps mesurés dans [GUIDE.md](GUIDE.md#temps-de-calcul) (chanson de 3 min 14, 16 cœurs et 4 cœurs
+  simulés). Le rendu dépend surtout du processeur : l'encodeur GPU (h264_amf) ne gagne qu'environ 10 % sur libx264.
+  Pour mesurer, `CLIP_WORKERS` et `CLIP_THREADS` forcent le nombre de processus de rendu et de threads par processus
+  (12 processus étaient optimaux sur 32 threads ; 16 → +10 %, 24 → +25 %). Un script qui lance le rendu doit protéger
+  son code par `if __name__ == "__main__":` (démarrage « spawn »).
 - **Dépendances** : versions figées dans `requirements.txt` (environnement complet testé : `requirements-complet.txt`) ;
   torch CPU installé à part par les installateurs.

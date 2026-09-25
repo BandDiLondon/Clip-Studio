@@ -220,7 +220,7 @@ function perimeHint() {
   const quoi = P.includes("beats") ? "Le mp3 a changé" : "Les paroles, le mp3 ou le début du chant ont changé";
   return `<div class="steps-hint" style="border-color:var(--warn)">⚠ <b>${quoi} depuis la dernière préparation.</b>
     Le karaoké et le montage ne sont plus synchronisés : relance <b>Préparer</b> (fait automatiquement au prochain rendu,
-    compte 1 à 2 minutes de plus).</div>`;
+    compte environ 1 minute de plus).</div>`;
 }
 V.preparer = () => {
   const n = S.shots.length, amb = S.shots.filter(s => s.ambiance).length;
@@ -241,7 +241,7 @@ Références visuelles souhaitées ? Ce qu'il faut éviter (personne réelle, vi
   <div class="card">
     <div class="row"><button class="primary" id="go-prep" ${S.audio && S.paroles ? "" : "disabled"}>▶ Préparer</button>
       <label class="small"><input type="checkbox" id="prep-force"> tout refaire (après changement d'audio ou de paroles)</label></div>
-    <p class="small muted" style="margin-top:10px">Durée : environ 1 à 2 minutes (le calage des paroles est le plus long).</p>
+    <p class="small muted" style="margin-top:10px">Durée : environ 1 minute pour une chanson de 3 min (le calage des paroles est le plus long), plus un téléchargement unique de 1,5 Go la toute première fois.</p>
   </div>
   <div class="card"><h3>État</h3><table>
     <tr><td>Rythme (beats)</td><td>${S.beats ? '<span class="pill ok">fait</span>' : '<span class="pill">à faire</span>'}
@@ -748,10 +748,10 @@ V.rendu = () => {
   ${perimeHint()}
   ${ready ? "" : `<div class="steps-hint">Il manque des planches (étape 4) : le rendu utilisera les cases déjà découpées.</div>`}
   <div class="grid2">
-    <div class="card"><h3>👁 Aperçu rapide</h3><p class="small muted">Vérif + découpe + montage + vidéo 960×540. Environ 1 minute.</p>
+    <div class="card"><h3>👁 Aperçu rapide</h3><p class="small muted">Vérif + découpe + montage + vidéo 960×540. Environ 30 s pour une chanson de 3 min.</p>
       <button class="primary" id="r-prev">▶ Aperçu</button></div>
     <div class="card"><h3>🎬 Rendu final</h3><p class="small muted">Vérif + découpe + montage + vidéo ${{"4k": "4K", "9:16": "verticale 9:16", "1:1": "carrée"}[S.cfg.format] || "1080p"} →
-      <b>${esc(S.nom)}${{"4k": "_4k", "9:16": "_vertical", "1:1": "_carre"}[S.cfg.format] || ""}.mp4</b>. 1 à 3 minutes${S.cfg.format === "4k" ? " (4K : environ 4× plus)" : ""}.</p>
+      <b>${esc(S.nom)}${{"4k": "_4k", "9:16": "_vertical", "1:1": "_carre"}[S.cfg.format] || ""}.mp4</b>. Environ 1 à 1 min 30 pour une chanson de 3 min${S.cfg.format === "4k" ? " (4K : environ 3× plus)" : ""} ; 4 à 6 min avec beaucoup d'effets (parallaxe 3D, fumée, flou de fond).</p>
       <button class="primary" id="r-final">▶ Rendu final</button></div>
   </div>
   <div class="card"><h3>🔎 Aperçu d'un passage</h3>

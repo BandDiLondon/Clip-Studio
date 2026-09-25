@@ -8,6 +8,7 @@ chose coince. Pour l'installation, voir le [README](../README.md). Pour le fonct
 - [Premiers pas : ta première chanson](#premiers-pas--ta-première-chanson)
 - [Les 8 étapes en détail](#les-8-étapes-en-détail)
 - [Conseils pour de bonnes planches](#conseils-pour-de-bonnes-planches)
+- [Temps de calcul](#temps-de-calcul)
 - [Sauvegarde et historique](#sauvegarde-et-historique)
 - [Dépannage](#dépannage)
 
@@ -36,14 +37,16 @@ n'importe quel assistant IA, puis tu recolles sa réponse.
 
 ## Premiers pas : ta première chanson
 
-Compte 30 à 60 minutes, surtout pour générer les images.
+Compte **15 à 25 minutes** pour une chanson de 3 minutes : environ 4 minutes de calcul pour Clip Studio, le reste pour
+générer les planches dans ton générateur (1 à 2 minutes par planche, plus les essais) et relire. Détail dans
+[Temps de calcul](#temps-de-calcul).
 
 1. **Lance Clip Studio** (`Clip Studio.bat` sous Windows, `./clip-studio.sh` sous Linux) : la page s'ouvre dans ton
    navigateur. Clique sur **« + Nouveau projet »** et donne un nom sans espaces (ex. `ma_chanson`).
 2. **Étape 1 · Projet** : dépose le mp3, puis colle les paroles dans le cadre et enregistre.
 3. **Étape 2 · Préparer** : écris en quelques lignes l'**intention** de la chanson (de quoi elle parle vraiment, le ton,
-   l'époque) et le **style visuel** voulu, puis clique sur **Préparer**. Compte 1 à 3 minutes : rythme, calage des paroles,
-   nombre d'images à générer.
+   l'époque) et le **style visuel** voulu, puis clique sur **Préparer**. Compte environ 1 minute (rythme, calage des paroles,
+   nombre d'images à générer), plus un téléchargement unique de 1,5 Go la toute première fois.
 4. **Étape 3 · Descriptions** : clique sur **« ✨ Rédiger avec Claude »**. Relis les scènes et refais celles qui ne te
    plaisent pas (bouton ↻).
 5. **Étape 4 · Planches** : pour chaque planche, **copie le prompt**, génère l'image dans ton générateur (nouvelle
@@ -105,8 +108,9 @@ animation), titre et logo, mention « Version IA », format (16:9, 4K, vertical 
 d'un rendu à l'autre.
 
 ### 7. Rendu
-- **Aperçu rapide** : vidéo 960×540 pour vérifier le montage, en environ 1 minute.
-- **Rendu final** : 1080p avec le son, en 1 à 3 minutes selon ta machine.
+- **Aperçu rapide** : vidéo 960×540 pour vérifier le montage, en environ 30 secondes pour une chanson de 3 minutes.
+- **Rendu final** : 1080p avec le son, en 1 à 1 min 30 pour une chanson de 3 minutes ; 4 à 6 minutes avec beaucoup
+  d'effets (parallaxe 3D, fumée, flou de fond…) ; environ 3× plus long en 4K.
 - **Aperçu d'un passage** : juste un extrait (ex. de 0:30 à 0:50), pour tester un réglage.
 - **Variante** : un rendu sous un autre nom, pour comparer des réglages.
 - Les vidéos se trouvent dans `projets/<nom>/build/`. Les boutons permettent de les lire, de les ouvrir ou de les supprimer.
@@ -127,6 +131,29 @@ IA seulement, ou clip entièrement IA.
 - Les **plans larges** passent le mieux en 16:9. Pour un gros plan, pense à « tête entière, de l'air au-dessus ».
 - Garde une **copie de chaque image générée** : les liens des générateurs expirent.
 - Planche presque bonne, mais une case ratée : **retouche la case**, ne régénère pas tout.
+
+---
+
+## Temps de calcul
+
+Mesurés sur une chanson de **3 min 14** (18 images, 3 planches), sur deux machines :
+- **PC puissant** : processeur 16 cœurs (Ryzen 9 9950X3D), carte graphique AMD RX 9070 XT ;
+- **PC ordinaire** : même PC limité à 4 cœurs / 8 threads, encodage vidéo par le processeur.
+
+| Étape | PC puissant | PC ordinaire |
+|---|---|---|
+| Préparer : rythme + calage des paroles (sans Claude) | 40 s | 55 s |
+| Premier calage seulement : téléchargement du modèle Whisper | + 1,5 Go (selon ta connexion) | idem |
+| Claude : évaluation / descriptions de 18 images / publication | 20 s / 35 s / 20 s | idem (dépend de Claude) |
+| Découpe des 3 planches (18 cases) | 12 s | 12 s avec carte graphique ; ~12 min sans |
+| Aperçu rapide complet | 35 s | 30 s |
+| Rendu final 1080p | 1 min | 1 min 25 |
+| Rendu final 1080p avec effets lourds (parallaxe 3D, fumée, particules, flou de fond) | 4 min | 6 min 15 |
+| Rendu final 4K | 3 min | — |
+
+- Les temps de rendu sont **proportionnels à la durée de la chanson** : pour 4 minutes, compte environ +25 %.
+- Sur un portable ou un vieux PC (2 cœurs, peu de mémoire), compte au moins le double du « PC ordinaire »
+  (estimation, non mesuré).
 
 ---
 
@@ -155,7 +182,8 @@ IA seulement, ou clip entièrement IA.
 | **Les boutons « avec Claude » sont absents** | Claude Code n'est pas installé ou pas trouvé : installe-le (voir le README), puis relance Clip Studio. |
 | **« Tempo » visiblement faux** (effets deux fois trop rapides) | Étape 6 → Technique → **Tempo (BPM)** : mets le bon nombre, puis relance Préparer. |
 | **La page ne s'ouvre pas** | Regarde l'adresse affichée dans la fenêtre noire (le port peut être 8766, 8767… si 8765 est occupé). |
-| **Le rendu est lent** | Normal sans carte graphique AMD (encodage processeur). Utilise l'aperçu rapide pour les essais. |
+| **Le rendu est lent** | Il dépend surtout du **processeur** (nombre de cœurs) et des **effets** : parallaxe 3D, fumée et flou de fond multiplient le temps par environ 4, la 4K par 3. La carte graphique change peu (~10 %). Pour les essais, utilise l'**aperçu d'un passage**. |
+| **La découpe est très lente** (plusieurs minutes) | Pas de carte graphique Vulkan utilisable (fréquent sous WSL ou dans une machine virtuelle) : Real-ESRGAN calcule sur le processeur, environ 40 s par case. C'est normal ; ça ne se fait qu'une fois par planche. |
 
 Toujours bloqué ? Vérifie l'installation avec `python -m clip check` (depuis le dossier de Clip Studio :
 `.venv\Scripts\python.exe -m clip check` ou `.venv/bin/python -m clip check`).

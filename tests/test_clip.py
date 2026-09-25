@@ -188,6 +188,14 @@ class Ocr(unittest.TestCase):
             self.assertIn("plan large", " ".join(textes([f]).get("p1_c1", [])).lower())
 
 
+class Import(unittest.TestCase):
+    def test_modules(self):
+        # tous les modules s'importent (erreur de syntaxe dans un module non testé ailleurs)
+        import importlib
+        for m in ("render", "effects", "depth", "web", "ai", "publish", "evaluate", "audio", "demandes"):
+            importlib.import_module(f"clip.{m}")
+
+
 class Web(unittest.TestCase):
     def test_arguments_filtres(self):
         from clip.web import ARG_VALUES
