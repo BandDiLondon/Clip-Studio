@@ -24,9 +24,10 @@ les beats, travelling sur des photos panoramiques pendant les solos, effets au c
   - encodage libx264 ;
   - karaoké en Liberation Sans (mêmes dimensions qu'Arial) ;
   - les boutons Ouvrir / Dossier passent par `xdg-open`.
-  Validé dans un conteneur Docker `ubuntu:24.04` vierge : installation, tests, découpe, aperçu avec karaoké.
-  Test : conteneur Docker `ubuntu:24.04` (le WSL de ce PC n'a pas de réseau et il est limité à 2 Go de mémoire par
-  `.wslconfig`, alors que Whisper medium en demande environ 5).
+  Validé sur Ubuntu 24.04 vierge (Docker) et dans WSL : installation, 21 tests, préparation avec Whisper medium
+  (82 s, **4,7 Go de mémoire au maximum** → dans WSL, `memory=6GB` dans `.wslconfig`), découpe, aperçu avec karaoké,
+  serveur web. Dans WSL, Real-ESRGAN tourne en Vulkan logiciel (llvmpipe) : ~40 s par case, mais sans erreur.
+  Réseau WSL absent en mode NAT sur ce PC → `networkingMode=mirrored` dans `.wslconfig`.
 - **`Clip Studio.bat`** ouvre l'interface web locale (`http://127.0.0.1:8765`, 127.0.0.1 uniquement ; garder la fenêtre
   noire ouverte). `Clip.bat` = menu texte, `python -m clip <commande>` = ligne de commande (§2).
 - Claude (optionnel) = **Claude Code + abonnement Claude Pro/Max**, sans API (`clip/ai.py`). Il est cherché dans le PATH,
