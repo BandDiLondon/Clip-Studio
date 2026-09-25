@@ -5,6 +5,8 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; numéros de 
 
 ## [Non publié]
 
+## [1.1.0] - 2026-09-25
+
 ### Ajouté
 - Documentation réorganisée :
   - [docs/GUIDE.md](docs/GUIDE.md) pour l'utilisation (premiers pas, générateurs d'images, conseils, dépannage) ;
