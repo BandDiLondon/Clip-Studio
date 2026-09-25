@@ -10,14 +10,17 @@ Feuille de route : [PLAN_AMELIORATION.md](PLAN_AMELIORATION.md).
 - Windows 11, PowerShell. Python 3.12 dans `.venv` → `.\.venv\Scripts\python.exe`.
 - Point d'entrée : `Clip Studio.bat` (interface web locale, `clip/web.py` + `clip/web/index.html`),
   `Clip.bat` (menu texte) ou `python -m clip <commande>`
-  (`check`, `list`, `new`, `prepare`, `verify`, `build`, `build-preview`, `render`, …).
-- Descriptions : faites par Clip Studio via Claude Code (`clip describe`, `clip/ai.py`). Rôle de Claude en
+  (liste complète : METHODE §2). Installation sur un autre PC : `Installer.bat`.
+- Clip Studio appelle Claude Code (`clip/ai.py`, abonnement, sans API) pour les descriptions, l'évaluation,
+  les solos, les vidéos et la publication, **uniquement sur clic** (sauf l'évaluation dans « Préparer »).
+  Ne jamais ajouter d'appel automatique à Claude sans demande. Rôle de Claude en
   session : seulement si l'utilisateur colle `build/a_decrire.md` (répondre par le JSON) ou en cas de problème. Ne pas lancer les étapes à la place
   de l'utilisateur ni inspecter les images sans demande (économie de tokens).
 - ffmpeg 8 (build gyan, dans le PATH) : libx264, h264_amf (GPU AMD RX 9070 XT), filtres `ass`, `xfade`.
 - Police karaoké par défaut : `C:\Windows\Fonts\arialbd.ttf`.
 - `legacy/` = anciens scripts Linux (référence seulement, ne pas exécuter tels quels).
-- Un projet = `projets/<nom>/` (chanson.mp3, paroles.txt, projet.json, planches/, cases/, solos/, build/).
+- Un projet = `projets/<nom>/` (chanson.mp3, paroles.txt, projet.json, planches/, cases/, solos/, retouches/,
+  videos/, build/).
 - Chemins toujours relatifs au projet (`pathlib`), jamais `/tmp` ni chemins absolus Linux.
 
 ## Standards de sortie (sauf indication contraire)
@@ -40,3 +43,5 @@ Feuille de route : [PLAN_AMELIORATION.md](PLAN_AMELIORATION.md).
   paroles jamais citées dans le prompt, aucun texte ni numéro (modèle : METHODE §3).
 - Vérifier (analyse d'image) chaque planche et miniature avant de continuer.
 - Hébergement (catbox) uniquement sur demande explicite.
+- Toute nouvelle fonction : mettre à jour METHODE (et PLAN si c'est une étape). Après une modification du code,
+  rappeler que la copie GitHub (`../Clip-Studio-GitHub`) se synchronise avec `Mettre a jour depuis Clip FFMPEG.bat`.

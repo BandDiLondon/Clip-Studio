@@ -1,264 +1,219 @@
 # MÉTHODE DE CRÉATION DE CLIP — Runbook
-Workflows validés : Paye le Super, Mafia du fromage, Quatre ans au même endroit, Aveuglement involontaire.
-Environnement et standards : voir [AGENTS.md](AGENTS.md). Commandes `clip` à venir : voir
-[PLAN_AMELIORATION.md](PLAN_AMELIORATION.md) (marquées *(phase N)* ci-dessous).
+Chansons traitées : Paye le Super, Mafia du fromage, Quatre ans au même endroit (ancienne méthode), puis dans
+Clip Studio : aveuglement, Star, Henry, J_ai_chier_sul_bord, Rouge_ecarlate, Ca_se_fais_tu_des_pogos.
+Environnement et standards : [AGENTS.md](AGENTS.md). Avancement : [PLAN_AMELIORATION.md](PLAN_AMELIORATION.md).
+
+Résultat visé : chaque vers illustré LITTÉRALEMENT par une image, karaoké mot à mot, montage calé sur
+les beats, travelling sur des photos panoramiques pendant les solos, effets au choix, audio muxé.
 
 ---
 
-## 0. Utilisation courante : Clip Studio (sans IA)
-Double-clic sur **`Clip Studio.bat`** → interface dans le navigateur (locale, 127.0.0.1 uniquement ;
-garder la fenêtre noire ouverte). 6 étapes guidées : Projet (dépôt mp3 / paroles / solos) → Préparer →
-Descriptions (copier la demande pour Claude, coller sa réponse) → Planches (copier chaque prompt,
-déposer P1…Pn, vérifier, découper, retoucher une case) → Options (préréglages Ballade / Rock / Sobre
-et tous les effets) → Rendu (aperçu, final, variante sous un autre nom, lecteur intégré).
+## 0. Installation et lancement
+- Nouveau PC : double-clic sur **`Installer.bat`** (copie GitHub). Il installe au besoin Python 3.12,
+  `.venv` avec torch CPU et `requirements.txt`, ffmpeg (winget) et Real-ESRGAN (`tools/realesrgan/`), puis
+  lance `python -m clip check`.
+- **`Clip Studio.bat`** ouvre l'interface web locale (`http://127.0.0.1:8765`, 127.0.0.1 uniquement ; garder la fenêtre
+  noire ouverte). `Clip.bat` = menu texte, `python -m clip <commande>` = ligne de commande (§2).
+- Claude (optionnel) = **Claude Code + abonnement Claude Pro/Max**, sans API (`clip/ai.py`). Il est cherché dans le PATH,
+  dans l'installation autonome ou dans l'extension VS Code, et lancé depuis un dossier temporaire : il ne lit pas le projet.
+  **Claude n'est appelé que sur clic d'un bouton** (sauf l'évaluation, lancée par « Préparer »). Sans Claude,
+  le copier-coller reste possible (`build/a_decrire.md` → `build/descriptions.json`).
+- Modèles téléchargés une seule fois : Whisper « medium » (~1,5 Go, `~/.cache/whisper`), Depth Anything V2 Small
+  (parallaxe / profondeur, `~/.cache/huggingface`).
+- Bandeau « mise à jour » dans Clip Studio : le serveur tourne sur un code périmé → fermer la fenêtre noire et relancer.
 
-Descriptions : bouton **« ✨ Rédiger avec Claude »** (Claude Code + abonnement Claude Pro/Max, sans API ;
-`python -m clip describe <nom> [--ids p1_c2 --consigne "…" | --tout]`), bouton ↻ par image pour en
-refaire une. Claude Code est cherché dans le PATH, l'installation autonome ou l'extension VS Code, et
-lancé depuis un dossier temporaire (il ne lit pas le projet). Le copier-coller reste possible.
+## 1. Clip Studio, étape par étape
+### 1. Projet
+Nom du projet (lettres, chiffres, `-`, `_`) → `projets/<nom>/`. Déposer le **mp3** et les **paroles** (fichier .txt ou
+texte collé). Paroles : texte exact, un vers par ligne, ligne vide entre les blocs ; en-têtes `[Verse 1]`, `[Chorus]`
+facultatifs. Sans en-tête, un bloc répété à l'identique devient un refrain.
+Titre, artiste et logo servent au titre d'ouverture, au générique et à la publication.
 
-Étape 2 **Intention de la chanson** (`"intention"`, 1500 car. max) : sens, degré (ironie, hommage…), contexte,
-époque, genre, références, choses à éviter. Transmise à Claude pour l'évaluation, les descriptions et la
-publication — pas au générateur d'images (qui ne reçoit que `"style"`, modifiable au même endroit).
+### 2. Préparer
+- **Intention de la chanson** (`"intention"`, 1500 car. max) : sens, degré (ironie, hommage…), contexte, époque,
+  références, choses à éviter. Transmise à Claude (évaluation, descriptions, solos, vidéos, publication), jamais au
+  générateur d'images, qui ne reçoit que **`"style"`** (modifiable au même endroit).
+- **Préparer** (`clip prepare`) enchaîne :
+  1. les beats → `build/beats.npy` (tempo estimé automatiquement, `bpm_detecte`) ;
+  2. l'alignement mot à mot → `build/words.json` ;
+  3. l'évaluation par Claude ;
+  4. la shotlist et les prompts.
+  Beats et alignement ne sont refaits que s'ils manquent, ou avec « Refaire » (`--force`), **obligatoire après un changement de mp3**.
+- **Début du chant** (`"debut_chant"`, s) : si le karaoké démarre trop tôt, les vers placés avant ce temps sont recalés
+  (appliqué avant la réparation automatique). Relancer « Préparer » avec « Refaire ».
+- **Évaluation par Claude** (`clip evaluate`) : le code mesure les passages sans paroles, le temps d'écran des images
+  et les cases libres. Claude recommande le nombre TOTAL d'images d'ambiance (une idée de scène par image) et un
+  préréglage. La recommandation est appliquée d'office tant qu'aucune planche n'est générée. Sinon, bouton « Appliquer »
+  (`evaluate --appliquer`) : les planches existantes restent identiques si la dernière était pleine, et seules les
+  nouvelles sont à générer.
+- **Photos de solo** : « ✨ Créer les prompts avec Claude » (`clip solos --nombre N`) → prompts panoramiques
+  21:9 pensés pour le travelling, dans `build/prompts_solos.md`. Un emplacement par photo (`solo1`, `solo2`…), dépôt ou Ctrl+V.
 
-Étape 2 **Évaluation par Claude** (automatique dans « Préparer », ou `python -m clip evaluate <nom>`) :
-le code mesure les passages sans paroles, le temps d'écran des images et les cases libres ; Claude
-recommande le nombre TOTAL d'images d'ambiance, une idée de scène par image (reprise ensuite par la
-rédaction des descriptions) et un préréglage (ballade / rock / sobre). Appliquée d'office tant qu'aucune
-planche n'est générée ; sinon bouton « Appliquer » (`evaluate --appliquer` réutilise l'évaluation affichée).
+### 3. Descriptions
+Une description par image, format **Plan ; Sujet ; Action ; Décor ; Lumière**. Bouton « ✨ Rédiger avec Claude »
+(`clip describe`), ↻ par image (`--ids p1_c2 --consigne "…"`), `--tout` pour tout réécrire.
+Stockées dans `build/descriptions.json`. `"descriptions"` de projet.json est prioritaire.
 
-Étape 2 **Photos de solo** : « ✨ Créer les prompts avec Claude » (`python -m clip solos <nom> --nombre N`)
-→ N prompts panoramiques 21:9 pensés pour le travelling (intérêt réparti sur la largeur), dans
-`build/prompts_solos.md` ; un emplacement par photo (solo1, solo2… dans le dossier des solos), dépôt ou Ctrl+V.
-Photos de solo et images d'ambiance **alternent** dans les passages sans paroles (répartition régulière,
-en commençant par un solo) : avec assez de photos de solo, 0 image d'ambiance suffit.
+### 4. Planches
+Copier le prompt de chaque planche, générer (**nouvelle génération vierge**, format indiqué), déposer P1…Pn
+(glisser-déposer, 📋 Coller, ou Ctrl+V sur la planche survolée). Ensuite :
+- **Vérifier** (`clip verify`) : format, grille et taille contrôlés. Un ratio de vignette à plus de 25 % du 16:9 bloque ;
+  entre 8 et 25 %, simple note.
+- **Découper** (`clip cut`) : cases dans `cases/pN_cK.png` (×4 Real-ESRGAN), planche-contact
+  `build/planche_contact.jpg`, cases obsolètes supprimées. Fait aussi automatiquement au rendu.
+- « ✨ Refaire avec Claude » : réécrit les descriptions d'une planche (il faudra la régénérer).
+- **Retoucher une case** : image 16:9 seule déposée dans `retouches/p1_c2.png`. Elle remplace la case au
+  prochain rendu, sans refaire la planche.
 
-Étape 7 **Publication** : titre, description YouTube et 2 prompts de miniature (avec / sans texte).
-Claude rédige titre, accroche, hashtags et miniature ; le code ajoute les chapitres (calculés depuis
-`build/words.json`, ≥ 10 s chacun), les paroles telles quelles et la mention IA selon `"origine"`
-(`suno` | `images` | `complete`). Résultat : `build/publication.md`. CLI : `python -m clip publish <nom>`.
+### 5. Vidéos (optionnel)
+`videos/<id>.mp4` (ex. `solo1.mp4`, `p4_c4.mp4`) **remplace l'image `<id>`** au montage, partout où elle apparaît ;
+effets et karaoké restent par-dessus. Si le plan est plus long que la vidéo, elle est étirée ; les images de la
+vidéo sont extraites une fois dans `build/video_frames/`.
+Galerie de toutes les images → clic sur une image → « ✨ Écrire le prompt vidéo avec Claude » (cette image seule,
+`clip videos --ids p1_c2`), copier le prompt, dans Flow : « Images vers vidéo », 16:9, image de départ = l'image,
+puis déposer la vidéo ou la retirer.
+Les prompts vidéo ne sont **jamais créés automatiquement**. `clip videos --nombre N` : Claude choisit les images
+qui restent le plus longtemps à l'écran (nécessite un aperçu ou un rendu). Résultat : `build/videos.json`,
+`build/prompts_videos.md`.
 
-Alternative en mode texte : `Clip.bat` (menu).
-Double-clic sur `Clip.bat` → choix du projet → menu :
-1. **Préparer** (beats + paroles + prompts). Si des images restent à décrire, `build/a_decrire.md`
-   s'ouvre : le coller à Claude, enregistrer sa réponse JSON dans `build/descriptions.json`,
-   relancer « Préparer » → `build/prompts_planches.md` s'ouvre.
-2. Générer les planches, les enregistrer en `P1.png`, `P2.png`… dans le dossier des planches.
-3. **Vérifier les planches** (format, grille, taille) — optionnel, fait aussi par 4 et 5.
-4. **Aperçu rapide** / 5. **Rendu final** : vérif + découpe + plan + rendu, ouvre la vidéo.
-6. **Rendu seul** après modification de `projet.json` (ajustements).
+### 6. Options
+Préréglages 🎻 Ballade / 🎸 Rock / 📼 VHS rétro / ▫️ Sobre, puis ~90 réglages en 11 groupes (détail §4).
 
-Claude n'intervient que pour rédiger les descriptions (1 échange par chanson) ou en cas de problème.
+### 7. Rendu
+- **Aperçu rapide** (`clip build-preview`, 960×540 à 15 fps) et **Rendu final** (`clip build`, 1080p30) :
+  vérification, découpe, plan, puis rendu.
+- **Aperçu d'un passage** (`clip preview --start s --duration s`) et **Variante** sous un autre nom
+  (`clip render --out nom.mp4`) : rendu seul.
+- Le **montage** (`"timeline"`) est **recalculé automatiquement** à chaque rendu si le mp3, `words.json`,
+  `beats.npy`, la shotlist, les solos ou les images d'intro / d'outro ont changé (empreinte `"timeline_sig"`).
+- Liste des vidéos : ▶ lecteur intégré, 📂 Ouvrir, Dossier, 🗑 Supprimer (fichiers de `build/` seulement).
 
-Réglages conservés d'un rendu à l'autre (`projet.json`) :
-- `"ajustements": {"p1_c2": {"cy": 0.1}, "p2_c4": {"fit": "contain"}}` : cadrage par image.
-- `"intro_image"` / `"outro_image"` : image fixe sur l'intro / l'outro instrumental au lieu des solos.
-- `"ambiance": N` : ajoute N images d'ambiance au storyboard (les cases libres de la dernière planche
-  en deviennent aussi). Sans photos de solo, elles remplissent les passages instrumentaux.
-- Vers mal placé par l'alignement (ex. 1er vers trop tôt) : corriger ses temps dans `build/words.json`.
-- `"bar_alpha"` : opacité du dégradé sous les paroles.
-- **Effets visuels** (tous désactivés par défaut) :
-  - `"camera": "auto"` : mouvement selon le « Plan » de la description (large → travelling latéral,
-    gros plan / rapproché → zoom avant, moyen → zoom arrière) ; forçable par image dans `ajustements`.
-  - `"look": "cinema"` : étalonnage (ombres froides, hautes lumières chaudes) + grain + vignettage.
-  - `"letterbox": true` : bandes noires 2,39:1, image cadrée dans la zone centrale, paroles dans la bande.
-  - `"harmonisation": true` : couleurs des planches rapprochées entre elles.
-  - `"variantes": true` : image répétée (refrain) → sens et miroir alternés, dernière fois en quasi N&B.
-  - `"titre"` / `"artiste"` : titre d'ouverture en fondu sur l'intro ; `"generique": true` (défaut)
-    ajoute « titre — artiste » sur les 7 dernières secondes.
-  - `"look_sections": true` : refrain plus lumineux et saturé, couplets plus sombres, pont désaturé.
-  - `"particules": "auto"` : neige (neige, hiver…) ou poussière lumineuse (bar, scène, fumée…) selon
-    la description ; forçable : `"particules": "neige"`, ou par image dans `ajustements`.
-  - `"pulse_mesure": true` (rock) : effet beat seulement sur le 1er temps de chaque mesure.
-  - `"parallaxe": true` (ou une amplitude, ex. `0.05`) : caméra 3D selon la profondeur estimée de
-    chaque image (build/depth/, calculée une fois). Désactivable par image : `ajustements` → `"parallaxe": false`.
-  - Karaoké : `karaoke_mode` (mot | ligne | aucun), `font`, `karaoke_taille`, `karaoke_couleur` / `karaoke_texte`,
-    `karaoke_position` (bas | haut | centre), `karaoke_animation` (aucune | grossir | remplir), `karaoke_suivante`,
-    `karaoke_majuscules`, `karaoke_decalage` (s).
-  - Signature : `logo` (+ `logo_position`), `mention_ia_ecran` / `mention_ia_texte` / `mention_ia_position`.
-  - Montage : `transition` (fondu | coupe | noir | flash | glissement | zoom, durée = `fondu`), `duree_max_image`.
-  - Look : `look` (aucun | cinema | nb | sepia | vhs | neon | froid), `grain`, `vignettage`, `luminosite`, `contraste`,
-    `camera_intensite`, `particules_densite`, `particules_sections` ({"refrain": "braises", …}).
-  - Fumée : `fumee` (None | auto | fumee | brouillard) + `fumee_densite` ; se combine avec les particules ;
-    auto selon la description (fumée, brume, brouillard, feu…) ; par image : `ajustements` → `"fumee"`.
-  - Particules supplémentaires : `pluie`, `confettis`, `bokeh`, `etincelles` (auto selon la description).
-  - Lumière : `fuites_lumiere` (0-1), `projecteurs` (0-1, au beat), `eclairs` / `rayons` (auto | partout,
-    + `rayons_intensite`).
-  - Rythme : `tremblement` (0-1) + `tremblement_zone` (partout | refrains), `rvb_beat` (0-1),
-    `glitch` (beats | transitions | les_deux) + `glitch_intensite`.
-  - Pellicule et son : `vieux_film` (0-1), `visualiseur` (barres | onde) + `visualiseur_zone`
-    (instrumentaux | partout), `visualiseur_couleur`, `visualiseur_hauteur`.
-  - Profondeur : `flou_fond`, `brume_profondeur` (0-1, cartes de profondeur calculées une fois).
-  - Code des effets : `clip/effects.py` (fonctions pures), branchés dans `clip/render.py`.
-  - Format et son : `format` (16:9 | 4k | 9:16 | 1:1 ; suffixe _4k / _vertical / _carre), `volume_normalise`
-    (-14 LUFS), `debut` / `fin` (s). Aperçu d'un passage : étape 6 ou `clip preview <nom> --start s --duration s`.
-  - Rendu sous un autre nom : `python -m clip render <nom> --out fichier.mp4`.
-  - Débit plafonné à ~12 Mb/s (le grain ferait sinon exploser la taille du fichier).
-- **Ballade** : `"pulse": 0` (aucun gonflement ni flash au beat) + `"fondu": 1.2` (fondu enchaîné
-  de 1,2 s centré sur chaque changement de vers). Rock : `"pulse": 1`, `"fondu": 0.15`.
-- Une case ratée → générer une image 16:9 seule, la déposer dans `retouches/p1_c2.png` : elle
-  remplace la case au prochain rendu (pas besoin de refaire la planche).
-
-## 0 bis. Pipeline (commandes)
-
-```
-python -m clip <commande> <nom>
-1. Projet        new               → projets/<nom>/ (+ déposer mp3, paroles .txt, planches, solos)
-2. Découpe       cut               → cases/pN_cK.png (Real-ESRGAN ×4) + build/planche_contact.jpg ✔
-3. Beats         beats             → build/beats.npy          (tempo estimé auto ; bpm_hint = nombre pour l'imposer)
-4. Paroles       align             → build/words.json         (--repair-only pour re-réparer)
-5. Plan          plan [--force]    → projet.json "timeline"   ✔ validation / retouche manuelle
-6. Aperçu        preview [--start s --duration s] → build/preview.mp4 (960×540@15)  ✔ validation
-7. Rendu final   render            → build/<nom>.mp4 (1080p30, karaoké, audio, fondu de fin)
-0. Prompts      prompts           → build/shotlist.json + prompts (avant de générer les planches)
-À venir : thumb / vertical / upload (phase 6)
-```
-
-### projet.json
-```json
-{ "audio": "chanson.mp3", "paroles": "paroles.txt",
-  "planches": "images", "solos": "images", "solos_list": ["solo1.png", "solo2.png"],
-  "planches_map": {"Verse 1": "p1", "Chorus": "p2"},
-  "bpm_hint": 100, "fps": 30, "size": [1920, 1080],
-  "fit": "cover", "cy": 0.4, "fade_out": 2.5, "encoder": "auto",
-  "timeline": [ {"t": 0.0, "travel": "solo1.png"},
-                {"t": 20.13, "img": "p1_c1", "cy": 0.1, "note": "vers"} ] }
-```
-- `timeline` : chaque événement dure jusqu'au suivant. `img` = case, `travel` = solo panoramique.
-- Par événement : `fit` (`cover` plein cadre | `contain` case entière sur fond flou),
-  `cy` (ancrage vertical du recadrage 16:9 : 0 = haut, 1 = bas) — à baisser si une tête est coupée.
-- `clip plan` fait 1 vers = 1 case ; les coupes au mot près et les cases en trop (c5, c6) se
-  placent à la main (temps des mots dans `build/words.json`).
-
-Résultat : clip où chaque case illustre LITTÉRALEMENT le vers chanté, karaoké mot-à-mot,
-léger zoom, pulse + flash au beat, travelling sur les solos.
+### 8. Publication
+`clip publish [--consigne]` → `build/publication.md` : titre, description YouTube, hashtags, 2 prompts de miniature
+(avec et sans texte). Claude rédige, et le code ajoute :
+- les chapitres (depuis `words.json`, ≥ 10 s, jamais au milieu d'une section) ;
+- les paroles telles quelles ;
+- la mention IA selon `"origine"` : `suno` (composition originale, interprétation Suno, images IA) | `images` | `complete`.
+Groupe **KPR** : compositions originales (paroles et musique sans IA), réinterprétées par Suno → mention « VERSION IA » obligatoire.
 
 ---
 
-## 1. Entrées
-- `chanson.mp3` + `paroles.txt` (texte exact, un vers par ligne, lignes vides entre sections).
-- Format mot-à-mot utilisé par le rendu (`build/words.json`) :
-```json
-{ "segments": [ { "start": 0.0, "end": 2.3, "text": "vers",
-                  "words": [ {"w": "mot", "s": 0.0, "e": 0.4} ] } ] }
-```
-Whisper sort `word/start/end` → convertir en `w/s/e`. Préférer l'**alignement forcé** sur les
-paroles connues (stable-ts) à une transcription libre : moins de corrections manuelles.
-
-## 2. Beats
-Tempo non constant → tracker **adaptatif** (autocorrélation glissante + DP à période variable),
-pas un métronome. Référence : `legacy/beat_detect_adapt.py` (attend un PCM float32 mono) :
-```
-ffmpeg -i chanson.mp3 -ac 1 -ar 44100 -f f32le beats.raw
-```
-Utilisation : **pulse** (zoom qui gonfle au beat) et **flash** blanc bref si pulse > 0.5.
-```python
-pulse = 0.0
-for b in beats:                       # (phase 5 : bisect sur les beats voisins)
-    d = t - b
-    if -0.10 < d < 0.30:
-        pulse = max(pulse, math.exp(d / -0.09))
-```
-Régénérer les beats à chaque changement de chanson.
+## 2. Commandes (`python -m clip <commande> <nom>`)
+| Commande | Rôle | Sortie |
+|---|---|---|
+| `check` | vérifie l'environnement | — |
+| `web` / `list` / `new` | Clip Studio / liste / nouveau projet | `projets/<nom>/` |
+| `prepare [--force]` | beats + alignement + évaluation + prompts | `build/` |
+| `beats` | beats et tempo | `build/beats.npy` |
+| `align [--repair-only]` | alignement stable-ts + réparation | `build/words.json` |
+| `evaluate [--appliquer]` | évaluation du storyboard (Claude) | `build/evaluation.json` |
+| `prompts` | shotlist + prompts de planches | `build/shotlist.json`, `prompts_planches.md` |
+| `describe [--ids --consigne --tout]` | descriptions (Claude) | `build/descriptions.json` |
+| `solos [--nombre --consigne]` | prompts de photos de solo (Claude) | `build/solos.json`, `prompts_solos.md` |
+| `videos [--ids / --nombre, --consigne]` | prompts vidéo, à la demande (Claude) | `build/videos.json`, `prompts_videos.md` |
+| `verify` / `cut [--scale 1]` | contrôle / découpe + upscale | `cases/`, `build/planche_contact.jpg` |
+| `plan [--force]` | montage | `projet.json` → `"timeline"` |
+| `preview [--start --duration]` / `render [--out]` | aperçu / rendu seul | `build/preview.mp4`, `build/<nom>.mp4` |
+| `build-preview` / `build [--force]` | vérif + découpe + plan + aperçu / rendu | idem |
+| `publish [--consigne]` | publication YouTube (Claude) | `build/publication.md` |
 
 ## 3. Storyboard — planches = économie de générations
-⚠️ **RÈGLE D'OR** : les planches servent à **limiter le nombre de générations d'images**.
-On calcule le nombre exact d'images requis par le texte, puis on les range dans le minimum de
-planches. Jamais une grande image unique découpée ensuite (approche refusée).
+⚠️ **RÈGLE D'OR** : les planches servent à **limiter le nombre de générations d'images**. On calcule le nombre
+exact d'images requis par le texte, puis on les range dans le minimum de planches. On ne génère jamais une grande
+image unique pour la découper ensuite (approche refusée).
 
-- **1 image par vers unique.** Un vers répété (refrain, vers identique ailleurs, à l'accent près)
-  réutilise la même image. Désactivable : `"dedupe": false` dans projet.json.
-- **Rangement** : planches de 6 (grille 2×3, image **32:27**, 2048×1728 ou 1536×1296) ; la dernière
-  prend la plus petite grille qui suffit : 4 → 2×2 en 16:9, 2 → 1×2 en 8:9, 1 → image 16:9 seule.
-  Toutes les vignettes sont en **16:9** (~1024×576). `clip cut` signale un ratio ≠ 16:9.
-- Ids : `p1_c1 … pN_cK`, ordre rangée 1 gauche→droite, puis rangée 2… La table vignette ↔ vers est
-  dans `build/shotlist.json` et en tête du fichier de prompts. `clip plan` s'en sert : chaque vers
-  (répétitions comprises) retrouve son image automatiquement.
-- ⚠️ Ancien format 3×2 en 3:2 (1168×784) = vignettes carrées de 385 px, 44 % coupé en 16:9 → abandonné.
+- **1 image par vers unique.** Un vers répété (à la casse, aux accents et à la ponctuation près) réutilise la même image
+  (`"dedupe": false` pour désactiver). S'ajoutent les images d'**ambiance** (`"ambiance": N`, nombre TOTAL), et les
+  cases libres de la dernière planche deviennent aussi de l'ambiance.
+- **Rangement** : planches de 6 (grille 2×3, image **32:27**, 2048×1728). La dernière planche prend la plus petite grille
+  suffisante : 4 → 2×2 en 16:9, 2 → 1×2 en 8:9, 1 → image 16:9 seule. Vignettes toujours **16:9**.
+- Ids `p1_c1 … pN_cK` (rangée 1 de gauche à droite, puis rangée 2…). Table vignette ↔ vers dans `build/shotlist.json`.
+- Passages sans paroles : **photos de solo et images d'ambiance alternent** (répartition régulière, en commençant par un
+  solo). Avec assez de photos de solo, 0 image d'ambiance suffit. `"intro_image"` / `"outro_image"` imposent une image fixe.
 
-### Rédaction stricte de chaque vignette
-`python -m clip prompts <nom>` → `build/prompts_squelette.md` (sans descriptions) puis, une fois les
-descriptions écrites dans projet.json `"descriptions": {"p1_c1": "…"}`, → `build/prompts_planches.md`.
-Chaque vignette : **Plan ; Sujet ; Action ; Décor ; Lumière**, tous remplis :
-- **Action** = l'illustration LITTÉRALE du vers, une seule action lisible.
-- **Plan** : large / moyen / rapproché / gros plan (les plans larges supportent le mieux le 16:9).
-- Personnages récurrents décrits une fois dans `"personnages"` et nommés à l'identique dans les
-  vignettes (« le Québécois ») → même visage, mêmes vêtements d'une planche à l'autre.
-- **Ne pas citer les paroles dans le prompt** : un texte entre guillemets finit écrit dans l'image.
-- Éviter documents, factures, écrans, pancartes : ils génèrent du faux texte.
-- En-tête imposé : « EXACTEMENT N vignettes (ni plus ni moins) », « chaque vignette montre UNIQUEMENT
-  la scène décrite », + négatif (texte, numéros, vignettes carrées/verticales, vignette supplémentaire).
-Exemple complet : `projets/aveuglement/build/prompts_planches.md` (18 images → 3 planches au lieu de 6).
-Vérifier chaque planche : bon nombre de vignettes, pas de texte parasite, chaque case = son vers.
+### Prompt de planche (`clip/prompts.py`)
+- En-tête : « Une seule image composée de EXACTEMENT N photographies de cinéma… AUCUNE légende… ». Pas le mot
+  « storyboard » (un storyboard a des légendes, que le générateur écrit alors).
+- Chaque case = « Photo i (position) : … ». La description est convertie en phrase **sans les étiquettes** Plan/Sujet/…,
+  qui finiraient écrites en légende.
+- Le quart inférieur de chaque vignette reste libre (zone des paroles). Pied de prompt et négatif : texte, légende,
+  sous-titre, numéros, enseigne lisible, vignettes carrées ou verticales, vignette supplémentaire.
+- Descriptions : **Action** = illustration LITTÉRALE du vers, une seule action lisible. Plans larges de préférence.
+  Personnages récurrents décrits une fois (`"personnages"`) et nommés à l'identique. **Jamais les paroles dans le
+  prompt.** Éviter documents, écrans, pancartes (faux texte).
+- Vérifier chaque planche : bon nombre de vignettes, aucun texte, chaque case = son vers.
 
-## 4. Images de solo
-Passages instrumentaux : image **panoramique 21:9 ou plus large** (ex. montage photos de concert
-N/B + rouge/bleu) dans `solos/`. Pas de karaoké, pas de grille.
+## 4. Réglages (`projet.json`, étape 6)
+Conservés d'un rendu à l'autre ; tous les effets sont désactivés par défaut.
+- **Cadrage** : `"fit"` (`cover` plein cadre | `contain` sur fond flou), `"cy"` (ancrage vertical : 0 = haut, 1 = bas).
+  Par image : `"ajustements": {"p1_c2": {"cy": 0.1, "fit": "contain", "camera": "…", "particules": "…", "fumee": "…",
+  "parallaxe": false}}`.
+- **Rythme** : `pulse` (0 = rien au beat), `pulse_mesure` (1er temps seulement), `fondu` (durée des transitions),
+  `transition` (fondu | coupe | noir | flash | glissement | zoom), `duree_max_image`, `bpm_hint` (`"auto"` ou BPM imposé).
+- **Caméra** : `camera` (`zoom` | `auto` = selon le « Plan » : large → travelling, gros plan → zoom avant, moyen →
+  zoom arrière), `camera_intensite`, `parallaxe` (true ou amplitude, caméra 3D selon la profondeur `build/depth/`).
+- **Look** : `look` (aucun | cinema | nb | sepia | vhs | neon | froid), `grain`, `vignettage`, `luminosite`, `contraste`,
+  `letterbox` (2,39:1), `harmonisation`, `variantes` (image répétée : sens et miroir alternés, dernière en N&B),
+  `look_sections` (refrain lumineux, couplets sombres, pont désaturé).
+- **Atmosphère** : `particules` (auto | neige | poussiere | braises | pluie | confettis | bokeh | etincelles),
+  `particules_densite`, `particules_sections` ({"refrain": "braises"}), `fumee` (auto | fumee | brouillard) +
+  `fumee_densite`, `flammes` (auto | partout) + `flammes_hauteur` / `flammes_intensite`, `eclairs`, `rayons` +
+  `rayons_intensite`, `flou_fond`, `brume_profondeur`. « auto » = selon les mots de la description.
+  Les effets s'appliquent aussi aux travellings et aux vidéos.
+- **Lumière et beat** : `fuites_lumiere`, `projecteurs`, `tremblement` + `tremblement_zone`, `rvb_beat`,
+  `glitch` (beats | transitions | les_deux) + `glitch_intensite`, `vieux_film`, `visualiseur` (barres | onde) +
+  `visualiseur_zone` / `_couleur` / `_hauteur`.
+- **Karaoké** : `karaoke_mode` (mot | ligne | aucun), `font`, `karaoke_taille`, `karaoke_couleur`, `karaoke_texte`,
+  `karaoke_position` (bas | haut | centre), `karaoke_animation` (aucune | grossir | remplir), `karaoke_suivante`,
+  `karaoke_majuscules`, `karaoke_decalage` (s, + = plus tard), `bar_alpha` (dégradé sous les paroles).
+- **Textes** : `titre` / `artiste` (titre d'ouverture), `generique` (titre — artiste sur les 7 dernières s), `logo` +
+  `logo_position`, `mention_ia_ecran` / `_texte` / `_position`.
+- **Format et son** : `format` (16:9 | 4k | 9:16 | 1:1 ; suffixes `_4k`, `_vertical`, `_carre` ; texte ×1,4 en vertical),
+  `volume_normalise` (-14 LUFS), `debut` / `fin` (s), `fade_out`, `encoder` (auto → h264_amf si disponible).
+- Préréglages : **Ballade** `pulse 0`, `fondu 1.2`, look cinéma, variantes… ; **Rock** `pulse 1`, `pulse_mesure`,
+  `fondu 0.15`… (définis dans `clip/web/index.html`, `PRESETS`).
 
-### Vidéos animées (optionnel, Flow / Veo)
-`videos/<id>.mp4` (ex. `solo1.mp4`, `p4_c4.mp4`) remplace l'image `<id>` au montage, effets par-dessus.
-Onglet **5. Vidéos** de Clip Studio : clic sur une image → « ✨ Écrire le prompt vidéo avec Claude » (cette image seule),
-copier le prompt, déposer la vidéo, ou la retirer pour revenir à l'image.
-Les prompts vidéo ne sont **jamais créés automatiquement**, seulement sur demande
-(`python -m clip videos <nom> --ids p1_c2` ; sans `--ids` : `--nombre N`, Claude choisit les images qui restent le plus
-longtemps à l'écran, ce qui exige un aperçu ou un rendu).
-Le résultat va dans `build/videos.json` et `build/prompts_videos.md`.
+## 5. Technique
+- **Beats** (`clip/audio.py`) : tempo estimé par tempogramme, « famille d'octaves » ramenée entre 72 et 144 BPM, puis
+  suivi par programmation dynamique à période locale. Refaire à chaque changement de chanson.
+- **Alignement** (`clip/lyrics.py`) : alignement forcé stable-ts (Whisper medium, CPU) sur les paroles connues,
+  jamais une transcription libre. Réparation : mots isolés d'un solo recollés au vers, vers perdu dans l'intro recalé
+  avant le suivant de la même section (rythme du même vers chanté ailleurs), `force_start` pour `debut_chant`.
+  Format de `words.json` : `{"segments": [{"section", "text", "start", "end", "words": [{"w", "s", "e"}]}]}`.
+- **Découpe** (`clip/panels.py`) : gouttières détectées au 90e percentile (seuil strict 12 puis 30), marge de 1,5 %,
+  Real-ESRGAN ×4 plafonné à 2560 px de large. Retouches ≥ 1400 px non agrandies.
+- **Montage** (`clip/plan.py`) : 1 vers = son image, coupes calées au beat, passages sans paroles remplis (§3).
+  `"timeline"` : `[{"t": 20.13, "img": "p1_c1"}, {"t": 35.5, "travel": "solo4.png"}]`, chaque événement durant jusqu'au suivant.
+- **Rendu** (`clip/render.py`, effets purs dans `clip/effects.py`) : images PIL calculées en multiprocess (file bornée,
+  ≤ 12 workers), pipées en rawvideo dans ffmpeg. Karaoké en sous-titres ASS incrustés (`build/karaoke.ass`), audio
+  AAC 192k muxé, `+faststart`. Débit plafonné à ~12 Mb/s (le grain ferait sinon exploser la taille).
+- **Encodage** : h264_amf (GPU AMD) ou libx264 preset `fast` CRF 20, `yuv420p`, 30 fps.
+- Audio pour une vidéo produite hors pipeline :
+  `ffmpeg -i video.mp4 -i chanson.mp3 -map 0:v -map 1:a -c:v copy -c:a aac -b:a 192k -shortest -movflags +faststart final.mp4`
+- Hébergement (catbox) uniquement sur demande explicite.
 
-## 5. Découpe
-Découper chaque planche en 6 cases en retirant les gouttières noires + ~3 % de marge,
-écrire directement dans `cases/`. ⚠️ Toute nouvelle image doit être dans `cases/` avant le rendu.
+## 6. Leçons apprises
+1. Nouveau mp3 → « Préparer » avec « Refaire ». Le montage suit tout seul au rendu suivant.
+2. Planches : 1 image par vers unique, minimum de planches, prompts sans étiquettes ni paroles. Sinon le générateur
+   écrit des légendes.
+3. Tempo doublé (ex. 192 BPM au lieu de 96) : estimation par famille d'octaves, ou `bpm_hint` imposé.
+4. Karaoké trop tôt sur le 1er vers : `debut_chant`.
+5. Case ratée : `retouches/`, pas toute la planche.
+6. Ballade : pas d'effet au beat, fondus longs.
+7. Garder une copie locale de toute image ou vidéo générée (les liens des générateurs expirent).
+8. Code modifié : relancer Clip Studio (le bandeau de mise à jour le signale).
 
-## 6. Rendu
-`clip/render.py` (frame-à-frame PIL multiprocess, pipé en rawvideo dans ffmpeg, file bornée ;
-karaoké en sous-titres ASS incrustés ; audio muxé ; h264_amf si dispo). ~30 s pour 2:24 en 1080p.
-- Case active selon le plan, redimensionnée « cover » (scale max + crop centre).
-- `zoom = 1.0 + 0.05*sin(t*0.6) + 0.05*pulse` ; flash `blend(frame, blanc, (pulse-0.5)*0.22)`.
-- Karaoké : bandeau noir translucide en bas, mots centrés, mot courant `(255,220,80)`, autres blancs,
-  contour noir. Mot courant repéré **par index**, pas par comparaison de texte.
-- Solos (`render_travel_frame`) : pano suréchantillonnée, fenêtre 16:9 qui glisse gauche→droite
-  (ease in-out), `zoom = 1.0 + 0.06*ease` + pulse.
-- Transitions : coupe franche calée au beat ou crossfade court ; pas de fondu au noir par vers.
-
-`legacy/karaoke_render.py` (zoompan ffmpeg par segment + concat) est abandonné : dérive de synchro
-à la concaténation et fondu au noir entre chaque vers.
-
-## 7. Audio (IMPORTANT)
-`clip render` / `clip preview` incluent l'audio. Pour une vidéo produite hors pipeline :
-```
-ffmpeg -i video.mp4 -i chanson.mp3 -map 0:v -map 1:a -c:v copy -c:a aac -b:a 192k -shortest -movflags +faststart final.mp4
-```
-
-## 8. Encodage + hébergement
-- libx264 preset `fast` CRF 20 `yuv420p`, ou `h264_amf` (GPU). 1920×1080, 30 fps.
-- Hébergement sur demande uniquement : catbox (`https://catbox.moe/user/api.php`).
-
-## 9. Miniature YouTube
-- Seedream 16:9 (2560×1440) → `1280×720`.
-- Style : collage photos de concert N/B + rouge/bleu, grain.
-- Mention « **VERSION AI** » : discrète bas-droite, ou dominante avec titre en petit en bas.
-- Vérifier l'orthographe par analyse d'image.
-
----
-
-## 10. Leçons apprises
-0. Nouveau mp3 → « Préparer » avec « Refaire » (beats + paroles). Le montage des images (`timeline`) est
-   recalculé automatiquement à chaque rendu dès que le mp3, les paroles calées, les beats, les planches ou les
-   solos ont changé (empreinte `timeline_sig` dans projet.json).
-1. Toute nouvelle image doit être dans `cases/` avant le rendu.
-2. Toujours inclure l'audio (sinon clip muet).
-3. 1 image par vers unique, rangées dans le minimum de planches (2×3 en 32:27), vignettes 16:9,
-   chaque vignette décrite strictement, paroles jamais citées dans le prompt.
-4. Régénérer les beats si la chanson change.
-5. Solos : travelling sur panoramique, pas de karaoké.
-6. Karaoké mot-à-mot = JSON avec `words` ; sinon texte plein.
-7. Garder une copie locale de toute image générée (les liens des générateurs expirent).
-
-## 11. Fichiers
+## 7. Fichiers
 | Fichier | Rôle |
 |---|---|
-| `clip/` | Module du pipeline (`python -m clip …`) |
-| `projets/<nom>/projet.json` | Plan de montage de la chanson |
-| `legacy/beat_detect_adapt.py` | Tracker de beats adaptatif (référence) |
-| `legacy/render_av3.py` | Rendu frame-à-frame + karaoké + travelling (référence) |
-| `legacy/karaoke_render.py` | Ancienne variante zoompan (abandonnée) |
-| `legacy/travelling_demo.py` | Démo travelling (remplacée par `render_travel_frame`) |
+| `Clip Studio.bat` / `Clip.bat` / `Installer.bat` | interface web / menu texte / installation (copie GitHub) |
+| `clip/cli.py` | commandes, modèle de `projet.json`, demandes à Claude (descriptions, solos, vidéos) |
+| `clip/web.py` + `clip/web/index.html` | serveur local (liste blanche de commandes) + interface |
+| `clip/ai.py` | appel de Claude Code (`claude -p`) |
+| `clip/audio.py` / `clip/lyrics.py` | beats / paroles et alignement |
+| `clip/shots.py` / `clip/prompts.py` | shotlist et planches / prompts de planches |
+| `clip/evaluate.py` / `clip/publish.py` | évaluation du storyboard / publication YouTube |
+| `clip/panels.py` / `clip/depth.py` | vérification, découpe, upscale / cartes de profondeur |
+| `clip/plan.py` / `clip/render.py` / `clip/effects.py` | montage / rendu / effets |
+| `legacy/` | anciens scripts Linux (référence, ne pas exécuter) |
+| `projets/<nom>/` | `projet.json`, mp3, paroles, `planches/`, `cases/`, `solos/`, `retouches/`, `videos/`, `build/` |
