@@ -28,6 +28,9 @@ les beats, travelling sur des photos panoramiques pendant les solos, effets au c
   (82 s, **4,7 Go de mémoire au maximum** → dans WSL, `memory=6GB` dans `.wslconfig`), découpe, aperçu avec karaoké,
   serveur web. Dans WSL, Real-ESRGAN tourne en Vulkan logiciel (llvmpipe) : ~40 s par case, mais sans erreur.
   Réseau WSL absent en mode NAT sur ce PC → `networkingMode=mirrored` dans `.wslconfig`.
+- **Publier une version** (copie GitHub) : `git tag v1.1.0 && git push origin v1.1.0`. L'action `.github/workflows/release.yml`
+  crée alors la Release avec deux zips, `…-Windows.zip` (sans les `.sh`) et `…-Linux.zip` (sans les `.bat` ni `ocr.ps1`).
+  Le code est le même dans les deux : une seule branche `main`.
 - **`Clip Studio.bat`** ouvre l'interface web locale (`http://127.0.0.1:8765`, 127.0.0.1 uniquement ; garder la fenêtre
   noire ouverte). `Clip.bat` = menu texte, `python -m clip <commande>` = ligne de commande (§2).
 - Claude (optionnel) = **Claude Code + abonnement Claude Pro/Max**, sans API (`clip/ai.py`). Il est cherché dans le PATH,

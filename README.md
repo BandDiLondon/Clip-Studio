@@ -13,7 +13,9 @@ sous **Windows** ou **Linux**.
 
 ## Installation
 
-Télécharger le dépôt : **Code → Download ZIP**, puis décompresser. Tu peux aussi faire `git clone`.
+Télécharger la dernière version dans l'onglet **[Releases](../../releases/latest)** : un zip par système, avec
+seulement les fichiers utiles (`…-Windows.zip` ou `…-Linux.zip`). Puis décompresser.
+(Autres possibilités : **Code → Download ZIP**, qui contient les deux systèmes, ou `git clone`.)
 
 ### Windows 10 / 11
 Double-cliquer sur **`Installer.bat`**. Il installe, si besoin, sans droits administrateur ni redémarrage :
