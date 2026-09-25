@@ -5,6 +5,10 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; numéros de 
 
 ## [Non publié]
 
+### Retiré
+- Ancien menu console `Clip.bat` (remplacé par Clip Studio ; la ligne de commande `python -m clip` reste disponible).
+- Dossier `legacy/` (anciens scripts d'avant Clip Studio, plus utilisés).
+
 ## [1.3.2] - 2026-09-25
 
 ### Ajouté

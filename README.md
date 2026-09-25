@@ -73,7 +73,6 @@ Clip Studio guide pas à pas, en 8 étapes :
 Chaque projet vit dans `projets/<nom>/`. Ce dossier n'est pas versionné.
 
 - **Ligne de commande** : `.venv\Scripts\python.exe -m clip --help` (Windows) ou `.venv/bin/python -m clip --help` (Linux).
-  Sous Windows, il y a aussi le menu `Clip.bat`.
 - **Sauvegarde** : tes projets (mp3, images, vidéos) ne sont pas dans le dépôt. **`Sauvegarder les projets.bat`** (Windows)
   ou `./sauvegarder-projets.sh` (Linux) les copie vers le dossier de ton choix.
 - **Tests** : `.venv\Scripts\python.exe -m unittest` (Windows) ou `.venv/bin/python -m unittest` (Linux).

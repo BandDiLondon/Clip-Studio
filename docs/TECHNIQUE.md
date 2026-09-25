@@ -44,7 +44,6 @@ Clip Studio.bat / clip-studio.sh ──► python -m clip web ──► clip/web
 | `clip/ocr.py` | texte lisible dans les cases (RapidOCR, Windows et Linux) |
 | `tests/test_clip.py` | tests rapides |
 | `scripts/captures.py` | captures d'écran du README |
-| `legacy/` | anciens scripts (référence, ne pas exécuter) |
 
 ---
 
