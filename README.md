@@ -95,6 +95,13 @@ Chaque projet vit dans `projets/<nom>/`. Ce dossier n'est pas versionné.
 | Boutons « Ouvrir » / « Dossier » | Explorateur | `xdg-open` (ouvre le dossier) |
 | Police du karaoké | Arial | Liberation Sans (mêmes dimensions) |
 
+## Comment Clip Studio a été fait
+
+Clip Studio est conçu et dirigé par **BandDiLondon** : l'idée, la méthode (dont les planches qui limitent les
+générations d'images), les choix fonctionnels et les tests sur de vraies chansons. Le code et la documentation ont été
+écrits en grande partie avec **Claude** (Anthropic), un assistant IA, sous sa direction. Chaque version est testée
+avant publication (tests automatiques et essais sous Windows et Linux).
+
 ## Licence
 
 Copyright (C) 2026 BandDiLondon

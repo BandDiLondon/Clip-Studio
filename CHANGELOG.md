@@ -5,6 +5,9 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; numéros de 
 
 ## [Non publié]
 
+### Ajouté
+- README : section « Comment Clip Studio a été fait » (conception humaine, code écrit en grande partie avec Claude).
+
 ## [1.3.1] - 2026-09-25
 
 ### Ajouté

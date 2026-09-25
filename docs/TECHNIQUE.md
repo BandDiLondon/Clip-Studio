@@ -222,6 +222,9 @@ Le même code tourne sur les deux systèmes :
   Pour mesurer, `CLIP_WORKERS` et `CLIP_THREADS` forcent le nombre de processus de rendu et de threads par processus
   (12 processus étaient optimaux sur 32 threads ; 16 → +10 %, 24 → +25 %). Un script qui lance le rendu doit protéger
   son code par `if __name__ == "__main__":` (démarrage « spawn »).
+- **Provenance du code** : le code a été écrit en grande partie avec un assistant IA (Claude, Anthropic), sous la
+  direction de l'auteur (voir le README). Les contributions faites avec une IA sont bienvenues, à condition d'être
+  relues, testées (`python -m unittest`) et signalées comme telles.
 - **Dépendances** : versions figées dans `requirements.txt` (environnement complet testé : `requirements-complet.txt`) ;
   torch CPU et `rapidocr` (`--no-deps`) installés à part par les installateurs. Sans RapidOCR, la détection de texte
   est simplement désactivée (`textes()` renvoie `None`).
