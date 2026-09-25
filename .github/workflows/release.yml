@@ -20,7 +20,7 @@ jobs:
         run: |
           set -e
           mkdir -p dist stage/win stage/linux
-          commun=(--exclude ".git" --exclude ".git/*" --exclude ".github/*" --exclude "*.wsb" --exclude "dist/*" --exclude "stage")
+          commun=(--exclude ".git" --exclude ".git/*" --exclude ".github/*" --exclude "*.wsb" --exclude "dist/*" --exclude "stage" --exclude "docs" --exclude "scripts")
           # Windows : sans les scripts Linux
           rsync -a "${commun[@]}" --exclude "*.sh" ./ "stage/win/Clip-Studio/"
           # Linux : sans les scripts Windows ni l'OCR Windows

@@ -3,6 +3,9 @@
 Clip Studio fabrique des clips musicaux illustrés à partir d'une chanson (mp3) et de ses paroles (txt). Tout tourne en local,
 sous **Windows** ou **Linux**.
 
+![Une image d'un clip réalisé avec Clip Studio : la scène illustre le vers chanté, les paroles s'affichent en karaoké mot à mot](docs/images/clip-karaoke.jpg)
+<sub>Une image du clip « Henry » (KPR) : la scène illustre le vers chanté, le mot en cours est surligné.</sub>
+
 - Chaque vers unique a son image. Les images sont générées par **planches** (6 cases par image générée) pour limiter les générations IA.
 - Les paroles s'affichent en **karaoké mot à mot**, grâce à un alignement automatique (Whisper / stable-ts).
 - Le montage est calé sur les **beats** détectés.
@@ -43,15 +46,27 @@ les bibliothèques et télécharge Real-ESRGAN. Sur une autre distribution, inst
 
 L'interface s'ouvre dans le navigateur (`http://127.0.0.1:8765`).
 
-Étapes :
-1. Projet
-2. Préparer
-3. Descriptions
-4. Planches
-5. Vidéos
-6. Options
-7. Rendu
-8. Publication
+Clip Studio guide pas à pas, en 8 étapes :
+1. **Projet** : la chanson et ses paroles.
+2. **Préparer** : rythme et paroles calées sur la voix.
+3. **Descriptions** : une scène par vers.
+4. **Planches** : les prompts à copier dans ton générateur d'images, et les planches à déposer.
+5. **Vidéos** (optionnel) : animer une image avec Flow, Veo…
+6. **Options** : préréglages et effets.
+7. **Rendu** : aperçu, puis vidéo finale.
+8. **Publication** : titre, description et miniature YouTube.
+
+**Planches** : chaque image générée contient 6 scènes, puis Clip Studio les découpe et les agrandit.
+
+![Étape Planches : le prompt de chaque planche à copier, et les planches déposées à côté](docs/images/etape-planches.jpg)
+
+**Vidéos** : clique sur une image pour la remplacer par une vidéo de ~10 s.
+
+![Étape Vidéos : la galerie des images du clip, avec le panneau de l'image choisie](docs/images/etape-videos.jpg)
+
+**Options** : préréglages Ballade / Rock / VHS rétro / Sobre, et une centaine de réglages.
+
+![Étape Options : préréglages, titre et signature, karaoké](docs/images/etape-options.jpg)
 
 Chaque projet vit dans `projets/<nom>/`. Ce dossier n'est pas versionné.
 

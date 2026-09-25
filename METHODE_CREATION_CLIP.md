@@ -31,6 +31,9 @@ les beats, travelling sur des photos panoramiques pendant les solos, effets au c
 - **Publier une version** (copie GitHub) : `git tag v1.1.0 && git push origin v1.1.0`. L'action `.github/workflows/release.yml`
   crée alors la Release avec deux zips, `…-Windows.zip` (sans les `.sh`) et `…-Linux.zip` (sans les `.bat` ni `ocr.ps1`).
   Le code est le même dans les deux : une seule branche `main`.
+- **Captures du README** (`docs/images/`) : `.venv\Scripts\python.exe scripts\captures.py [Henry]`. Le script travaille sur une
+  copie temporaire du projet (prompts régénérés, projet réel intact) et prend les étapes Planches, Vidéos et Options,
+  plus une image du clip. À refaire quand l'interface change. `?sel=p1_c3` dans l'adresse présélectionne une image à l'étape Vidéos.
 - **`Clip Studio.bat`** ouvre l'interface web locale (`http://127.0.0.1:8765`, 127.0.0.1 uniquement ; garder la fenêtre
   noire ouverte). `Clip.bat` = menu texte, `python -m clip <commande>` = ligne de commande (§2).
 - Claude (optionnel) = **Claude Code + abonnement Claude Pro/Max**, sans API (`clip/ai.py`). Il est cherché dans le PATH,

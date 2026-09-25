@@ -420,7 +420,7 @@ V.descriptions_bind = () => {
 };
 
 // ------------------------------------------------------------------ vidéos (image → vidéo)
-let VSEL = null;
+let VSEL = new URLSearchParams(location.search).get("sel");     // ?sel=p1_c3 : image présélectionnée
 function vidItems() {
   const solos = S.solos.map(f => ({id: f.toLowerCase().replace(/\.[^.]+$/, ""), texte: "Solo (travelling)",
     src: file(encodeURIComponent(S.solos_dir) + "/" + encodeURIComponent(f))}));
