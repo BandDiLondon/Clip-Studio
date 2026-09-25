@@ -5,6 +5,8 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; numéros de 
 
 ## [Non publié]
 
+## [1.2.0] - 2026-09-25
+
 ### Corrigé
 - **Rendu environ 2× plus rapide** sur les processeurs à nombreux cœurs : chaque processus de rendu lançait autant de
   threads de calcul que de cœurs, et ils se gênaient (1080p : 2 min → 1 min pour une chanson de 3 min, sur 16 cœurs).
