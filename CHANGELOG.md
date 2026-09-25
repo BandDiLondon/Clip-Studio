@@ -5,6 +5,8 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; numéros de 
 
 ## [Non publié]
 
+## [1.3.1] - 2026-09-25
+
 ### Ajouté
 - Logo de Clip Studio : icône de l'onglet du navigateur (`favicon.ico`) et logo dans l'en-tête de l'interface.
 
