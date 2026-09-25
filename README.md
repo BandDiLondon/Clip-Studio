@@ -48,3 +48,15 @@ Documentation complète : [METHODE_CREATION_CLIP.md](METHODE_CREATION_CLIP.md).
 - Windows 10 ou 11.
 - Carte graphique compatible Vulkan, pour Real-ESRGAN.
 - Encodage GPU AMD (h264_amf) si disponible, sinon libx264.
+
+## Licence
+
+Copyright (C) 2026 BandDiLondon
+
+Clip Studio est un logiciel libre. Tu peux le redistribuer et le modifier selon les termes de la
+**GNU General Public License version 3** (ou toute version ultérieure), publiée par la Free Software Foundation.
+Il est distribué sans aucune garantie. Voir le fichier [LICENSE](LICENSE).
+
+Les outils utilisés (ffmpeg, Real-ESRGAN, Whisper / stable-ts, bibliothèques Python) gardent leur propre licence.
+Les projets créés avec Clip Studio (chansons, images, vidéos) appartiennent à leurs auteurs et ne sont pas
+couverts par cette licence.
