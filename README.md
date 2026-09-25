@@ -76,7 +76,13 @@ Chaque projet vit dans `projets/<nom>/`. Ce dossier n'est pas versionné.
   ou `./sauvegarder-projets.sh` (Linux) les copie vers le dossier de ton choix.
 - **Tests** : `.venv\Scripts\python.exe -m unittest` (Windows) ou `.venv/bin/python -m unittest` (Linux).
 
-Documentation complète : [METHODE_CREATION_CLIP.md](METHODE_CREATION_CLIP.md).
+## Documentation
+
+- **[Guide d'utilisation](docs/GUIDE.md)** : premiers pas, choix du générateur d'images, conseils, **dépannage**.
+- **[Documentation technique](docs/TECHNIQUE.md)** : architecture, commandes, réglages de `projet.json`, conventions.
+- **[Journal des versions](CHANGELOG.md)**.
+- **Avec un assistant IA** (Claude Code, Codex, Cursor…) : ouvre le dossier de Clip Studio avec lui. Il trouvera ses
+  instructions dans [AGENTS.md](AGENTS.md).
 
 ## Prérequis et différences Windows / Linux
 

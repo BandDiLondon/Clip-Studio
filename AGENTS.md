@@ -1,51 +1,40 @@
-# Instructions pour Claude — Pipeline de clips musicaux illustrés
+# Instructions pour les assistants IA (Claude Code, Codex, Cursor…)
 
-## Projet
-Création de clips musicaux : chaque vers illustré par une case d'image, karaoké mot-à-mot,
-zoom lent + pulse/flash au beat, travelling sur panoramique pendant les solos.
-Méthode complète : [METHODE_CREATION_CLIP.md](METHODE_CREATION_CLIP.md).
-Feuille de route : [PLAN_AMELIORATION.md](PLAN_AMELIORATION.md).
+Clip Studio fabrique des clips musicaux illustrés : chaque vers d'une chanson a son image, les paroles s'affichent en
+karaoké mot à mot, le montage suit les beats. L'utilisateur génère lui-même les images à partir des prompts préparés
+par Clip Studio.
 
-## Environnement
-- Windows 11, PowerShell. Python 3.12 dans `.venv` → `.\.venv\Scripts\python.exe`.
-- Linux supporté (`installer.sh`, `clip-studio.sh`) : garder le code portable (pas de `os.startfile`, `explorer`,
-  chemins `.exe` ou polices Windows sans repli ; voir `_ouvrir` dans web.py, `_font` dans panels.py).
-- Point d'entrée : `Clip Studio.bat` (interface web locale, `clip/web.py` + `clip/web/index.html`),
-  `Clip.bat` (menu texte) ou `python -m clip <commande>`
-  (liste complète : METHODE §2). Installation sur un autre PC : `Installer.bat`.
-- Clip Studio appelle Claude Code (`clip/ai.py`, abonnement, sans API) pour les descriptions, l'évaluation,
-  les solos, les vidéos et la publication, **uniquement sur clic** (sauf l'évaluation dans « Préparer »).
-  Ne jamais ajouter d'appel automatique à Claude sans demande. Rôle de Claude en
-  session : seulement si l'utilisateur colle `build/a_decrire.md` (répondre par le JSON) ou en cas de problème. Ne pas lancer les étapes à la place
-  de l'utilisateur ni inspecter les images sans demande (économie de tokens).
-- ffmpeg 8 (build gyan, dans le PATH) : libx264, h264_amf (GPU AMD RX 9070 XT), filtres `ass`, `xfade`.
-- Police karaoké par défaut : `C:\Windows\Fonts\arialbd.ttf`.
-- `legacy/` = anciens scripts Linux (référence seulement, ne pas exécuter tels quels).
-- Un projet = `projets/<nom>/` (chanson.mp3, paroles.txt, projet.json, planches/, cases/, solos/, retouches/,
-  videos/, build/).
-- Chemins toujours relatifs au projet (`pathlib`), jamais `/tmp` ni chemins absolus Linux.
+**À lire** : [docs/GUIDE.md](docs/GUIDE.md) (utilisation, dépannage) et [docs/TECHNIQUE.md](docs/TECHNIQUE.md)
+(architecture, commandes, `projet.json`, conventions). Ne pas supposer un système : Clip Studio tourne sous
+Windows et sous Linux ; vérifier avec l'utilisateur ou dans l'environnement.
 
-## Standards de sortie (sauf indication contraire)
-- 1920×1080, **30 fps**, H.264 `yuv420p`, CRF 20 (libx264 preset `fast`) ou h264_amf.
-- Audio AAC 192k **muxé dans le rendu** + `-movflags +faststart`.
-- Dimensions paires : `scale=trunc(iw/2)*2:trunc(ih/2)*2`.
-- Aperçu : 960×540, 15 fps, preset `ultrafast`.
+## Aider l'utilisateur
+- Il travaille surtout dans l'interface (`Clip Studio.bat` / `./clip-studio.sh`). Indique-lui l'étape et le bouton
+  plutôt qu'une commande, sauf s'il préfère la ligne de commande (`python -m clip <commande> <projet>`, depuis le `.venv`).
+- **Ne lance pas les étapes à sa place** (préparation, rendu, publication) sans qu'il le demande : il valide à chaque
+  étape (descriptions → planches → aperçu → rendu final).
+- Problème : commence par `python -m clip check`, puis le tableau « Dépannage » de GUIDE.md et le journal de la commande.
+- S'il colle le contenu de `build/a_decrire.md`, réponds **uniquement** par le JSON demandé (`{"p1_c1": "Plan : … ;
+  Sujet : … ; Action : … ; Décor : … ; Lumière : …", …}`), à enregistrer dans `build/descriptions.json`.
+- Réponds dans la langue de l'utilisateur. L'interface et la documentation sont en français.
 
-## Règles de rédaction
-- **Toujours répondre en français**, y compris les messages intermédiaires.
-- Pas de civilités, introduction ni conclusion. Réponses courtes.
-- Pour une commande ou un script demandé : le code seul, 1 ligne d'explication max.
-- Pour une analyse, un plan ou un choix de méthode : répondre normalement, de façon structurée.
-- Données manquantes (chemins, durées) : variables claires (`input.jpg`, `output.mp4`), ne pas deviner.
+## Règles des planches (à respecter dans toute description ou prompt)
+- Les planches servent à **limiter le nombre de générations** : 1 image par vers unique, rangées dans le minimum de
+  planches (grilles 2×3 en 32:27), vignettes 16:9.
+- Chaque description : **Plan ; Sujet ; Action ; Décor ; Lumière**. L'action illustre **littéralement** le vers, une
+  seule action lisible. Personnages récurrents nommés à l'identique.
+- **Jamais les paroles dans un prompt**, ni documents, écrans ou pancartes (faux texte). Aucune célébrité ni personne réelle.
 
-## Règles de travail
-- Validation de l'utilisateur à chaque étape : plan → planches → aperçu → rendu final.
-- Planches = économie de générations : **1 image par vers unique**, minimum de planches (2×3 en 32:27),
-  vignettes **16:9**, chaque vignette décrite strictement (Plan ; Sujet ; Action ; Décor ; Lumière),
-  paroles jamais citées dans le prompt, aucun texte ni numéro (modèle : METHODE §3).
-- Vérifier (analyse d'image) chaque planche et miniature avant de continuer.
-- Hébergement (catbox) uniquement sur demande explicite.
-- Après toute modification du code : `.\.venv\Scripts\python.exe -m unittest` (tests dans `tests/`), et ajouter un
-  test quand on corrige un bug de logique (shotlist, paroles, montage, empreintes).
-- Toute nouvelle fonction : mettre à jour METHODE (et PLAN si c'est une étape). Après une modification du code,
-  rappeler que la copie GitHub (`../Clip-Studio-GitHub`) se synchronise avec `Mettre a jour depuis Clip FFMPEG.bat`.
+## Modifier le code
+- Python 3.10+ (testé en 3.12), dans `.venv`. Dépendances figées dans `requirements.txt`.
+- **Après toute modification : `python -m unittest`** (tests dans `tests/`, moins de 1 s). Ajouter un test pour tout
+  bug de logique corrigé.
+- **Garder le code portable** Windows / Linux : pas de `os.startfile`, `explorer`, chemins `.exe` ou polices Windows
+  sans repli, ni `/tmp` codé en dur ; chemins avec `pathlib`, relatifs au projet (voir TECHNIQUE.md, « Portabilité »).
+- **Claude n'est appelé que sur action de l'utilisateur** (sauf l'évaluation dans « Préparer ») : ne jamais ajouter
+  d'appel automatique.
+- Nouvelle commande utilisable depuis l'interface : l'ajouter à `COMMANDS` / `ARG_VALUES` dans `clip/web.py`.
+- Sortie vidéo : H.264 `yuv420p`, 30 fps, 1920×1080, audio AAC 192k muxé, `-movflags +faststart`, dimensions paires.
+- Toute fonction nouvelle ou modifiée : mettre à jour GUIDE.md (si visible pour l'utilisateur), TECHNIQUE.md et la
+  section « Non publié » de [CHANGELOG.md](CHANGELOG.md).
+- Le serveur garde l'ancien code en mémoire : après une modification Python, relancer Clip Studio.

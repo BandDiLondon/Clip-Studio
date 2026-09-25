@@ -1,0 +1,37 @@
+# Journal des versions
+
+Les changements de chaque version de Clip Studio. La section d'une version sert aussi de notes à sa Release GitHub.
+Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; numéros de version `majeure.mineure.correctif`.
+
+## [Non publié]
+
+### Ajouté
+- Documentation réorganisée :
+  - [docs/GUIDE.md](docs/GUIDE.md) pour l'utilisation (premiers pas, générateurs d'images, conseils, dépannage) ;
+  - [docs/TECHNIQUE.md](docs/TECHNIQUE.md) pour le code (architecture, commandes, `projet.json`, conventions) ;
+  - `AGENTS.md` réécrit pour l'assistant IA de n'importe quel utilisateur.
+- README illustré (captures des étapes et image d'un clip) ; `scripts/captures.py` les régénère.
+- Étape Vidéos : `?sel=p1_c3` dans l'adresse présélectionne une image.
+
+### Modifié
+- Les notes de chaque Release sont reprises de ce journal.
+
+## [1.0.0] - 2026-09-24
+
+Première version publiée.
+
+### Ajouté
+- **Clip Studio**, interface web locale en 8 étapes : Projet, Préparer, Descriptions, Planches, Vidéos, Options,
+  Rendu, Publication.
+- Calage automatique des paroles mot à mot (Whisper / stable-ts) et du rythme (beats, tempo automatique).
+- Planches : 1 image par vers unique, rangées dans le minimum de générations ; découpe et agrandissement ×4
+  (Real-ESRGAN) ; retouche d'une seule case ; détection du texte parasite (Windows).
+- Vidéos (Flow, Veo…) à la place de n'importe quelle image.
+- Une centaine de réglages : caméra, parallaxe 3D, looks, particules, fumée, flammes, éclairs, transitions, karaoké,
+  formats 16:9 / 4K / 9:16 / 1:1, préréglages.
+- Claude Code (abonnement) sur demande : descriptions, évaluation du storyboard, prompts de solos et de vidéos,
+  publication YouTube avec chapitres et mention IA.
+- Fiabilité : mp3, paroles ou début du chant modifiés détectés et analyses refaites, montage recalculé au besoin,
+  historique des réglages, sauvegarde des projets, rendu adapté à la mémoire disponible.
+- Windows (`Installer.bat`, sans droits administrateur) et Linux (`installer.sh`) ; zips séparés dans les Releases.
+- 21 tests automatiques.

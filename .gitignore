@@ -23,3 +23,7 @@ desktop.ini
 
 # Test de l'installateur (chemins propres à ce PC)
 *.wsb
+
+# Notes personnelles de l'auteur (jamais publiées)
+CLAUDE.local.md
+PLAN_AMELIORATION.md

@@ -20,7 +20,7 @@ jobs:
         run: |
           set -e
           mkdir -p dist stage/win stage/linux
-          commun=(--exclude ".git" --exclude ".git/*" --exclude ".github/*" --exclude "*.wsb" --exclude "dist/*" --exclude "stage" --exclude "docs" --exclude "scripts")
+          commun=(--exclude ".git" --exclude ".git/*" --exclude ".github/*" --exclude "*.wsb" --exclude "dist/*" --exclude "stage" --exclude "docs/images" --exclude "scripts")
           # Windows : sans les scripts Linux
           rsync -a "${commun[@]}" --exclude "*.sh" ./ "stage/win/Clip-Studio/"
           # Linux : sans les scripts Windows ni l'OCR Windows
@@ -36,7 +36,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cat > notes.md <<EOF
+          v="${GITHUB_REF_NAME#v}"
+          # notes = section « ## [x.y.z] » du CHANGELOG, puis le tableau des téléchargements
+          awk -v v="$v" '/^## \[/{ok = index($0, "[" v "]") > 0; next} ok' CHANGELOG.md > notes.md
+          [ -s notes.md ] || echo "Voir [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/CHANGELOG.md)." > notes.md
+          cat >> notes.md <<EOF
+
           ## Téléchargement
 
           | Système | Fichier | Installation |
@@ -44,8 +49,7 @@ jobs:
           | **Windows 10 / 11** | \`Clip-Studio-${GITHUB_REF_NAME}-Windows.zip\` | décompresser, double-clic sur **Installer.bat**, puis **Clip Studio.bat** |
           | **Linux** (Ubuntu, Debian…) | \`Clip-Studio-${GITHUB_REF_NAME}-Linux.zip\` | décompresser, \`bash installer.sh\`, puis \`./clip-studio.sh\` |
 
-          Environ 5 Go de mémoire vive sont nécessaires pour caler les paroles (Whisper « medium »).
-          Documentation : [README](https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/README.md).
+          Environ 5 Go de mémoire vive sont nécessaires pour caler les paroles. Mode d'emploi : [docs/GUIDE.md](https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/docs/GUIDE.md).
           EOF
-          gh release create "$GITHUB_REF_NAME" dist/*.zip \
-            --title "Clip Studio ${GITHUB_REF_NAME#v}" --notes-file notes.md --verify-tag
+          cat notes.md
+          gh release create "$GITHUB_REF_NAME" dist/*.zip             --title "Clip Studio $v" --notes-file notes.md --verify-tag
