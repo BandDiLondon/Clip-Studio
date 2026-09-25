@@ -5,8 +5,14 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; numéros de 
 
 ## [Non publié]
 
+## [1.3.2] - 2026-09-25
+
 ### Ajouté
 - README : section « Comment Clip Studio a été fait » (conception humaine, code écrit en grande partie avec Claude).
+
+### Modifié
+- Appels à Claude bien moins coûteux en limite d'utilisation : Claude Code est lancé sans outils,
+  connecteurs ni réglages (~700 tokens de contexte au lieu de ~34 500 par appel), pour la même réponse.
 
 ## [1.3.1] - 2026-09-25
 

@@ -187,6 +187,10 @@ Conservés d'un rendu à l'autre ; tous les effets sont désactivés par défaut
 ## Claude
 - `clip/ai.py` appelle **Claude Code** (`claude -p`, sortie JSON) avec la demande sur l'entrée standard, depuis un dossier
   temporaire : aucun contexte du projet n'est chargé. Recherche : PATH, `~/.local/bin`, npm, extension VS Code / Cursor.
+- Appel « nu » (`OPTIONS` dans `ai.py`) : sans outils, connecteurs MCP, réglages de l'utilisateur ni consignes
+  de Claude Code (`--tools ""`, `--strict-mcp-config`, `--setting-sources ""`, `--system-prompt` d'une ligne). Le
+  surcoût fixe passe de ~34 500 à ~700 tokens par appel (mesuré), réponse identique. `--bare` est exclu : il ignore la
+  connexion par abonnement.
 - **Appelé uniquement sur action de l'utilisateur**, sauf l'évaluation lancée par `prepare`. Ne jamais ajouter d'appel
   automatique.
 - Textes des demandes : `clip/demandes.py`, `clip/evaluate.py`, `clip/publish.py`. Réponses en JSON strict.

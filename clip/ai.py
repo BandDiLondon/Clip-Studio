@@ -35,6 +35,14 @@ def find_claude():
     return None
 
 
+# Appel « nu » : nos demandes sont du texte seul. Sans outils, connecteurs MCP, réglages ni consignes de
+# Claude Code, le contexte envoyé passe de ~34 500 à ~700 tokens par appel (mesuré), réponse identique.
+# (--bare n'est pas utilisable : il ignore la connexion par abonnement.)
+OPTIONS = ["-p", "--output-format", "json", "--tools", "", "--strict-mcp-config", "--setting-sources", "",
+           "--disable-slash-commands", "--no-session-persistence",
+           "--system-prompt", "Tu es un assistant de rédaction. Réponds exactement à la demande."]
+
+
 class ClaudeError(Exception):
     pass
 
@@ -47,7 +55,7 @@ def ask(prompt, timeout=600):
                           "ou Claude Code, puis connecte-toi avec ton compte Claude.")
     with tempfile.TemporaryDirectory(prefix="clip_claude_") as tmp:
         try:
-            r = subprocess.run([exe, "-p", "--output-format", "json"], input=prompt, cwd=tmp,
+            r = subprocess.run([exe, *OPTIONS], input=prompt, cwd=tmp,
                                capture_output=True, text=True, encoding="utf-8", timeout=timeout,
                                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         except subprocess.TimeoutExpired:

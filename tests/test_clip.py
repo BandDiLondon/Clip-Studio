@@ -207,6 +207,16 @@ class Import(unittest.TestCase):
             importlib.import_module(f"clip.{m}")
 
 
+class Claude(unittest.TestCase):
+    def test_appel_allege(self):
+        # appel sans outils, connecteurs ni réglages (surcoût de ~34 000 tokens par appel sinon)
+        from clip.ai import OPTIONS
+        for opt in ("-p", "--tools", "--strict-mcp-config", "--setting-sources", "--system-prompt"):
+            self.assertIn(opt, OPTIONS)
+        self.assertEqual(OPTIONS[OPTIONS.index("--tools") + 1], "")
+        self.assertNotIn("--bare", OPTIONS)        # ignorerait la connexion par abonnement
+
+
 class Web(unittest.TestCase):
     def test_arguments_filtres(self):
         from clip.web import ARG_VALUES
