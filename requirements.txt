@@ -13,4 +13,12 @@ stable-ts==2.19.1
 # Parallaxe 3D / profondeur : modèle Depth Anything V2 Small téléchargé au 1er usage
 transformers==5.17.0
 opencv-python-headless==5.0.0.93
+# Détection de texte dans les cases (RapidOCR) : ses dépendances ici ; RapidOCR lui-même est installé à part par
+# les installateurs avec --no-deps (il exige opencv-python, qui entre en conflit avec opencv-python-headless) :
+#   pip install --no-deps rapidocr==3.9.2
+onnxruntime==1.30.0
+colorlog==6.12.0
+omegaconf==2.3.1
+pyclipper==1.4.0
+shapely==2.1.2
 # Upscale : tools/realesrgan/ (realesrgan-ncnn-vulkan v0.2.5.0, hors pip, téléchargé par Installer.bat)

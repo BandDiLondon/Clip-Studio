@@ -23,8 +23,8 @@ jobs:
           commun=(--exclude ".git" --exclude ".git/*" --exclude ".github/*" --exclude "*.wsb" --exclude "dist/*" --exclude "stage" --exclude "docs/images" --exclude "scripts")
           # Windows : sans les scripts Linux
           rsync -a "${commun[@]}" --exclude "*.sh" ./ "stage/win/Clip-Studio/"
-          # Linux : sans les scripts Windows ni l'OCR Windows
-          rsync -a "${commun[@]}" --exclude "*.bat" --exclude "clip/ocr.ps1" ./ "stage/linux/Clip-Studio/"
+          # Linux : sans les scripts Windows
+          rsync -a "${commun[@]}" --exclude "*.bat" ./ "stage/linux/Clip-Studio/"
           chmod +x stage/linux/Clip-Studio/*.sh
           (cd stage/win && zip -qr "../../dist/Clip-Studio-${GITHUB_REF_NAME}-Windows.zip" Clip-Studio)
           (cd stage/linux && zip -qr "../../dist/Clip-Studio-${GITHUB_REF_NAME}-Linux.zip" Clip-Studio)

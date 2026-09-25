@@ -33,6 +33,8 @@ echo "[2/5] torch (CPU)…"
 echo "[2/5] Dépendances…"
 "$PY" -m pip install -r requirements.txt \
   || { echo "Échec pip. Essayer : $PY -m pip install -r requirements-complet.txt"; exit 1; }
+# RapidOCR sans ses dépendances : il exige opencv-python, en conflit avec opencv-python-headless
+"$PY" -m pip install --no-deps rapidocr==3.9.2
 
 # ---------- 3. ffmpeg : vérification des filtres utilisés
 ffmpeg -hide_banner -filters 2>/dev/null | grep -q " ass " || echo "⚠ ffmpeg sans filtre « ass » : le karaoké ne s'affichera pas"

@@ -91,7 +91,7 @@ Une **planche** est une seule image générée qui contient **6 scènes** (grill
 6 images. C'est ce qui permet de faire un clip entier avec quelques générations seulement (ex. 18 images → 3 planches).
 - **Copier le prompt**, générer, puis coller ou déposer l'image sur la bonne planche (P1, P2…).
 - **Vérifier** contrôle le format et la grille. **Découper** extrait et agrandit les cases (×4 avec Real-ESRGAN).
-- **Texte parasite** (Windows) : après la découpe, les légendes ou enseignes lisibles sont signalées. Retouche la case
+- **Texte parasite** : après la découpe, les légendes, enseignes ou t-shirts imprimés lisibles sont signalés. Retouche la case
   concernée si ce n'est pas voulu.
 - **Retoucher une seule case** : génère une image 16:9 seule pour la case ratée et dépose-la. Pas besoin de refaire
   toute la planche.
@@ -146,6 +146,7 @@ Mesurés sur une chanson de **3 min 14** (18 images, 3 planches), sur deux machi
 | Premier calage seulement : téléchargement du modèle Whisper | + 1,5 Go (selon ta connexion) | idem |
 | Claude : évaluation / descriptions de 18 images / publication | 20 s / 35 s / 20 s | idem (dépend de Claude) |
 | Découpe des 3 planches (18 cases) | 12 s | 12 s avec carte graphique ; ~12 min sans |
+| Détection de texte dans les cases (après la découpe) | 3 à 6 s | ~5 s |
 | Aperçu rapide complet | 35 s | 30 s |
 | Rendu final 1080p | 1 min | 1 min 25 |
 | Rendu final 1080p avec effets lourds (parallaxe 3D, fumée, particules, flou de fond) | 4 min | 6 min 15 |
@@ -173,7 +174,7 @@ Mesurés sur une chanson de **3 min 14** (18 images, 3 planches), sur deux machi
 | **Le karaoké démarre trop tôt** (1er vers pendant l'intro) | Étape 2 → **Début du chant** : indique le moment où la voix commence. |
 | **Le karaoké est décalé partout** de la même valeur | Étape 6 → Karaoké → **Décalage** (en secondes, + = plus tard). |
 | **Les images ne suivent plus les paroles** après un changement de mp3 | Relance **Préparer** (le calage est refait automatiquement), puis un rendu. |
-| **Du texte apparaît dans une image** (légende, enseigne) | Étape 4 → **Retoucher une seule case** avec une image sans texte. Sous Windows, ces cases sont signalées après la découpe. |
+| **Du texte apparaît dans une image** (légende, enseigne) | Étape 4 → **Retoucher une seule case** avec une image sans texte. Ces cases sont signalées à l'étape 4 après la découpe. |
 | **« Vignettes … au lieu de 16:9 »** à la vérification | Le générateur n'a pas respecté le format : régénère la planche au format 32:27, ou continue (les images seront un peu recadrées). |
 | **La grille n'est pas reconnue** (mauvais découpage) | Le générateur a fait plus ou moins de 6 photos, ou sans séparation nette : régénère la planche. |
 | **Le calage des paroles plante** ou l'ordinateur rame | Whisper « medium » demande environ 5 Go de mémoire libre : ferme les autres programmes. Sous WSL ou Docker, augmente la mémoire allouée. |

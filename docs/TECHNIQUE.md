@@ -41,7 +41,7 @@ Clip Studio.bat / clip-studio.sh ──► python -m clip web ──► clip/web
 | `clip/depth.py` | cartes de profondeur (parallaxe, flou de fond) |
 | `clip/ai.py` + `clip/demandes.py` | appel de Claude Code ; textes des demandes (descriptions, solos, vidéos) |
 | `clip/evaluate.py` / `clip/publish.py` | évaluation du storyboard / publication YouTube (demandes incluses) |
-| `clip/ocr.py` + `clip/ocr.ps1` | texte lisible dans les cases (OCR intégré à Windows) |
+| `clip/ocr.py` | texte lisible dans les cases (RapidOCR, Windows et Linux) |
 | `tests/test_clip.py` | tests rapides |
 | `scripts/captures.py` | captures d'écran du README |
 | `legacy/` | anciens scripts (référence, ne pas exécuter) |
@@ -152,7 +152,13 @@ Conservés d'un rendu à l'autre ; tous les effets sont désactivés par défaut
   recalé avant le suivant de la même section (rythme du même vers chanté ailleurs), `force_start` pour `debut_chant`.
 - **Découpe** (`panels.py`) : gouttières détectées au 90e percentile (seuil strict 12, puis 30), marge de 1,5 %,
   Real-ESRGAN ×4 plafonné à 2560 px. Sans Vulkan ou sans binaire : agrandissement Lanczos avec avertissement
-  (jamais bloquant). Retouches ≥ 1400 px non agrandies. Ensuite OCR (`ocr.py`) : lignes d'au moins 3 lettres.
+  (jamais bloquant). Retouches ≥ 1400 px non agrandies.
+- **Détection de texte** (`ocr.py`) : RapidOCR (modèles PaddleOCR via onnxruntime), image réduite à 1280 px, lignes de
+  confiance ≥ 0,5 et d'au moins 3 lettres ; résultat dans `build/texte_detecte.json`, jamais bloquant. Comparaison sur
+  165 cases : 14 textes réels trouvés (t-shirts, néons, enseignes) contre 3 pour l'OCR intégré à Windows utilisé avant,
+  1 fausse alerte ; Tesseract écarté (25 fausses alertes). Télémétrie d'onnxruntime coupée (`ORT_DISABLE_TELEMETRY=1`
+  avant l'import : sinon, sous Linux, identifiant d'appareil dans `~/.cache/Microsoft` et envois possibles).
+  RapidOCR s'installe avec `--no-deps` : il exige `opencv-python`, en conflit avec `opencv-python-headless`.
 - **Montage** (`plan.py`) : 1 vers = son image, coupes calées au beat, passages sans paroles remplis.
 - **Rendu** (`render.py`) : images PIL calculées en parallèle (processus démarrés en « spawn » sur tous les systèmes,
   file bornée, ≤ 12 processus selon la mémoire disponible, ~450 Mo chacun ; threads numpy / OpenCV par processus =
@@ -193,7 +199,6 @@ Le même code tourne sur les deux systèmes :
 - ouvrir un fichier : `_ouvrir()` (`web.py`) ;
 - polices : `_font()` (`panels.py`) et `FONT_CANDIDATES` (`cli.py`) ;
 - binaire Real-ESRGAN selon `sys.platform` ;
-- OCR seulement sous Windows (`textes()` renvoie `None` ailleurs) ;
 - rendu en « spawn ».
 
 À proscrire : `os.startfile`, `explorer`, chemins `.exe` ou polices Windows sans repli, `/tmp` codé en dur. Lanceurs :
@@ -211,11 +216,12 @@ Le même code tourne sur les deux systèmes :
   2. `git tag vx.y.z && git push origin vx.y.z`.
 
   L'action `.github/workflows/release.yml` crée alors la Release avec deux zips (`…-Windows.zip` sans les `.sh`,
-  `…-Linux.zip` sans les `.bat` ni `ocr.ps1`) et reprend la section du CHANGELOG comme notes.
+  `…-Linux.zip` sans les `.bat`) et reprend la section du CHANGELOG comme notes.
 - **Performances** : temps mesurés dans [GUIDE.md](GUIDE.md#temps-de-calcul) (chanson de 3 min 14, 16 cœurs et 4 cœurs
   simulés). Le rendu dépend surtout du processeur : l'encodeur GPU (h264_amf) ne gagne qu'environ 10 % sur libx264.
   Pour mesurer, `CLIP_WORKERS` et `CLIP_THREADS` forcent le nombre de processus de rendu et de threads par processus
   (12 processus étaient optimaux sur 32 threads ; 16 → +10 %, 24 → +25 %). Un script qui lance le rendu doit protéger
   son code par `if __name__ == "__main__":` (démarrage « spawn »).
 - **Dépendances** : versions figées dans `requirements.txt` (environnement complet testé : `requirements-complet.txt`) ;
-  torch CPU installé à part par les installateurs.
+  torch CPU et `rapidocr` (`--no-deps`) installés à part par les installateurs. Sans RapidOCR, la détection de texte
+  est simplement désactivée (`textes()` renvoie `None`).

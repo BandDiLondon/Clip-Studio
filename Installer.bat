@@ -33,6 +33,8 @@ if errorlevel 1 (echo Echec torch & pause & exit /b 1)
 echo [2/5] Installation des dependances...
 "%PY%" -m pip install -r requirements.txt
 if errorlevel 1 (echo Echec pip. Essayer : .venv\Scripts\python.exe -m pip install -r requirements-complet.txt & pause & exit /b 1)
+rem RapidOCR sans ses dependances : il exige opencv-python, en conflit avec opencv-python-headless
+"%PY%" -m pip install --no-deps rapidocr==3.9.2
 
 rem ---------- 3. ffmpeg (dans tools\ffmpeg s'il n'est pas dans le PATH)
 set "FFOK="

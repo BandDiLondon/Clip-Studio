@@ -175,17 +175,28 @@ class Ocr(unittest.TestCase):
         self.assertFalse(_utile("a1"))
         self.assertTrue(_utile("MOTEL"))
 
-    @unittest.skipUnless(__import__("sys").platform == "win32", "OCR Windows")
-    def test_legende_detectee(self):
-        from PIL import Image, ImageDraw, ImageFont
+    @unittest.skipUnless(__import__("importlib").util.find_spec("rapidocr"), "RapidOCR non installé")
+    def test_telemetrie_coupee(self):
+        # onnxruntime (Linux) crée un identifiant d'appareil et peut envoyer des données sans cette variable
+        import os
+        from clip.ocr import _moteur
+        _moteur()
+        self.assertEqual(os.environ.get("ORT_DISABLE_TELEMETRY"), "1")
+
+    @unittest.skipUnless(__import__("importlib").util.find_spec("rapidocr"), "RapidOCR non installé")
+    def test_legende_detectee_et_image_propre(self):
+        from PIL import Image, ImageDraw
         from clip.ocr import textes
+        from clip.panels import _font
         with tempfile.TemporaryDirectory() as d:
-            f = Path(d) / "p1_c1.png"
+            f, g = Path(d) / "p1_c1.png", Path(d) / "p1_c2.png"
             im = Image.new("RGB", (1280, 720), (40, 40, 60))
-            ImageDraw.Draw(im).text((60, 600), "Photo 1 : plan large", font=ImageFont.truetype("arialbd.ttf", 48),
-                                    fill=(255, 255, 255))
+            im.save(g)                                               # sans texte
+            ImageDraw.Draw(im).text((60, 600), "Photo 1 : plan large", font=_font(48), fill=(255, 255, 255))
             im.save(f)
-            self.assertIn("plan large", " ".join(textes([f]).get("p1_c1", [])).lower())
+            r = textes([f, g])
+            self.assertIn("plan large", " ".join(r.get("p1_c1", [])).lower())
+            self.assertNotIn("p1_c2", r)
 
 
 class Import(unittest.TestCase):

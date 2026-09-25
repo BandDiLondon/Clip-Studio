@@ -279,6 +279,12 @@ def cmd_check(_args):
         good &= _ok("stable-ts (alignement)", True)
     except ImportError:
         good &= _ok("stable-ts (alignement)", False, "voir requirements.txt")
+    try:
+        importlib.import_module("rapidocr")
+        importlib.import_module("onnxruntime")
+        _ok("RapidOCR (texte dans les cases)", True)
+    except ImportError:
+        print("  [--] RapidOCR (texte dans les cases, optionnel) — relancer l'installateur")
     from .panels import ESRGAN
     good &= _ok("Real-ESRGAN (upscale)", ESRGAN.exists(), str(ESRGAN))
     ff = shutil.which("ffmpeg")

@@ -5,6 +5,12 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; numéros de 
 
 ## [Non publié]
 
+### Modifié
+- **Détection du texte dans les cases** : RapidOCR remplace l'OCR intégré à Windows, et fonctionne désormais aussi sous
+  Linux. Il repère bien mieux le texte dans les images (sur 165 cases : 14 textes réels trouvés au lieu de 3, dont
+  t-shirts imprimés, néons et enseignes). Télémétrie d'onnxruntime désactivée.
+  **Mise à jour d'une installation existante : relancer `Installer.bat` ou `installer.sh`** (installe RapidOCR).
+
 ## [1.2.0] - 2026-09-25
 
 ### Corrigé

@@ -90,7 +90,6 @@ Chaque projet vit dans `projets/<nom>/`. Ce dossier n'est pas versionné.
 |---|---|---|
 | Agrandissement ×4 des cases (Real-ESRGAN) | carte graphique Vulkan | carte graphique Vulkan (pilotes Mesa / NVIDIA) ; sinon, découpe sans agrandissement |
 | Encodage | GPU AMD (h264_amf) si disponible, sinon libx264 | libx264 |
-| Détection de texte dans les cases (OCR) | intégrée à Windows | non disponible (avertissement absent) |
 | Boutons « Ouvrir » / « Dossier » | Explorateur | `xdg-open` (ouvre le dossier) |
 | Police du karaoké | Arial | Liberation Sans (mêmes dimensions) |
 

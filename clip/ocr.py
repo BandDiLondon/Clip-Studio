@@ -1,44 +1,63 @@
-"""Détection de texte lisible dans les cases (OCR intégré à Windows, via ocr.ps1) : légendes, enseignes,
-numéros que le générateur d'images a écrits malgré le prompt. Avertissement seulement, jamais bloquant."""
+"""Détection de texte lisible dans les cases (RapidOCR : modèles PaddleOCR via onnxruntime, Windows et Linux) :
+légendes, enseignes, t-shirts imprimés que le générateur d'images a écrits malgré le prompt. Avertissement seulement,
+jamais bloquant. Le but est de repérer qu'il y a du texte, pas de le lire exactement."""
 import json
-import subprocess
-import sys
 from pathlib import Path
 
-PS1 = Path(__file__).with_name("ocr.ps1")
-LOT = 60          # images par appel PowerShell (longueur max de la ligne de commande)
+LARGEUR = 1280      # analyse en 1280 px : 2× plus rapide qu'en pleine taille, même détection (mesuré)
+SEUIL = 0.5         # confiance minimale d'une ligne (0,55 éliminait de vrais textes)
+_MOTEUR = None
 
 
 def _utile(ligne):
     """Ignore les bribes (« 00 », « a ») que l'OCR lit parfois dans les textures."""
-    lettres = sum(c.isalpha() for c in ligne)
-    return lettres >= 3
+    return sum(c.isalpha() for c in ligne) >= 3
+
+
+def _moteur():
+    """Moteur RapidOCR, créé une fois ; None si la bibliothèque n'est pas installée."""
+    global _MOTEUR
+    if _MOTEUR is None:
+        try:
+            import os
+            # pas de télémétrie Microsoft : sous Linux, onnxruntime crée sinon un identifiant d'appareil
+            # (~/.cache/Microsoft/DeveloperTools) et peut envoyer des données ; la variable doit précéder l'import
+            os.environ.setdefault("ORT_DISABLE_TELEMETRY", "1")
+            import onnxruntime
+            onnxruntime.disable_telemetry_events()       # équivalent pour la télémétrie Windows
+            from rapidocr import RapidOCR
+            _MOTEUR = RapidOCR(params={"Global.log_level": "critical"})    # bavard : un message par image sinon
+        except Exception:
+            _MOTEUR = False
+    return _MOTEUR or None
+
+
+def lignes(image):
+    """Lignes de texte lisibles dans une image (chemin ou PIL.Image)."""
+    from PIL import Image
+    m = _moteur()
+    if m is None:
+        return None
+    im = image if isinstance(image, Image.Image) else Image.open(image)
+    im = im.convert("RGB")
+    if im.width > LARGEUR:
+        im = im.resize((LARGEUR, round(im.height * LARGEUR / im.width)), Image.LANCZOS)
+    r = m(im)
+    return [t for t, s in zip(r.txts or (), r.scores or ()) if s >= SEUIL and _utile(t)]
 
 
 def textes(images):
-    """{nom de l'image: [lignes de texte lisibles]} ; None si l'OCR Windows est indisponible."""
-    if sys.platform != "win32":
+    """{nom de l'image: [lignes de texte lisibles]} ; None si RapidOCR n'est pas installé."""
+    if _moteur() is None:
         return None
-    if not images:
-        return {}
     out = {}
-    images = [str(Path(i)) for i in images]
-    for k in range(0, len(images), LOT):
+    for f in images:
         try:
-            r = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(PS1),
-                                *images[k:k + LOT]], capture_output=True, text=True, encoding="utf-8", timeout=300)
-        except (OSError, subprocess.TimeoutExpired):
-            return out or None
-        for line in r.stdout.splitlines():
-            try:
-                d = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if d.get("erreur") and not d.get("f"):
-                return out or None
-            lignes = [x for x in d.get("lignes") or [] if _utile(x)]
-            if lignes:
-                out[Path(d["f"]).stem.lower()] = lignes
+            found = lignes(f)
+        except Exception:                                 # image illisible : on l'ignore
+            continue
+        if found:
+            out[Path(f).stem.lower()] = found
     return out
 
 
@@ -50,7 +69,7 @@ def verifier(projet_dir, noms=None):
         files = [f for f in files if f.stem.lower() in noms]
     found = textes(files)
     if found is None:
-        print("  (détection de texte non disponible sur ce système : vérifie les cases à l'œil)")
+        print("  (détection de texte indisponible : RapidOCR n'est pas installé ; vérifie les cases à l'œil)")
         return {}
     (projet_dir / "build").mkdir(exist_ok=True)
     (projet_dir / "build" / "texte_detecte.json").write_text(json.dumps(found, indent=1, ensure_ascii=False),
