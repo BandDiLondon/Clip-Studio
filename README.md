@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/images/logo.png" width="128" alt="Logo de Clip Studio : un clap de cinéma orange d'où sort une note de musique"></p>
+
 # Clip Studio
 
 Clip Studio fabrique des clips musicaux illustrés à partir d'une chanson (mp3) et de ses paroles (txt). Tout tourne en local,

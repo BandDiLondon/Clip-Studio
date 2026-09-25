@@ -5,6 +5,12 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; numéros de 
 
 ## [Non publié]
 
+### Ajouté
+- Logo de Clip Studio : icône de l'onglet du navigateur (`favicon.ico`) et logo dans l'en-tête de l'interface.
+
+### Corrigé
+- `scripts/captures.py` attend que le navigateur ait fini d'écrire chaque capture (échecs aléatoires).
+
 ## [1.3.0] - 2026-09-25
 
 ### Modifié

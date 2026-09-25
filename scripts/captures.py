@@ -54,6 +54,15 @@ def capture(nav, url, dest, hauteur):
                         f"--window-size={TAILLE[0]},{hauteur}", "--virtual-time-budget=8000",
                         f"--user-data-dir={d}", f"--screenshot={png}", url],
                        capture_output=True, timeout=120)
+        # Edge rend la main avant d'avoir fini d'écrire la capture : attendre un fichier complet et stable
+        taille = -1
+        for _ in range(60):
+            if png.exists() and png.stat().st_size > 0 and png.stat().st_size == taille:
+                break
+            taille = png.stat().st_size if png.exists() else -1
+            time.sleep(0.5)
+        else:
+            raise SystemExit(f"Capture non produite par le navigateur : {url}")
         im = Image.open(png).convert("RGB")
     for q in (85, 78, 70, 62):
         im.save(dest, "JPEG", quality=q, optimize=True, progressive=True)

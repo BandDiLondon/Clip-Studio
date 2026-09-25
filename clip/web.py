@@ -285,8 +285,10 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if not parts:
                 return self._file(HERE / "index.html")
-            if parts[0] == "web" and len(parts) == 2 and parts[1] in ("style.css", "app.js"):
+            if parts[0] == "web" and len(parts) == 2 and parts[1] in ("style.css", "app.js", "logo.png", "favicon.ico"):
                 return self._file(HERE / parts[1])
+            if parts == ["favicon.ico"]:                          # demandé d'office par les navigateurs
+                return self._file(HERE / "favicon.ico")
             if parts[0] == "api":
                 if parts[1:] == ["projets"]:
                     PROJETS.mkdir(exist_ok=True)

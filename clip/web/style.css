@@ -17,6 +17,8 @@ header { display: flex; align-items: center; gap: 16px; padding: 12px 20px;
   border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 5; }
 header h1 { font-size: 18px; margin: 0; letter-spacing: .02em; }
 header h1 span { color: var(--accent); }
+header h1 { display: flex; align-items: center; white-space: pre; }
+header h1 .logo { width: 30px; height: 30px; display: block; margin-right: 8px; }
 header .sp { flex: 1; }
 select, input[type=text], input[type=number], textarea {
   font: inherit; color: var(--ink); background: var(--panel2); border: 1px solid var(--line);
