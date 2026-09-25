@@ -129,7 +129,8 @@ def _cfg(p):
 
 
 def _save_cfg(p, cfg):
-    (p / "projet.json").write_text(json.dumps(cfg, indent=2, ensure_ascii=False), encoding="utf-8")
+    from .cli import _save                        # garde l'historique (build/historique/)
+    _save(p, cfg)
 
 
 def _project(nom):
@@ -146,7 +147,7 @@ def _read(f, default=""):
 
 
 def status(nom):
-    from .cli import _projet                      # complète audio / paroles / solos automatiquement
+    from .cli import _projet, perimes             # complète audio / paroles / solos automatiquement
     p, cfg = _projet(nom)
     b = p / "build"
     sl = json.loads(_read(b / "shotlist.json", "null"))
@@ -195,6 +196,11 @@ def status(nom):
         if (p / "videos").is_dir() else [],
         "solos_prompts": (json.loads(_read(b / "solos.json", "null")) or {}).get("solos", []),
         "solos_dir": cfg.get("solos", "solos"),
+        "perimes": perimes(p, cfg),
+        "texte_detecte": json.loads(_read(b / "texte_detecte.json", "{}")),
+        "historique": [{"nom": f.name, "date": time.strftime("%d/%m/%Y %H:%M", time.localtime(f.stat().st_mtime))}
+                       for f in sorted((b / "historique").glob("projet_*.json"), reverse=True)]
+        if (b / "historique").is_dir() else [],
     }
 
 
@@ -226,7 +232,7 @@ class Handler(BaseHTTPRequestHandler):
         size = f.stat().st_size
         ctype = mimetypes.guess_type(f.name)[0] or "application/octet-stream"
         if f.suffix in (".md", ".txt", ".json") or ctype.startswith("text/"):
-            ctype = ("text/html" if f.suffix == ".html" else "text/plain") + "; charset=utf-8"
+            ctype = {".html": "text/html", ".css": "text/css", ".js": "text/javascript"}.get(f.suffix, "text/plain")                 + "; charset=utf-8"
         start, end = 0, size - 1
         m = re.match(r"bytes=(\d*)-(\d*)", self.headers.get("Range") or "")
         if m and size:                                  # lecture vidéo avec avance rapide
@@ -267,6 +273,8 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if not parts:
                 return self._file(HERE / "index.html")
+            if parts[0] == "web" and len(parts) == 2 and parts[1] in ("style.css", "app.js"):
+                return self._file(HERE / parts[1])
             if parts[0] == "api":
                 if parts[1:] == ["projets"]:
                     PROJETS.mkdir(exist_ok=True)
@@ -349,6 +357,14 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": True, "n": len([k for k in data if not k.startswith("_")])})
             if action == "upload":
                 return self._upload(p, q)
+            if action == "restaurer":
+                name = q.get("f", "")
+                f = p / "build" / "historique" / name
+                if not re.match(r"^projet_\d{8}_\d{6}\.json$", name) or not f.is_file():
+                    raise ValueError("Version introuvable")
+                from .cli import _save
+                _save(p, json.loads(f.read_text(encoding="utf-8-sig")), garder=True)
+                return self._json({"ok": True})
             if action == "retirer-clip":
                 pid = q.get("id", "")
                 if not re.match(r"^(p\d+_c\d+|solo\d+)$", pid, re.I):
@@ -430,13 +446,34 @@ class Handler(BaseHTTPRequestHandler):
         return self._json({"ok": True})
 
 
+class Server(ThreadingHTTPServer):
+    # sous Windows, SO_REUSEADDR laisse ouvrir un 2e serveur sur un port déjà pris : on l'interdit
+    allow_reuse_address = False
+    daemon_threads = True
+
+
 def serve(open_browser=True):
-    url = f"http://127.0.0.1:{PORT}/"
-    try:
-        srv = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
-    except OSError:                                   # déjà lancé : on ouvre juste la page
-        print(f"Clip Studio tourne déjà : {url}")
-        webbrowser.open(url)
+    import urllib.request
+    srv = None
+    for port in range(PORT, PORT + 10):               # port occupé par autre chose : on essaie le suivant
+        url = f"http://127.0.0.1:{port}/"
+        try:
+            srv = Server(("127.0.0.1", port), Handler)
+            break
+        except OSError:
+            try:                                      # déjà lancé : on ouvre juste la page
+                with urllib.request.urlopen(url + "api/version", timeout=1.5) as r:
+                    perime = json.loads(r.read()).get("perime")
+            except Exception:
+                continue
+            print(f"Clip Studio tourne déjà : {url}")
+            if perime:
+                print("⚠ Il tourne avec une ancienne version du code : ferme son autre fenêtre noire, puis relance.")
+            if open_browser:
+                webbrowser.open(url)
+            return
+    if srv is None:
+        print(f"Aucun port libre entre {PORT} et {PORT + 9}.")
         return
     print(f"Clip Studio : {url}\nGarder cette fenêtre ouverte ; la fermer arrête Clip Studio.")
     if open_browser:

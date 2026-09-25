@@ -184,7 +184,10 @@ def align(audio_path, lyrics_path, out_path, model_name="medium", language="fr",
     import stable_whisper
     lines = read_lyrics(lyrics_path)
     text = "\n".join(t for _, t in lines)
-    print(f"  {len(lines)} vers, modèle whisper « {model_name} » (1er lancement : téléchargement)")
+    from pathlib import Path
+    cache = Path.home() / ".cache" / "whisper" / f"{model_name}.pt"
+    print(f"  {len(lines)} vers, modèle whisper « {model_name} »"
+          + ("" if cache.exists() else " (1er usage : téléchargement unique, ~1,5 Go pour medium)"))
     model = stable_whisper.load_model(model_name, device="cpu")
     result = model.align(str(audio_path), text, language=language)
     aligned = [(w.word, float(w.start), float(w.end), float(getattr(w, "probability", 1.0) or 0))

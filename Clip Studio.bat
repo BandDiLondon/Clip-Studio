@@ -3,6 +3,7 @@ chcp 65001 >nul
 title Clip Studio
 cd /d "%~dp0"
 set PYTHONUTF8=1
+if exist "%~dp0tools\ffmpeg\bin\ffmpeg.exe" set "PATH=%~dp0tools\ffmpeg\bin;%PATH%"
 if not exist ".venv\Scripts\python.exe" (
   echo Environnement Python introuvable : lance d'abord Installer.bat
   pause & exit /b 1

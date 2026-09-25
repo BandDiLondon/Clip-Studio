@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from . import PROJETS
+from .demandes import A_DECRIRE, REFAIRE, SOLOS, VIDEOS
 
 FONT_CANDIDATES = [
     Path("C:/Windows/Fonts/arialbd.ttf"),
@@ -106,33 +107,6 @@ PROJET_TEMPLATE = {
     "timeline": [],
 }
 
-A_DECRIRE = """Rédige une description de scène pour chaque image ci-dessous (clip musical, 1 image = 1 vers).
-Format : Plan : … ; Sujet : … ; Action : … ; Décor : … ; Lumière : …
-- Action = illustration LITTÉRALE du vers, une seule action lisible ; pas de texte, document, écran ni pancarte.
-- Nommer les personnages récurrents exactement comme ci-dessous.{pers_todo}
-Réponds UNIQUEMENT par un JSON {{"id": "description", …}} à enregistrer dans build/descriptions.json.
-
-Style : {style}
-Personnages : {pers}
-
-{items}
-"""
-
-
-REFAIRE = """Réécris la description de scène de certaines images d'un clip musical (1 image = 1 vers).
-Format : Plan : … ; Sujet : … ; Action : … ; Décor : … ; Lumière : …
-- Action = illustration LITTÉRALE du vers, une seule action lisible ; pas de texte, document, écran ni pancarte ;
-  aucune célébrité ni personne réelle.
-- Nommer les personnages récurrents exactement comme ci-dessous.
-- Proposer une scène nettement différente de la description actuelle.{consigne}
-Réponds UNIQUEMENT par un JSON {{"id": "description", …}}.
-
-Style : {style}
-Personnages : {pers}
-
-{items}
-"""
-
 
 class Stop(Exception):
     pass
@@ -192,8 +166,79 @@ def _style(cfg):
     return f"{s}\nIntention de l'auteur (ambiance, sens, contexte — à respecter) : {it}" if it else s
 
 
-def _save(p, cfg):
-    (p / "projet.json").write_text(json.dumps(cfg, indent=2, ensure_ascii=False), encoding="utf-8")
+HISTO_MAX = 30          # versions de projet.json gardées dans build/historique/
+
+
+def _save(p, cfg, garder=False):
+    """Écrit projet.json en gardant l'ancienne version dans build/historique/ (au plus une par minute)."""
+    f = p / "projet.json"
+    txt = json.dumps(cfg, indent=2, ensure_ascii=False)
+    if f.exists():
+        old = f.read_text(encoding="utf-8-sig")
+        if old == txt:
+            return
+        h = p / "build" / "historique"
+        h.mkdir(parents=True, exist_ok=True)
+        prev = sorted(h.glob("projet_*.json"))
+        import time
+        if garder or not prev or time.time() - prev[-1].stat().st_mtime > 60:
+            name = time.strftime("projet_%Y%m%d_%H%M%S.json")
+            if not (h / name).exists():
+                (h / name).write_text(old, encoding="utf-8")
+            for x in sorted(h.glob("projet_*.json"))[:-HISTO_MAX]:
+                x.unlink()
+    f.write_text(txt, encoding="utf-8")
+
+
+def _fsig(f):
+    """Empreinte d'un fichier d'entrée : nom + taille + date (mp3) ou contenu (texte)."""
+    if not f.exists():
+        return None
+    if f.suffix.lower() == ".txt":
+        import hashlib
+        import re
+        txt = "\n".join(l.strip() for l in f.read_text(encoding="utf-8-sig", errors="replace").splitlines())
+        txt = re.sub(r"\n{3,}", "\n\n", txt).strip()
+        return f"{f.name}:{hashlib.sha1(txt.encode()).hexdigest()[:12]}"
+    st = f.stat()
+    return f"{f.name}:{st.st_size}:{st.st_mtime_ns}"
+
+
+def _sig(p, cfg, kind):
+    audio = _fsig(p / cfg["audio"]) if cfg.get("audio") else None
+    if kind == "beats":
+        return f"{audio}|{cfg.get('bpm_hint', 'auto')}"
+    paroles = _fsig(p / cfg["paroles"]) if cfg.get("paroles") else None
+    return f"{audio}|{paroles}|{float(cfg.get('debut_chant') or 0)}"
+
+
+def perimes(p, cfg):
+    """Analyses à refaire : "beats" et / ou "paroles" (mp3, paroles, tempo imposé ou début du chant modifiés)."""
+    b, out = p / "build", []
+    for kind, f in (("beats", b / "beats.npy"), ("paroles", b / "words.json")):
+        if not f.exists():
+            continue
+        saved = cfg.get(f"{kind}_sig")
+        if saved is not None:
+            stale = saved != _sig(p, cfg, kind)
+        else:                                     # projet d'avant les empreintes : comparer les dates
+            srcs = [p / cfg[k] for k in (("audio",) if kind == "beats" else ("audio", "paroles")) if cfg.get(k)]
+            stale = any(s.exists() and s.stat().st_mtime > f.stat().st_mtime for s in srcs)
+        if stale:
+            out.append(kind)
+    return out
+
+
+def _analyses_a_jour(p, cfg, args):
+    """Refait beats / alignement si le mp3 ou les paroles ont changé depuis « Préparer »."""
+    todo = perimes(p, cfg)
+    if "beats" in todo:
+        print("  ⚠ Le mp3 (ou le tempo imposé) a changé depuis « Préparer » : nouveaux beats")
+        cmd_beats(argparse.Namespace(nom=p.name))
+    if "paroles" in todo:
+        print("  ⚠ Le mp3, les paroles ou le début du chant ont changé depuis « Préparer » : nouvel alignement")
+        cmd_align(argparse.Namespace(nom=p.name, model=getattr(args, "model", "medium"), repair_only=False))
+    return _projet(p.name)[1] if todo else cfg
 
 
 def _need(p, cfg, *keys):
@@ -276,6 +321,7 @@ def cmd_beats(args):
     _, bpm = detect(p / cfg["audio"], p / "build" / "beats.npy", cfg.get("bpm_hint", "auto"))
     cfg = _projet(args.nom)[1]
     cfg["bpm_detecte"] = bpm                      # affiché dans Clip Studio
+    cfg["beats_sig"] = _sig(p, cfg, "beats")
     _save(p, cfg)
     return 0
 
@@ -293,10 +339,17 @@ def cmd_align(args):
             force_start(data["segments"], t0)
         print(f"  réparation : {repair(data['segments'])} mot(s) recollé(s)")
         f.write_text(json.dumps(data, indent=1, ensure_ascii=False), encoding="utf-8")
+        new = _sig(p, cfg, "paroles")             # même mp3 et mêmes paroles : seul le début du chant a bougé
+        if (cfg.get("paroles_sig") or "").rsplit("|", 1)[0] == new.rsplit("|", 1)[0]:
+            cfg["paroles_sig"] = new
+            _save(p, cfg)
         return 0
     _need(p, cfg, "audio", "paroles")
     align(p / cfg["audio"], p / cfg["paroles"], p / "build" / "words.json",
           model_name=getattr(args, "model", "medium"), debut_chant=t0)
+    cfg = _projet(args.nom)[1]
+    cfg["paroles_sig"] = _sig(p, cfg, "paroles")
+    _save(p, cfg)
     return 0
 
 
@@ -506,25 +559,6 @@ def cmd_evaluate(args):
     return 0
 
 
-SOLOS = """Tu écris des prompts pour générer des images PANORAMIQUES destinées aux passages instrumentaux
-d'un clip musical : la caméra glisse lentement de gauche à droite sur chaque image (travelling).
-Chanson : « {titre} » — artiste : {artiste}
-Style visuel : {style}
-Personnages récurrents : {pers}
-Passages sans paroles : {passages}
-Paroles :
-{paroles}
-
-Écris {n} prompts, un par image, tous différents, liés à l'univers de la chanson (ex. musiciens en plein solo,
-la scène vue de la foule, un lieu évoqué par les paroles, un moment clé de l'histoire).{consigne}
-Chaque prompt doit préciser : format panoramique 21:9 très large (ex. 2016×864) ; composition étalée sur toute
-la largeur, avec des éléments intéressants de gauche à droite (pas un seul sujet au centre) ; horizon et sujets
-dans le tiers central en hauteur ; photoréaliste, dans le style visuel ci-dessus ; personnages récurrents décrits
-à l'identique s'ils apparaissent ; aucun texte, aucune lettre, aucun logo, aucune enseigne lisible, aucune
-célébrité ni personne réelle, aucun filigrane.
-Réponds UNIQUEMENT par un JSON {{"solos": [{{"titre": "<3 à 6 mots>", "prompt": "<prompt complet>"}}, …]}}"""
-
-
 def cmd_solos(args):
     """Prompts d'images panoramiques pour les passages instrumentaux (Claude via l'abonnement)."""
     from .ai import ClaudeError, ask_json
@@ -563,26 +597,6 @@ def cmd_solos(args):
     return 0
 
 
-VIDEOS = """Tu écris des prompts pour générer de courtes vidéos (image vers vidéo, ~10 s, Google Flow / Veo)
-qui remplaceront des images fixes dans un clip musical. Chaque vidéo part de l'image indiquée (image de départ).
-Chanson : « {titre} » — artiste : {artiste}
-Style visuel : {style}
-Personnages récurrents : {pers}
-
-Images à animer (id — temps à l'écran — description de l'image) :
-{items}
-
-Pour CHAQUE image, écris un prompt EN ANGLAIS (Veo suit mieux l'anglais), qui commence par
-« Image-to-video, 10 seconds, 16:9. », décrit brièvement la scène, puis précise :
-- Camera : un seul mouvement de caméra clair et lent (dolly, travelling latéral, push-in, grue, caméra à l'épaule…) ;
-- Action : 3 à 5 mouvements concrets et visibles des sujets et du décor, fidèles à la description et à l'image ;
-- Atmosphère : lumière, fumée, météo qui bougent.
-Termine chaque prompt par : « Keep every character, costume and element exactly as in the starting image; photorealistic,
-cinematic film grain. No text, no titles, no subtitles, no logos, no watermark. No dialogue, no music (ambient sound only). »
-Aucune célébrité ni personne réelle.{consigne}
-Réponds UNIQUEMENT par un JSON {{"videos": [{{"id": "<id>", "titre": "<3 à 6 mots en français>", "prompt": "<prompt>"}}, …]}}"""
-
-
 def _screen_time(p, cfg):
     """Temps d'écran par image (cases et photos de solo) d'après la timeline : {id: [(début, durée), …]}."""
     from collections import defaultdict
@@ -604,6 +618,8 @@ def cmd_videos(args):
     ids = [i.strip().lower() for i in (getattr(args, "ids", None) or "").split(",") if i.strip()]
     if not ids and not cfg.get("timeline"):
         raise Stop("Pas encore de montage : fais d'abord un aperçu ou un rendu (étape Rendu), ou choisis une image précise.")
+    if cfg.get("timeline"):
+        cfg = _plan_a_jour(p, cfg)
     occ = _screen_time(p, cfg) if cfg.get("timeline") else {}
     desc = {}
     fj = p / "build" / "descriptions.json"
@@ -661,12 +677,14 @@ def cmd_prepare(args):
     p, cfg = _projet(args.nom)
     _need(p, cfg, "audio", "paroles")
     b = p / "build"
-    if args.force or not (b / "beats.npy").exists():
-        print("[1/4] Beats"); cmd_beats(args)
+    old = perimes(p, cfg)
+    if args.force or not (b / "beats.npy").exists() or "beats" in old:
+        print("[1/4] Beats" + (" (mp3 modifié)" if "beats" in old else "")); cmd_beats(args)
     else:
         print("[1/4] Beats : déjà faits")
-    if args.force or not (b / "words.json").exists():
-        print("[2/4] Alignement des paroles"); cmd_align(args)
+    if args.force or not (b / "words.json").exists() or "paroles" in old:
+        print("[2/4] Alignement des paroles" + (" (mp3, paroles ou début du chant modifiés)" if "paroles" in old else ""))
+        cmd_align(args)
     else:
         print("[2/4] Alignement : déjà fait")
     from .ai import find_claude
@@ -713,6 +731,8 @@ def cmd_cut(args):
                if not (p / "cases" / f"{s['id']}.png").exists()]
     if missing:
         print(f"  ⚠ cases manquantes : {', '.join(missing)}")
+    from .ocr import verifier
+    verifier(p, {s["id"] for s in sl["shots"]})           # légendes, enseignes… (avertissement seulement)
     return 0
 
 
@@ -757,7 +777,7 @@ def cmd_plan(args):
 def cmd_render(args):
     from .render import render
     p, cfg = _projet(args.nom)
-    cfg = _plan_a_jour(p, cfg)
+    cfg = _plan_a_jour(p, _analyses_a_jour(p, cfg, args))
     out = render(p, cfg, preview=args.preview, start=args.start, duration=args.duration,
                  out_name=getattr(args, "out", None))
     print(f"  → {out}")
@@ -766,6 +786,8 @@ def cmd_render(args):
 
 def cmd_build(args):
     """vérification + découpe + plan + rendu (aperçu ou final)."""
+    p, cfg = _projet(args.nom)
+    _analyses_a_jour(p, cfg, args)
     print("[1/4] Vérification des planches")
     if cmd_verify(args) != 0 and not args.force:
         raise Stop("Planches à corriger (ou relancer avec --force pour continuer malgré tout)")

@@ -70,6 +70,9 @@ clip new → beats → align → plan (validation) → prompts → [planches] �
       changent (`timeline_sig`), solos et ambiance en alternance, prompts de planches sans légendes
 - [x] Vidéos — `videos/<id>.mp4` remplace une image (Flow / Veo)
 - [x] Partage — copie GitHub `../Clip-Studio-GitHub` (GPLv3, `Installer.bat`, README)
+- [x] Fiabilité — mp3 / paroles / début du chant modifiés détectés (analyses refaites seules), historique et
+      restauration de projet.json, sauvegarde des projets, OCR du texte parasite, 20 tests automatiques,
+      versions figées, installateur sans winget, port libre automatique, pas de double serveur
+- [x] Code — demandes à Claude dans `clip/demandes.py`, interface découpée (index.html / style.css / app.js)
 - [~] Phase 6 — vertical fait (`format`), prompts de miniature faits (publication) ; reste : upload (sur demande)
-- [ ] Idées : fiche personnage (image de référence), détection automatique de texte dans les planches,
-      message « téléchargement » de Whisper affiché à tort à chaque alignement
+- [ ] Idées : fiche personnage (image de référence), dépôt git unique (au lieu de la copie GitHub)

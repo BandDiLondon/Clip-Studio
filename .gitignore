@@ -20,3 +20,6 @@ Mettre a jour depuis Clip FFMPEG.bat
 *.log
 Thumbs.db
 desktop.ini
+
+# Test de l'installateur (chemins propres à ce PC)
+*.wsb

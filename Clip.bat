@@ -4,6 +4,7 @@ setlocal EnableDelayedExpansion
 set "ROOT=%~dp0"
 set "PY=%ROOT%.venv\Scripts\python.exe"
 set PYTHONUTF8=1
+if exist "%~dp0tools\ffmpeg\bin\ffmpeg.exe" set "PATH=%~dp0tools\ffmpeg\bin;%PATH%"
 cd /d "%ROOT%"
 if not exist "%PY%" (
   echo Environnement Python introuvable : %PY%

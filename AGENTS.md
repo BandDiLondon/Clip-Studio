@@ -43,5 +43,7 @@ Feuille de route : [PLAN_AMELIORATION.md](PLAN_AMELIORATION.md).
   paroles jamais citées dans le prompt, aucun texte ni numéro (modèle : METHODE §3).
 - Vérifier (analyse d'image) chaque planche et miniature avant de continuer.
 - Hébergement (catbox) uniquement sur demande explicite.
+- Après toute modification du code : `.\.venv\Scripts\python.exe -m unittest` (tests dans `tests/`), et ajouter un
+  test quand on corrige un bug de logique (shotlist, paroles, montage, empreintes).
 - Toute nouvelle fonction : mettre à jour METHODE (et PLAN si c'est une étape). Après une modification du code,
   rappeler que la copie GitHub (`../Clip-Studio-GitHub`) se synchronise avec `Mettre a jour depuis Clip FFMPEG.bat`.

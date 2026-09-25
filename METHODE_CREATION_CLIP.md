@@ -9,9 +9,14 @@ les beats, travelling sur des photos panoramiques pendant les solos, effets au c
 ---
 
 ## 0. Installation et lancement
-- Nouveau PC : double-clic sur **`Installer.bat`** (copie GitHub). Il installe au besoin Python 3.12,
-  `.venv` avec torch CPU et `requirements.txt`, ffmpeg (winget) et Real-ESRGAN (`tools/realesrgan/`), puis
-  lance `python -m clip check`.
+- Nouveau PC : double-clic sur **`Installer.bat`** (copie GitHub), sans droits administrateur, winget ni redémarrage.
+  Au besoin, il installe :
+  - Python 3.12 (python.org, par utilisateur) ;
+  - `.venv` avec torch CPU et `requirements.txt` (versions figées ; `requirements-complet.txt` = environnement complet testé) ;
+  - ffmpeg (gyan.dev → `tools/ffmpeg/bin`, ajouté au PATH par les `.bat`) ;
+  - Real-ESRGAN (`tools/realesrgan/`).
+  Puis il lance `python -m clip check`.
+  Test sur un Windows vierge : `Tester dans Windows Sandbox.wsb` (copie GitHub, non publié).
 - **`Clip Studio.bat`** ouvre l'interface web locale (`http://127.0.0.1:8765`, 127.0.0.1 uniquement ; garder la fenêtre
   noire ouverte). `Clip.bat` = menu texte, `python -m clip <commande>` = ligne de commande (§2).
 - Claude (optionnel) = **Claude Code + abonnement Claude Pro/Max**, sans API (`clip/ai.py`). Il est cherché dans le PATH,
@@ -21,6 +26,14 @@ les beats, travelling sur des photos panoramiques pendant les solos, effets au c
 - Modèles téléchargés une seule fois : Whisper « medium » (~1,5 Go, `~/.cache/whisper`), Depth Anything V2 Small
   (parallaxe / profondeur, `~/.cache/huggingface`).
 - Bandeau « mise à jour » dans Clip Studio : le serveur tourne sur un code périmé → fermer la fenêtre noire et relancer.
+  Relancer `Clip Studio.bat` pendant qu'il tourne ouvre simplement la page (avec un avertissement si le code est périmé).
+  Si le port 8765 est pris par un autre programme, Clip Studio prend le suivant (jusqu'à 8774).
+- **Sauvegarde des projets** : `Sauvegarder les projets.bat`. Il copie `projets/` vers OneDrive
+  (`Sauvegardes\Clip Studio projets`) ou vers un autre dossier (retenu dans `projets/.sauvegarde`). Il ne supprime jamais
+  rien dans la sauvegarde et laisse de côté ce qui se recalcule (rendus .mp4 de `build/`, `video_frames`, `depth`) ;
+  les vidéos Flow de `videos/` sont copiées.
+- **Historique** : chaque modification de `projet.json` garde l'ancienne version dans `build/historique/` (30 max, au plus une
+  par minute). Restauration : étape 1, « 🕘 Historique des réglages ».
 
 ## 1. Clip Studio, étape par étape
 ### 1. Projet
@@ -38,9 +51,12 @@ Titre, artiste et logo servent au titre d'ouverture, au générique et à la pub
   2. l'alignement mot à mot → `build/words.json` ;
   3. l'évaluation par Claude ;
   4. la shotlist et les prompts.
-  Beats et alignement ne sont refaits que s'ils manquent, ou avec « Refaire » (`--force`), **obligatoire après un changement de mp3**.
+  Beats et alignement sont refaits s'ils manquent, avec « Refaire » (`--force`), ou **automatiquement si le mp3, les
+  paroles, le tempo imposé ou le début du chant ont changé** (empreintes `beats_sig` / `paroles_sig` dans projet.json ;
+  les paroles sont comparées par contenu, donc recoller le même texte ne déclenche rien). Clip Studio l'affiche
+  (« ⚠ Le mp3 a changé… »), et tout rendu refait ces analyses avant de monter.
 - **Début du chant** (`"debut_chant"`, s) : si le karaoké démarre trop tôt, les vers placés avant ce temps sont recalés
-  (appliqué avant la réparation automatique). Relancer « Préparer » avec « Refaire ».
+  (appliqué avant la réparation automatique). Le bouton recale aussitôt (`align --repair-only`), sans refaire l'alignement.
 - **Évaluation par Claude** (`clip evaluate`) : le code mesure les passages sans paroles, le temps d'écran des images
   et les cases libres. Claude recommande le nombre TOTAL d'images d'ambiance (une idée de scène par image) et un
   préréglage. La recommandation est appliquée d'office tant qu'aucune planche n'est générée. Sinon, bouton « Appliquer »
@@ -61,6 +77,9 @@ Copier le prompt de chaque planche, générer (**nouvelle génération vierge**,
   entre 8 et 25 %, simple note.
 - **Découper** (`clip cut`) : cases dans `cases/pN_cK.png` (×4 Real-ESRGAN), planche-contact
   `build/planche_contact.jpg`, cases obsolètes supprimées. Fait aussi automatiquement au rendu.
+- **Texte parasite** : après la découpe, l'OCR intégré à Windows (`clip/ocr.ps1`, sans installation) lit chaque case.
+  Les légendes, enseignes ou numéros lisibles sont signalés à l'étape 4 et dans `build/texte_detecte.json` → retoucher la case.
+  C'est un avertissement, jamais un blocage ; les bribes de moins de 3 lettres sont ignorées.
 - « ✨ Refaire avec Claude » : réécrit les descriptions d'une planche (il faudra la régénérer).
 - **Retoucher une case** : image 16:9 seule déposée dans `retouches/p1_c2.png`. Elle remplace la case au
   prochain rendu, sans refaire la planche.
@@ -193,7 +212,8 @@ Conservés d'un rendu à l'autre ; tous les effets sont désactivés par défaut
 - Hébergement (catbox) uniquement sur demande explicite.
 
 ## 6. Leçons apprises
-1. Nouveau mp3 → « Préparer » avec « Refaire ». Le montage suit tout seul au rendu suivant.
+1. Nouveau mp3 ou paroles modifiées : détecté tout seul. Beats, alignement et montage sont refaits au prochain
+   « Préparer » ou au prochain rendu (dont « Variante » et « Aperçu d'un passage »).
 2. Planches : 1 image par vers unique, minimum de planches, prompts sans étiquettes ni paroles. Sinon le générateur
    écrit des légendes.
 3. Tempo doublé (ex. 192 BPM au lieu de 96) : estimation par famille d'octaves, ou `bpm_hint` imposé.
@@ -201,14 +221,20 @@ Conservés d'un rendu à l'autre ; tous les effets sont désactivés par défaut
 5. Case ratée : `retouches/`, pas toute la planche.
 6. Ballade : pas d'effet au beat, fondus longs.
 7. Garder une copie locale de toute image ou vidéo générée (les liens des générateurs expirent).
-8. Code modifié : relancer Clip Studio (le bandeau de mise à jour le signale).
+8. Code modifié : relancer Clip Studio (le bandeau de mise à jour le signale), et lancer les tests :
+   `.venv\Scripts\python.exe -m unittest` (20 tests, < 1 s, dans `tests/`).
 
 ## 7. Fichiers
 | Fichier | Rôle |
 |---|---|
 | `Clip Studio.bat` / `Clip.bat` / `Installer.bat` | interface web / menu texte / installation (copie GitHub) |
-| `clip/cli.py` | commandes, modèle de `projet.json`, demandes à Claude (descriptions, solos, vidéos) |
-| `clip/web.py` + `clip/web/index.html` | serveur local (liste blanche de commandes) + interface |
+| `Sauvegarder les projets.bat` | copie de `projets/` vers OneDrive ou un autre dossier |
+| `clip/cli.py` | commandes, modèle de `projet.json`, empreintes (périmé ?), historique |
+| `clip/demandes.py` | textes des demandes à Claude (descriptions, solos, vidéos) |
+| `clip/web.py` | serveur local (liste blanche de commandes et d'arguments) |
+| `clip/web/index.html` + `style.css` + `app.js` | interface Clip Studio (page, style, logique des étapes) |
+| `clip/ocr.py` + `clip/ocr.ps1` | détection de texte dans les cases (OCR Windows) |
+| `tests/test_clip.py` | tests rapides (`python -m unittest`) |
 | `clip/ai.py` | appel de Claude Code (`claude -p`) |
 | `clip/audio.py` / `clip/lyrics.py` | beats / paroles et alignement |
 | `clip/shots.py` / `clip/prompts.py` | shotlist et planches / prompts de planches |

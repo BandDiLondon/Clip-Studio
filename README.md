@@ -13,12 +13,11 @@ Clip Studio fabrique des clips musicaux illustrés à partir d'une chanson (mp3)
 ## Installation
 
 1. Télécharger le dépôt : **Code → Download ZIP**, puis décompresser. Tu peux aussi faire `git clone`.
-2. Double-cliquer sur **`Installer.bat`**. Il installe, si besoin :
-   - Python 3.12 ;
-   - l'environnement `.venv` et les bibliothèques ;
-   - ffmpeg ;
-   - Real-ESRGAN.
-   Si Python ou ffmpeg vient d'être installé, relance `Installer.bat` une fois.
+2. Double-cliquer sur **`Installer.bat`**. Il installe, si besoin, sans droits administrateur ni redémarrage :
+   - Python 3.12 (python.org) ;
+   - l'environnement `.venv` et les bibliothèques, aux versions testées ;
+   - ffmpeg (dans `toolsfmpeg`) ;
+   - Real-ESRGAN (dans `toolsealesrgan`).
 3. Optionnel : installer [Claude Code](https://claude.com/claude-code) pour les boutons « ✨ … avec Claude ».
 
 Le premier alignement des paroles télécharge le modèle Whisper « medium » (~1,5 Go, une seule fois).
@@ -40,6 +39,11 @@ Double-clic sur **`Clip Studio.bat`** : l'interface s'ouvre dans le navigateur (
 Chaque projet vit dans `projets/<nom>/`. Ce dossier n'est pas versionné.
 
 En mode texte, il y a `Clip.bat`, ou `.venv\Scripts\python.exe -m clip --help`.
+
+Tes projets (mp3, images, vidéos) ne sont pas dans le dépôt : **`Sauvegarder les projets.bat`** les copie vers OneDrive
+ou vers le dossier de ton choix.
+
+Tests : `.venv\Scripts\python.exe -m unittest`.
 
 Documentation complète : [METHODE_CREATION_CLIP.md](METHODE_CREATION_CLIP.md).
 
