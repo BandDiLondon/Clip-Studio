@@ -74,5 +74,6 @@ clip new → beats → align → plan (validation) → prompts → [planches] �
       restauration de projet.json, sauvegarde des projets, OCR du texte parasite, 20 tests automatiques,
       versions figées, installateur sans winget, port libre automatique, pas de double serveur
 - [x] Code — demandes à Claude dans `clip/demandes.py`, interface découpée (index.html / style.css / app.js)
+- [x] Linux — `installer.sh` / `clip-studio.sh` / `sauvegarder-projets.sh`, code portable, repli sans Real-ESRGAN
 - [~] Phase 6 — vertical fait (`format`), prompts de miniature faits (publication) ; reste : upload (sur demande)
 - [ ] Idées : fiche personnage (image de référence), dépôt git unique (au lieu de la copie GitHub)

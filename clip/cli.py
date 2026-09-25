@@ -12,6 +12,7 @@ from .demandes import A_DECRIRE, REFAIRE, SOLOS, VIDEOS
 
 FONT_CANDIDATES = [
     Path("C:/Windows/Fonts/arialbd.ttf"),
+    Path("/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"),   # Linux : équivalent d'Arial
     Path("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"),
 ]
 AUDIO_EXT = (".mp3", ".wav", ".flac", ".m4a", ".ogg")

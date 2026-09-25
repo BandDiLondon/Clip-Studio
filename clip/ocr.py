@@ -16,8 +16,10 @@ def _utile(ligne):
 
 
 def textes(images):
-    """{nom de l'image: [lignes de texte lisibles]} ; {} si l'OCR Windows est indisponible."""
-    if sys.platform != "win32" or not images:
+    """{nom de l'image: [lignes de texte lisibles]} ; None si l'OCR Windows est indisponible."""
+    if sys.platform != "win32":
+        return None
+    if not images:
         return {}
     out = {}
     images = [str(Path(i)) for i in images]
@@ -26,14 +28,14 @@ def textes(images):
             r = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(PS1),
                                 *images[k:k + LOT]], capture_output=True, text=True, encoding="utf-8", timeout=300)
         except (OSError, subprocess.TimeoutExpired):
-            return out
+            return out or None
         for line in r.stdout.splitlines():
             try:
                 d = json.loads(line)
             except json.JSONDecodeError:
                 continue
             if d.get("erreur") and not d.get("f"):
-                return out
+                return out or None
             lignes = [x for x in d.get("lignes") or [] if _utile(x)]
             if lignes:
                 out[Path(d["f"]).stem.lower()] = lignes
@@ -47,6 +49,9 @@ def verifier(projet_dir, noms=None):
     if noms is not None:
         files = [f for f in files if f.stem.lower() in noms]
     found = textes(files)
+    if found is None:
+        print("  (détection de texte non disponible sur ce système : vérifie les cases à l'œil)")
+        return {}
     (projet_dir / "build").mkdir(exist_ok=True)
     (projet_dir / "build" / "texte_detecte.json").write_text(json.dumps(found, indent=1, ensure_ascii=False),
                                                               encoding="utf-8")

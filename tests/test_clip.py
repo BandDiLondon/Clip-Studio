@@ -145,6 +145,29 @@ class Projet(unittest.TestCase):
         self.assertEqual(json.loads((self.p / "projet.json").read_text(encoding="utf-8"))["look"], "b")
 
 
+class Decoupe(unittest.TestCase):
+    def test_sans_realesrgan(self):
+        # sans GPU Vulkan ni binaire : la découpe continue avec un agrandissement classique
+        from PIL import Image
+        from clip import panels
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            (d / "planches").mkdir()
+            im = Image.new("RGB", (1536, 1296), (0, 0, 0))
+            for r in range(3):
+                for c in range(2):
+                    im.paste((90, 90, 90), (c * 768 + 6, r * 432 + 6, c * 768 + 762, r * 432 + 426))
+            im.save(d / "planches" / "P1.png")
+            old, panels.ESRGAN = panels.ESRGAN, Path("introuvable.exe")
+            try:
+                panels.cut_all(d, "planches", scale=4, grids={"p1": (2, 3)})
+            finally:
+                panels.ESRGAN = old
+            cases = sorted((d / "cases").glob("p1_c*.png"))
+            self.assertEqual(len(cases), 6)
+            self.assertGreater(Image.open(cases[0]).width, 2000)
+
+
 class Ocr(unittest.TestCase):
     def test_bribes_ignorees(self):
         from clip.ocr import _utile

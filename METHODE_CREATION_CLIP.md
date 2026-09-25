@@ -17,6 +17,16 @@ les beats, travelling sur des photos panoramiques pendant les solos, effets au c
   - Real-ESRGAN (`tools/realesrgan/`).
   Puis il lance `python -m clip check`.
   Test sur un Windows vierge : `Tester dans Windows Sandbox.wsb` (copie GitHub, non publié).
+- **Linux** (Ubuntu 24.04, Debian et dérivés, WSL compris) : `bash installer.sh` (paquets `python3-venv`, `ffmpeg`, `curl`,
+  `fonts-liberation` via `sudo apt`, puis `.venv` et Real-ESRGAN Linux). Ensuite `./clip-studio.sh` et
+  `./sauvegarder-projets.sh`. Différences :
+  - pas d'OCR (l'avertissement de texte parasite est absent) ;
+  - encodage libx264 ;
+  - karaoké en Liberation Sans (mêmes dimensions qu'Arial) ;
+  - les boutons Ouvrir / Dossier passent par `xdg-open`.
+  Validé dans un conteneur Docker `ubuntu:24.04` vierge : installation, tests, découpe, aperçu avec karaoké.
+  Test : conteneur Docker `ubuntu:24.04` (le WSL de ce PC n'a pas de réseau et il est limité à 2 Go de mémoire par
+  `.wslconfig`, alors que Whisper medium en demande environ 5).
 - **`Clip Studio.bat`** ouvre l'interface web locale (`http://127.0.0.1:8765`, 127.0.0.1 uniquement ; garder la fenêtre
   noire ouverte). `Clip.bat` = menu texte, `python -m clip <commande>` = ligne de commande (§2).
 - Claude (optionnel) = **Claude Code + abonnement Claude Pro/Max**, sans API (`clip/ai.py`). Il est cherché dans le PATH,
@@ -76,7 +86,8 @@ Copier le prompt de chaque planche, générer (**nouvelle génération vierge**,
 - **Vérifier** (`clip verify`) : format, grille et taille contrôlés. Un ratio de vignette à plus de 25 % du 16:9 bloque ;
   entre 8 et 25 %, simple note.
 - **Découper** (`clip cut`) : cases dans `cases/pN_cK.png` (×4 Real-ESRGAN), planche-contact
-  `build/planche_contact.jpg`, cases obsolètes supprimées. Fait aussi automatiquement au rendu.
+  `build/planche_contact.jpg`, cases obsolètes supprimées. Fait aussi automatiquement au rendu. Sans carte graphique
+  Vulkan (ou sans Real-ESRGAN), agrandissement classique (Lanczos), moins net, avec un avertissement : jamais de blocage.
 - **Texte parasite** : après la découpe, l'OCR intégré à Windows (`clip/ocr.ps1`, sans installation) lit chaque case.
   Les légendes, enseignes ou numéros lisibles sont signalés à l'étape 4 et dans `build/texte_detecte.json` → retoucher la case.
   C'est un avertissement, jamais un blocage ; les bribes de moins de 3 lettres sont ignorées.
@@ -204,7 +215,7 @@ Conservés d'un rendu à l'autre ; tous les effets sont désactivés par défaut
 - **Montage** (`clip/plan.py`) : 1 vers = son image, coupes calées au beat, passages sans paroles remplis (§3).
   `"timeline"` : `[{"t": 20.13, "img": "p1_c1"}, {"t": 35.5, "travel": "solo4.png"}]`, chaque événement durant jusqu'au suivant.
 - **Rendu** (`clip/render.py`, effets purs dans `clip/effects.py`) : images PIL calculées en multiprocess (file bornée,
-  ≤ 12 workers), pipées en rawvideo dans ffmpeg. Karaoké en sous-titres ASS incrustés (`build/karaoke.ass`), audio
+  démarrage « spawn » sur tous les systèmes ; ≤ 12 workers, autant que la mémoire disponible le permet, ~450 Mo chacun), pipées en rawvideo dans ffmpeg. Karaoké en sous-titres ASS incrustés (`build/karaoke.ass`), audio
   AAC 192k muxé, `+faststart`. Débit plafonné à ~12 Mb/s (le grain ferait sinon exploser la taille).
 - **Encodage** : h264_amf (GPU AMD) ou libx264 preset `fast` CRF 20, `yuv420p`, 30 fps.
 - Audio pour une vidéo produite hors pipeline :
@@ -228,6 +239,7 @@ Conservés d'un rendu à l'autre ; tous les effets sont désactivés par défaut
 | Fichier | Rôle |
 |---|---|
 | `Clip Studio.bat` / `Clip.bat` / `Installer.bat` | interface web / menu texte / installation (copie GitHub) |
+| `clip-studio.sh` / `installer.sh` / `sauvegarder-projets.sh` | équivalents Linux |
 | `Sauvegarder les projets.bat` | copie de `projets/` vers OneDrive ou un autre dossier |
 | `clip/cli.py` | commandes, modèle de `projet.json`, empreintes (périmé ?), historique |
 | `clip/demandes.py` | textes des demandes à Claude (descriptions, solos, vidéos) |

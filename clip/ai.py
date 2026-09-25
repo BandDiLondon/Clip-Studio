@@ -21,12 +21,15 @@ def find_claude():
     if found:
         return found
     home = Path(os.environ.get("USERPROFILE", Path.home()))
-    for c in (home / ".local" / "bin" / "claude.exe",
+    for c in (home / ".local" / "bin" / "claude.exe", home / ".local" / "bin" / "claude",
+              home / ".claude" / "local" / "claude",
               Path(os.environ.get("APPDATA", "")) / "npm" / "claude.cmd"):
-        if c.exists():
+        if c.is_file():
             return str(c)
-    for ext_dir in (home / ".vscode" / "extensions", home / ".cursor" / "extensions"):
-        bins = list(ext_dir.glob("anthropic.claude-code-*/resources/native-binary/claude.exe"))
+    exe = "claude.exe" if os.name == "nt" else "claude"
+    for ext_dir in (home / ".vscode" / "extensions", home / ".vscode-server" / "extensions",
+                    home / ".cursor" / "extensions"):
+        bins = list(ext_dir.glob(f"anthropic.claude-code-*/resources/native-binary/{exe}"))
         if bins:
             return str(max(bins, key=_version_key))
     return None

@@ -8,6 +8,8 @@ Feuille de route : [PLAN_AMELIORATION.md](PLAN_AMELIORATION.md).
 
 ## Environnement
 - Windows 11, PowerShell. Python 3.12 dans `.venv` → `.\.venv\Scripts\python.exe`.
+- Linux supporté (`installer.sh`, `clip-studio.sh`) : garder le code portable (pas de `os.startfile`, `explorer`,
+  chemins `.exe` ou polices Windows sans repli ; voir `_ouvrir` dans web.py, `_font` dans panels.py).
 - Point d'entrée : `Clip Studio.bat` (interface web locale, `clip/web.py` + `clip/web/index.html`),
   `Clip.bat` (menu texte) ou `python -m clip <commande>`
   (liste complète : METHODE §2). Installation sur un autre PC : `Installer.bat`.

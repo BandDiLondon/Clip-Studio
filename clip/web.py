@@ -115,6 +115,18 @@ JOB = Job()
 STARTED = time.time()
 
 
+def _ouvrir(f, montrer=False):
+    """Ouvre un fichier ou un dossier avec l'application du système ; montrer = dossier avec le fichier sélectionné."""
+    if sys.platform == "win32":
+        return subprocess.Popen(["explorer", "/select,", str(f)]) if montrer else os.startfile(f)
+    if sys.platform == "darwin":
+        return subprocess.Popen(["open", "-R", str(f)] if montrer else ["open", str(f)])
+    try:                                              # Linux : pas de sélection, on ouvre le dossier
+        subprocess.Popen(["xdg-open", str(f.parent if montrer else f)])
+    except FileNotFoundError:
+        raise ValueError(f"Impossible d'ouvrir automatiquement (xdg-open absent) : {f}")
+
+
 def code_perime():
     """Vrai si le code Python a changé depuis le lancement : la page est relue à chaque visite,
     mais le serveur garde l'ancien code tant qu'il n'est pas relancé."""
@@ -378,7 +390,7 @@ class Handler(BaseHTTPRequestHandler):
                 if not re.match(r"^[\w\-. ]+\.mp4$", name) or f.parent != (p / "build").resolve() or not f.is_file():
                     raise ValueError("Vidéo introuvable")
                 if action == "reveler":                          # explorateur avec le fichier sélectionné
-                    subprocess.Popen(["explorer", "/select,", str(f)])
+                    _ouvrir(f, montrer=True)
                 else:
                     if JOB.running() and JOB.nom == p.name:
                         raise ValueError("Un rendu est en cours sur ce projet : attends la fin")
@@ -391,7 +403,7 @@ class Handler(BaseHTTPRequestHandler):
                 f = (p / q.get("chemin", "")).resolve()
                 if f != p.resolve() and p.resolve() not in f.parents:
                     raise ValueError("Accès refusé")
-                os.startfile(f)                           # explorateur / lecteur vidéo Windows
+                _ouvrir(f)                                # explorateur / lecteur vidéo du système
                 return self._json({"ok": True})
             self._err("Action inconnue", 404)
         except (ValueError, FileNotFoundError, RuntimeError, json.JSONDecodeError, OSError) as e:

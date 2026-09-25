@@ -2,6 +2,7 @@
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -10,7 +11,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from . import ROOT
 
-ESRGAN = ROOT / "tools" / "realesrgan" / "realesrgan-ncnn-vulkan.exe"
+ESRGAN = ROOT / "tools" / "realesrgan" / ("realesrgan-ncnn-vulkan.exe" if sys.platform == "win32" else "realesrgan-ncnn-vulkan")
 DARK = 30        # luminance (90e percentile) max d'une ligne/colonne de gouttière
 SEARCH = 0.06    # zone de recherche autour de la position théorique (fraction)
 INSET = 0.015    # marge retirée à l'intérieur de chaque case
@@ -168,10 +169,21 @@ def upscale(src_dir, dst_dir, scale=4, model="realesrgan-x4plus"):
         raise RuntimeError(r.stderr[-800:])
 
 
+def _font(size):
+    """Arial gras (Windows), sinon DejaVu / Liberation (Linux), sinon la police intégrée de Pillow."""
+    for f in ("arialbd.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+              "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"):
+        try:
+            return ImageFont.truetype(f, size)
+        except OSError:
+            continue
+    return ImageFont.load_default(size)
+
+
 def contact_sheet(cases_dir, out, planches=None, thumb=320):
     files = sorted(Path(cases_dir).glob("p*_c*.png"))
     planches = planches or sorted({f.stem.split("_")[0] for f in files})
-    font = ImageFont.truetype("arialbd.ttf", 22)
+    font = _font(22)
     th = thumb * 9 // 16 if all(                       # vignettes 16:9 → cellules 16:9
         Image.open(f).width > Image.open(f).height for f in files
         if f.stem.split("_")[0] in planches) else thumb
@@ -206,6 +218,7 @@ def cut_all(projet_dir, planches_dir="planches", scale=4, grid=(2, 3), grids=Non
     projet_dir = Path(projet_dir)
     cases = projet_dir / "cases"
     cases.mkdir(exist_ok=True)
+    (projet_dir / "build").mkdir(exist_ok=True)
     planches = [p for p in find_planches(projet_dir / planches_dir) if not grids or p.stem.lower() in grids]
     retouches = {f.stem.lower(): f for f in (projet_dir / "retouches").glob("*")
                  if f.suffix.lower() in IMG_EXT and CASE_RE.match(f.stem)} \
@@ -234,7 +247,21 @@ def cut_all(projet_dir, planches_dir="planches", scale=4, grid=(2, 3), grids=Non
             print(f"  retouche {f.name} ({im.width}×{im.height}) → {name}")
         if scale > 1 and any(tmp.iterdir()):
             print(f"  Real-ESRGAN ×{scale} …")
-            upscale(tmp, cases, scale)
+            import time
+            t0, err = time.time() - 1, ""
+            try:
+                upscale(tmp, cases, scale)
+            except (RuntimeError, OSError) as e:          # pas de GPU Vulkan, binaire absent…
+                err = (str(e).strip().splitlines() or [""])[-1][:120]
+            ratees = [f for f in tmp.iterdir()
+                      if not (cases / f.name).exists() or (cases / f.name).stat().st_mtime < t0]
+            if ratees:
+                print(f"  ⚠ Real-ESRGAN indisponible{f' ({err})' if err else ''} : agrandissement classique "
+                      f"de {len(ratees)} case(s), moins net")
+                for f in ratees:
+                    im = Image.open(f)
+                    w = min(im.width * scale, MAX_W)
+                    im.resize((w, round(im.height * w / im.width)), Image.LANCZOS).save(cases / f.name)
             for f in tmp.iterdir():
                 _cap(cases / f.name)
         else:

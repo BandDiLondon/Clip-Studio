@@ -6,7 +6,8 @@ import os
 import re
 import subprocess
 from collections import deque
-from multiprocessing import Pool
+import multiprocessing
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -210,6 +211,38 @@ def load_timeline(cfg, duration, descriptions=None):
 # ---------------------------------------------------------------- worker state
 
 S = {}
+
+
+def _memoire_dispo():
+    """Mémoire vive disponible (Mo) ; 8000 si inconnue."""
+    try:
+        if sys.platform == "win32":
+            import ctypes
+
+            class MS(ctypes.Structure):
+                _fields_ = [("dwLength", ctypes.c_ulong), ("dwMemoryLoad", ctypes.c_ulong),
+                            ("ullTotalPhys", ctypes.c_ulonglong), ("ullAvailPhys", ctypes.c_ulonglong),
+                            ("ullTotalPageFile", ctypes.c_ulonglong), ("ullAvailPageFile", ctypes.c_ulonglong),
+                            ("ullTotalVirtual", ctypes.c_ulonglong), ("ullAvailVirtual", ctypes.c_ulonglong),
+                            ("ullAvailExtendedVirtual", ctypes.c_ulonglong)]
+            m = MS(); m.dwLength = ctypes.sizeof(MS)
+            ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(m))
+            return m.ullAvailPhys / 2**20
+        dispo = None
+        with open("/proc/meminfo") as f:                  # Linux
+            for line in f:
+                if line.startswith("MemAvailable:"):
+                    dispo = int(line.split()[1]) / 1024
+        for lim in ("/sys/fs/cgroup/memory.max", "/sys/fs/cgroup/memory/memory.limit_in_bytes"):
+            try:                                          # conteneur (Docker) : sa propre limite
+                v = open(lim).read().strip()
+                if v.isdigit():
+                    dispo = min(dispo or 1e9, int(v) / 2**20)
+            except OSError:
+                pass
+        return dispo or 8000
+    except Exception:
+        return 8000
 
 
 def _init(state):
@@ -1055,9 +1088,13 @@ def render(projet_dir, cfg, preview=False, start=None, duration=None, workers=No
     ff = subprocess.Popen(cmd, stdin=subprocess.PIPE, cwd=build)
     # file bornée : Pool.imap n'a pas de contre-pression → les frames (6 Mo) s'accumulent en RAM
     # si ffmpeg encode moins vite que les workers ne rendent, et le pipe Windows finit par casser
-    workers = workers or min(12, os.cpu_count() or 4)
+    # chaque worker charge ses propres images (~250-400 Mo) : on en lance autant que la mémoire le permet
+    workers = workers or max(1, min(12, os.cpu_count() or 4, int((_memoire_dispo() - 700) // 450)))
+    print(f"  {workers} processus de rendu")
     pending = deque()
-    with Pool(workers, initializer=_init, initargs=(state,)) as pool:
+    # « spawn » partout : sous Linux, le « fork » par défaut copie les threads et le pipe de ffmpeg
+    # du processus principal, et les workers restent bloqués (aucune image rendue)
+    with multiprocessing.get_context("spawn").Pool(workers, initializer=_init, initargs=(state,)) as pool:
         for fi in range(f0, f1):
             pending.append(pool.apply_async(_render, (fi,)))
             if len(pending) >= workers * 3:
