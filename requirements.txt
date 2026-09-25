@@ -1,0 +1,11 @@
+numpy
+pillow
+librosa
+soundfile
+# Alignement mot-à-mot. Installer torch CPU d'abord :
+#   pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+stable-ts
+# Upscale : tools/realesrgan/ (realesrgan-ncnn-vulkan, release v0.2.5.0, hors pip)
+# Parallaxe 3D (optionnel, "parallaxe": true) : modèle Depth Anything V2 Small téléchargé au 1er usage
+transformers
+opencv-python-headless

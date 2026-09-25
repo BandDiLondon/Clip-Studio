@@ -1,0 +1,22 @@
+# Environnement Python (recréé par Installer.bat)
+.venv/
+__pycache__/
+*.pyc
+
+# Projets personnels : chansons, images, vidéos, rendus
+projets/*
+!projets/.gitkeep
+
+# Outils téléchargés par Installer.bat
+tools/
+
+# Script de synchronisation local (chemins propres à ce PC)
+Mettre a jour depuis Clip FFMPEG.bat
+
+# Fichiers lourds ou temporaires
+*.mp4
+*.mp3
+*.wav
+*.log
+Thumbs.db
+desktop.ini
