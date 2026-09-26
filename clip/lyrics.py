@@ -69,9 +69,10 @@ STEP = 0.35      # durée assignée à un mot recollé
 MAX_WORD = 1.2   # durée max d'un mot
 
 
-def repair(segments):
+def repair(segments, debut_chant=0):
     """Recolle les mots isolés de l'autre côté d'un solo au groupe principal du vers,
-    borne la durée des mots et recalcule start/end. Retourne le nombre de mots déplacés."""
+    borne la durée des mots et recalcule start/end. Retourne le nombre de mots déplacés.
+    debut_chant : la section qui commence à ce moment-là est fixée par l'auteur, on n'y touche pas."""
     moved = 0
     for seg in segments:
         ws = seg["words"]
@@ -102,26 +103,30 @@ def repair(segments):
                 e = min(e, ws[i + 1]["s"])
             w["e"] = round(max(e, w["s"] + 0.05), 3)
         seg["start"], seg["end"] = ws[0]["s"], ws[-1]["e"]
-    moved += _regroup(segments)
+    moved += _regroup(segments, debut_chant)
     return moved
 
 
 SECTION_GAP = 12.0   # deux vers d'une même section ne sont jamais séparés de plus que ça
 
 
-def _regroup(segments):
+def _regroup(segments, debut_chant=0):
     """Un vers isolé loin du suivant de la même section (typiquement le 1er vers aspiré dans
     l'intro) est recollé juste avant ce suivant, avec une durée de vers médiane."""
     segs = [s for s in segments if s["start"] is not None and all(w["s"] is not None for w in s["words"])]
     if len(segs) < 3:
         return 0
     med = sorted(s["end"] - s["start"] for s in segs)[len(segs) // 2]
+    # 1re section calée sur le début du chant indiqué : elle ne bouge pas
+    fixe = segs[0]["section"] if debut_chant > 0 and abs(segs[0]["start"] - debut_chant) < 1.0 else None
     moved = 0
     # à rebours : un bloc de plusieurs vers perdus dans l'intro se recale en cascade
     for idx in range(len(segs) - 2, -1, -1):
         cur, nxt = segs[idx], segs[idx + 1]
         # sans en-tête [Section], on ne sait pas si deux vers vont ensemble : ne rien déplacer
         if not cur["section"] or cur["section"] != nxt["section"] or nxt["start"] - cur["end"] <= SECTION_GAP:
+            continue
+        if fixe and cur["section"] == fixe:
             continue
         old_s = cur["start"]
         # rythme des mots : celui du même vers chanté ailleurs (même mélodie), sinon longueur des mots
@@ -164,20 +169,53 @@ def force_start(segments, t0):
     early = [s for s in segs if s["start"] < t0 - 0.3]
     later = [s for s in segs if s["start"] >= t0 - 0.3]
     if not early:
-        return 0
+        # 1re section placée trop tard (tassée contre la suivante) : on l'avance d'un bloc jusqu'à t0
+        if not segs or segs[0]["start"] <= t0 + 1.0:
+            return 0
+        first = [s for s in segs if s["section"] == segs[0]["section"]] if segs[0]["section"] else segs[:1]
+        delta = t0 - first[0]["start"]
+        for s in first:
+            for w in s["words"]:
+                if w["s"] is not None:
+                    w["s"], w["e"] = round(w["s"] + delta, 3), round(w["e"] + delta, 3)
+            s["start"], s["end"] = round(s["start"] + delta, 3), round(s["end"] + delta, 3)
+            print(f"  vers recalé (début du chant {t0} s) : « {s['text']} » → {s['start']:.2f}s")
+        return sum(len(s["words"]) for s in first)
     stop = later[0]["start"] if later else t0 + 3.0 * len(early)
     if stop - t0 < 0.5 * len(early):                       # pas la place : 2,5 s par vers
         stop = t0 + 2.5 * len(early)
-    weights = [max(1, len(s["text"])) for s in early]
+    # durée naturelle : celle du même vers chanté ailleurs, sinon débit médian des vers bien placés
+    rates = sorted((s["end"] - s["start"]) / max(1, len(s["text"])) for s in later if s["end"] > s["start"])
+    rate = rates[len(rates) // 2] if rates else 0.12
+    durs = []
+    for s in early:
+        twin = next((o for o in later if o["text"].lower() == s["text"].lower() and o["end"] > o["start"]), None)
+        durs.append(twin["end"] - twin["start"] if twin else rate * max(1, len(s["text"])))
+    scale = min(1.0, (stop - t0) / sum(durs))              # jamais étirés, tassés seulement s'il le faut
     pos = t0
-    for s, wgt in zip(early, weights):
-        dur = (stop - t0) * wgt / sum(weights)
+    for s, dur in zip(early, durs):
+        dur *= scale
         for w, (a, b) in zip(s["words"], _rhythm(s, segs)):
             w["s"], w["e"] = round(pos + a * dur, 3), round(pos + b * dur, 3)
         s["start"], s["end"] = s["words"][0]["s"], s["words"][-1]["e"]
         print(f"  vers recalé (début du chant {t0} s) : « {s['text']} » → {s['start']:.2f}s")
         pos += dur
-    return sum(len(s["words"]) for s in early)
+    moved = sum(len(s["words"]) for s in early)
+    # vers suivants de la même section restés loin derrière : ils suivent (sinon la réparation
+    # recollerait tout le couplet contre eux)
+    prev = early[-1]
+    for s in later:
+        if not s["section"] or s["section"] != prev["section"] or s["start"] - prev["end"] <= SECTION_GAP:
+            break
+        delta = prev["end"] - s["start"]
+        for w in s["words"]:
+            if w["s"] is not None:
+                w["s"], w["e"] = round(w["s"] + delta, 3), round(w["e"] + delta, 3)
+        s["start"], s["end"] = round(s["start"] + delta, 3), round(s["end"] + delta, 3)
+        print(f"  vers recalé (début du chant {t0} s) : « {s['text']} » → {s['start']:.2f}s")
+        moved += len(s["words"])
+        prev = s
+    return moved
 
 
 def align(audio_path, lyrics_path, out_path, model_name="medium", language="fr", debut_chant=0):
@@ -208,7 +246,7 @@ def align(audio_path, lyrics_path, out_path, model_name="medium", language="fr",
                          "words": words})
     if debut_chant > 0:                          # avant la réparation automatique
         force_start(segments, debut_chant)
-    print(f"  réparation : {repair(segments)} mot(s) recollé(s)")
+    print(f"  réparation : {repair(segments, debut_chant)} mot(s) recollé(s)")
     out_path.write_text(json.dumps({"segments": segments}, indent=1, ensure_ascii=False), encoding="utf-8")
 
     doubtful = [(w, s, p) for w, s, e, p in aligned if p < 0.3 or e - s < 0.05]

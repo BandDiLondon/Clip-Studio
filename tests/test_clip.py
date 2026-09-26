@@ -69,6 +69,25 @@ class Paroles(unittest.TestCase):
         self.assertLess(segs[1]["end"], 40.01)
         self.assertEqual(segs[2]["start"], 40.0)
 
+    def test_force_start_premier_couplet_en_retard(self):
+        segs = [seg("premier vers", 33.0), seg("deuxieme vers", 35.0), seg("refrain", 45.0, section="Verse 2")]
+        lyrics.force_start(segs, 20.0)
+        self.assertEqual((segs[0]["start"], segs[1]["start"]), (20.0, 22.0))
+        self.assertEqual(segs[1]["words"][0]["s"], 22.0)
+        self.assertEqual(segs[2]["start"], 45.0)
+
+    def test_reparation_respecte_debut_chant(self):
+        segs = [seg("un deux", 20.0), seg("trois quatre", 22.0), seg("cinq six", 44.0),
+                seg("refrain ici", 46.0, section="Verse 2"), seg("refrain la", 48.0, section="Verse 2")]
+        lyrics.repair(segs, 20.0)
+        self.assertEqual((segs[0]["start"], segs[1]["start"]), (20.0, 22.0))
+
+    def test_force_start_pas_d_etirement(self):
+        segs = [seg("premier vers ici", 5.0), seg("deuxieme vers", 7.0), seg("refrain", 43.0, section="V2")]
+        lyrics.force_start(segs, 20.0)
+        self.assertEqual(segs[0]["start"], 20.0)
+        self.assertLess(segs[1]["end"], 30.0)
+
 
 class Montage(unittest.TestCase):
     def test_alternance_solos_ambiance(self):
