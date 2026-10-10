@@ -5,6 +5,8 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; numéros de 
 
 ## [Non publié]
 
+## [1.3.5] - 2026-10-10
+
 ### Sécurité
 - Serveur local : les requêtes venues d'un autre site (en-tête `Host` ou `Origin` étranger) sont refusées. Une page
   web ouverte en même temps ne peut plus piloter Clip Studio.
