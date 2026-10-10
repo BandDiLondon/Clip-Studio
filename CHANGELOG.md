@@ -5,6 +5,8 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; numéros de 
 
 ## [Non publié]
 
+## [1.3.7] - 2026-10-10
+
 ### Sécurité
 - `setuptools` 83.0.0 (au lieu de 78.1.0) : corrige deux failles signalées par Dependabot, qui ne touchaient pas
   Clip Studio (fonctions non utilisées).
