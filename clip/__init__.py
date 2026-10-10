@@ -1,4 +1,5 @@
 """Pipeline de création de clips musicaux illustrés (karaoké + beat-sync)."""
+import os
 import sys
 from pathlib import Path
 
@@ -11,11 +12,15 @@ for _flux in (sys.stdout, sys.stderr):
 ROOT = Path(__file__).resolve().parent.parent
 PROJETS = ROOT / "projets"
 
+# ffmpeg installé par Clip Studio (Windows : téléchargé ; macOS : liens vers ffmpeg-full) : prioritaire sur le PATH
+_FFMPEG = ROOT / "tools" / "ffmpeg" / "bin"
+if _FFMPEG.is_dir() and str(_FFMPEG) not in os.environ.get("PATH", "").split(os.pathsep):
+    os.environ["PATH"] = str(_FFMPEG) + os.pathsep + os.environ.get("PATH", "")
+
 
 def ecrire(path, txt):
     """Écrit un fichier texte d'un coup : fichier temporaire puis remplacement. Une coupure (plantage, courant)
     laisse l'ancienne version intacte au lieu d'un fichier vide ou tronqué."""
-    import os
     import time
     path = Path(path)
     tmp = path.with_name(path.name + ".tmp")

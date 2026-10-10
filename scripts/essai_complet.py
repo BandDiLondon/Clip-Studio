@@ -15,6 +15,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 os.environ.update(CLIP_SANS_CLAUDE="1", PYTHONUTF8="1")
+sys.path.insert(0, str(ROOT))
+import clip  # noqa: E402,F401  (met tools/ffmpeg/bin en tête du PATH, comme Clip Studio)
 NOM = "essai_auto"
 PAROLES = """[Verse 1]
 Le soleil se lève sur la ville

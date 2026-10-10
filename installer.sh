@@ -8,10 +8,9 @@ echo "=============================================="
 echo "  Installation de Clip Studio ($([ "$SYS" = Darwin ] && echo "macOS, expérimental" || echo Linux))"
 echo "=============================================="
 
-# vérifie l'empreinte SHA256 d'un fichier téléchargé (sha256sum sous Linux, shasum sous macOS)
+# vérifie l'empreinte SHA256 d'un fichier téléchargé (par Python : sha256sum diffère entre Linux et macOS)
 verifier() {
-  if command -v sha256sum >/dev/null; then echo "$1  $2" | sha256sum -c --status
-  else echo "$1  $2" | shasum -a 256 -c --status; fi \
+  [ "$("$PY" -c 'import hashlib, sys; print(hashlib.sha256(open(sys.argv[1], "rb").read()).hexdigest())' "$2")" = "$1" ] \
     || { rm -f "$2"; echo "Fichier téléchargé corrompu ou modifié (empreinte SHA256 incorrecte)"; exit 1; }
 }
 
@@ -21,7 +20,13 @@ if [ "$SYS" = Darwin ]; then
   command -v brew >/dev/null || { echo "Homebrew est nécessaire : installe-le depuis https://brew.sh (une ligne à coller"
     echo "dans le Terminal), puis relance : bash installer.sh"; exit 1; }
   command -v python3.12 >/dev/null || { echo "[1/5] Installation de Python 3.12 (Homebrew)…"; brew install python@3.12; }
-  command -v ffmpeg >/dev/null || { echo "[1/5] Installation de ffmpeg (Homebrew)…"; brew install ffmpeg; }
+  # le ffmpeg de base de Homebrew n'a pas libass (karaoké) : « ffmpeg-full », non ajouté au PATH, d'où les liens
+  # dans tools/ffmpeg/bin (Clip Studio met ce dossier en tête du PATH)
+  if ! ffmpeg -hide_banner -filters 2>/dev/null | grep -q " ass "; then
+    brew list ffmpeg-full >/dev/null 2>&1 || { echo "[1/5] Installation de ffmpeg (Homebrew, ffmpeg-full)…"; brew install ffmpeg-full; }
+    mkdir -p tools/ffmpeg/bin
+    ln -sf "$(brew --prefix ffmpeg-full)/bin/ffmpeg" "$(brew --prefix ffmpeg-full)/bin/ffprobe" tools/ffmpeg/bin/
+  fi
   PY3=$(command -v python3.12 || echo "$(brew --prefix python@3.12)/bin/python3.12")
 else
   manque=()
@@ -59,6 +64,7 @@ echo "[2/5] Dépendances…"
 "$PY" -m pip install --no-deps rapidocr==3.9.2
 
 # ---------- 3. ffmpeg : vérification des filtres utilisés
+[ -d tools/ffmpeg/bin ] && export PATH="$PWD/tools/ffmpeg/bin:$PATH"
 ffmpeg -hide_banner -filters 2>/dev/null | grep -q " ass " || echo "⚠ ffmpeg sans filtre « ass » : le karaoké ne s'affichera pas"
 echo "[3/5] ffmpeg : OK"
 
