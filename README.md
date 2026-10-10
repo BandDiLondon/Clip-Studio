@@ -6,10 +6,10 @@
 [![Dernière version](https://img.shields.io/github/v/release/BandDiLondon/Clip-Studio)](../../releases/latest)
 [![Licence GPLv3](https://img.shields.io/badge/licence-GPLv3-blue)](LICENSE)
 
-Clip Studio fabrique des clips musicaux illustrés à partir d'une chanson (mp3) et de ses paroles (txt). Le traitement tourne en
-local, sous **Windows**, **Linux** ou **macOS** (expérimental) : alignement des paroles, découpe des images, montage et rendu. Seuls les outils
-que tu choisis d'utiliser passent par Internet : le générateur d'images ou de vidéos, et Claude si tu cliques sur un
-bouton « ✨ … avec Claude ».
+Clip Studio fabrique des clips musicaux illustrés à partir d'une chanson (mp3) et de ses paroles (txt). Le traitement
+tourne en local, sous **Windows**, **Linux** ou **macOS** (expérimental) : alignement des paroles, découpe des images,
+montage et rendu. Seuls les outils que tu choisis d'utiliser passent par Internet : le générateur d'images ou de
+vidéos, et Claude si tu cliques sur un bouton « ✨ … avec Claude ».
 
 ![Une image d'un clip réalisé avec Clip Studio : la scène illustre le vers chanté, les paroles s'affichent en karaoké mot à mot](docs/images/clip-karaoke.jpg)
 <sub>Une image du clip « Henry » (KPR) : la scène illustre le vers chanté, le mot en cours est surligné.</sub>
@@ -123,7 +123,8 @@ Chaque projet vit dans `projets/<nom>/`. Ce dossier n'est pas versionné.
 
 | | Windows | Linux | macOS (expérimental) |
 |---|---|---|---|
-| Agrandissement ×4 des cases (Real-ESRGAN) | carte graphique Vulkan | carte graphique Vulkan (pilotes Mesa / NVIDIA) | Metal (via MoltenVK, inclus) |
+| Mémoire vive pour caler les paroles | ~5 Go (modèle medium), ~2 Go (small) | idem | idem |
+| Agrandissement ×4 des cases (Real-ESRGAN) | carte graphique Vulkan | carte graphique Vulkan (pilotes Mesa / NVIDIA) | Metal via MoltenVK, inclus (pas encore vérifié sur un vrai Mac) |
 | Sans carte graphique compatible | agrandissement classique, un peu moins net | idem | idem |
 | Encodage | GPU AMD (h264_amf) si disponible, sinon libx264 | libx264 | libx264 |
 | Boutons « Ouvrir » / « Dossier » | Explorateur | `xdg-open` (ouvre le dossier) | Finder |
@@ -134,7 +135,9 @@ Chaque projet vit dans `projets/<nom>/`. Ce dossier n'est pas versionné.
 Clip Studio est conçu et dirigé par **BandDiLondon** : l'idée, la méthode (dont les planches qui limitent les
 générations d'images), les choix fonctionnels et les tests sur de vraies chansons. Le code et la documentation ont été
 écrits en grande partie avec **Claude** (Anthropic), un assistant IA, sous sa direction. Chaque version est testée
-avant publication (tests automatiques sous Windows, Linux et macOS, et essais sous Windows et Linux).
+avant publication : tests automatiques sous Windows, Linux et macOS, essai complet automatique (installation, puis
+d'une chanson synthétique jusqu'à la vidéo) sous Linux et macOS, et essais sur de vraies chansons sous Windows et
+Linux.
 
 ## Licence
 
