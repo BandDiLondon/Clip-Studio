@@ -5,6 +5,8 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; numéros de 
 
 ## [Non publié]
 
+## [1.3.4] - 2026-10-10
+
 ### Corrigé
 - « Début du chant » : s'applique aussi quand l'alignement place le 1er couplet trop tard (tassé contre le
   refrain) ; ce couplet est avancé d'un bloc jusqu'au début indiqué.
