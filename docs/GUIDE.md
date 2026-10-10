@@ -23,7 +23,7 @@ chose coince. Pour l'installation, voir le [README](../README.md). Pour le fonct
 | **Un générateur d'images** | oui | c'est toi qui génères les images, à partir des prompts que Clip Studio prépare |
 | **Claude Code** (abonnement Claude Pro/Max) | non, mais très utile | rédige les descriptions de scènes et d'autres textes, **uniquement quand tu cliques** |
 | **Un générateur de vidéos** (Google Flow / Veo…) | non | pour animer certaines images |
-| Environ **5 Go de mémoire vive libre** | oui | pour caler les paroles (modèle Whisper « medium ») |
+| Environ **5 Go de mémoire vive libre** | oui | pour caler les paroles (modèle Whisper « medium ») ; 2 Go suffisent avec le modèle « small », moins précis (étape 2) |
 
 **Le générateur d'images** doit accepter de longues consignes et, si possible, le format **32:27** (sinon carré). Il doit
 savoir produire une image composée de **6 photos en grille**. Les générateurs récents (Seedream, Qwen-Image, ChatGPT,
@@ -177,7 +177,7 @@ Mesurés sur une chanson de **3 min 14** (18 images, 3 planches), sur deux machi
 | **Du texte apparaît dans une image** (légende, enseigne) | Étape 4 → **Retoucher une seule case** avec une image sans texte. Ces cases sont signalées à l'étape 4 après la découpe. |
 | **« Vignettes … au lieu de 16:9 »** à la vérification | Le générateur n'a pas respecté le format : régénère la planche au format 32:27, ou continue (les images seront un peu recadrées). |
 | **La grille n'est pas reconnue** (mauvais découpage) | Le générateur a fait plus ou moins de 6 photos, ou sans séparation nette : régénère la planche. |
-| **Le calage des paroles plante** ou l'ordinateur rame | Whisper « medium » demande environ 5 Go de mémoire libre : ferme les autres programmes. Sous WSL ou Docker, augmente la mémoire allouée. |
+| **Le calage des paroles plante** ou l'ordinateur rame | Whisper « medium » demande environ 5 Go de mémoire libre : ferme les autres programmes. Sous WSL ou Docker, augmente la mémoire allouée. En dernier recours, à l'étape 2, choisis « Calage des paroles : mémoire limitée » (modèle « small », environ 2 Go) : le karaoké sera moins précis (sur une chanson test, 12 vers sur 30 décalés de plus d'une demi-seconde). |
 | **« Real-ESRGAN indisponible »** | Pas de carte graphique compatible Vulkan : les cases sont agrandies autrement, un peu moins net. Rien à faire. |
 | **Un bouton répond « Action inconnue »** / bandeau orange | Clip Studio a été mis à jour pendant qu'il tournait : ferme sa fenêtre noire (ou son terminal) et relance-le. |
 | **Les boutons « avec Claude » sont absents** | Claude Code n'est pas installé ou pas trouvé : installe-le (voir le README), puis relance Clip Studio. |

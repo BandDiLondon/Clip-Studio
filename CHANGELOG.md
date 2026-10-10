@@ -5,6 +5,12 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; numéros de 
 
 ## [Non publié]
 
+### Ajouté
+- Étape 2 : choix du modèle de calage des paroles. « Précis » (Whisper medium, ~5 Go de mémoire, par défaut) ou
+  « Mémoire limitée » (Whisper small, ~2 Go, deux fois plus rapide mais karaoké moins précis). Le choix est gardé dans
+  le projet (`whisper`) ; le changer fait recaler les paroles au prochain « Préparer ». Les projets existants ne sont
+  pas recalés.
+
 ## [1.3.8] - 2026-10-10
 
 ### Corrigé

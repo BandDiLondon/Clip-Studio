@@ -57,7 +57,8 @@ les bibliothèques et télécharge Real-ESRGAN. Sur une autre distribution, inst
 ### Les deux
 - Optionnel : [Claude Code](https://claude.com/claude-code) pour les boutons « ✨ … avec Claude ».
 - Le premier alignement des paroles télécharge le modèle Whisper « medium » (~1,5 Go, une seule fois). Il lui faut
-  environ **5 Go de mémoire vive**.
+  environ **5 Go de mémoire vive**. Avec moins de mémoire, l'étape 2 propose le modèle « small » (~2 Go, karaoké moins
+  précis).
 
 ## Utilisation
 

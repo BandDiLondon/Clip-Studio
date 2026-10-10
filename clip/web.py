@@ -369,7 +369,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": True})
             if action == "config":
                 cfg = _cfg(p)
-                cfg.update(json.loads(self._body() or b"{}"))
+                data = json.loads(self._body() or b"{}")
+                from .cli import WHISPER
+                if "whisper" in data and data["whisper"] not in WHISPER:
+                    raise ValueError(f"Modèle Whisper inconnu : {data['whisper']}")
+                cfg.update(data)
                 _save_cfg(p, cfg)
                 return self._json({"ok": True})
             if action == "descriptions":

@@ -135,7 +135,8 @@ Conservés d'un rendu à l'autre ; tous les effets sont désactivés par défaut
   `karaoke_position`, `karaoke_animation`, `karaoke_suivante`, `karaoke_majuscules`, `karaoke_decalage`, `bar_alpha`.
 - **Textes** : `titre`, `artiste`, `generique`, `logo` + `logo_position`, `mention_ia_ecran` / `_texte` / `_position`,
   `origine` (`suno` | `images` | `complete`, pour la mention IA de la publication).
-- **Paroles** : `debut_chant` (s), `intention`, `style`, `personnages`.
+- **Paroles** : `debut_chant` (s), `whisper` (`medium` | `small`, modèle du calage ; `--model` de `prepare` / `align`
+  l'emporte et est enregistré), `intention`, `style`, `personnages`.
 - **Format et son** : `format` (16:9 | 4k | 9:16 | 1:1), `volume_normalise` (-14 LUFS), `debut` / `fin`, `fade_out`,
   `fps`, `encoder` (auto | amf | x264).
 - **Gérés par le code** (ne pas éditer) : `timeline`, `timeline_sig`, `beats_sig`, `paroles_sig`, `bpm_detecte`,

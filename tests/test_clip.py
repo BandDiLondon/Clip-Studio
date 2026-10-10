@@ -226,6 +226,28 @@ class Import(unittest.TestCase):
             importlib.import_module(f"clip.{m}")
 
 
+class Whisper(unittest.TestCase):
+    def test_modele_dans_l_empreinte(self):
+        # medium : empreinte inchangée (pas de recalage des anciens projets) ; small : paroles à recaler
+        import argparse
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d)
+            (p / "a.mp3").write_bytes(b"x")
+            (p / "a.txt").write_text("un vers", encoding="utf-8")
+            cfg = {"audio": "a.mp3", "paroles": "a.txt", "debut_chant": 12}
+            ancien = cli._sig(p, cfg, "paroles")
+            self.assertEqual(ancien, cli._sig(p, {**cfg, "whisper": "medium"}, "paroles"))
+            small = cli._sig(p, {**cfg, "whisper": "small"}, "paroles")
+            self.assertNotEqual(ancien, small)
+            # recalage rapide (début du chant) : seule la dernière partie de l'empreinte doit différer
+            self.assertTrue(small.endswith("|12.0"))
+        self.assertEqual(cli._whisper(argparse.Namespace(model=None), {"whisper": "small"}), "small")
+        self.assertEqual(cli._whisper(argparse.Namespace(model="small"), {}), "small")
+        self.assertEqual(cli._whisper(argparse.Namespace(), {}), "medium")
+        with self.assertRaises(cli.Stop):
+            cli._whisper(argparse.Namespace(model=None), {"whisper": "large-v3"})
+
+
 class Ecriture(unittest.TestCase):
     def test_ecriture_atomique(self):
         # projet.json & co : une écriture interrompue laisse l'ancienne version intacte

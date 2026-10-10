@@ -217,7 +217,7 @@ V.projet_bind = () => {
 function perimeHint() {
   const P = S.perimes || [];
   if (!P.length) return "";
-  const quoi = P.includes("beats") ? "Le mp3 a changé" : "Les paroles, le mp3 ou le début du chant ont changé";
+  const quoi = P.includes("beats") ? "Le mp3 a changé" : "Les paroles, le mp3, le début du chant ou le modèle de calage ont changé";
   return `<div class="steps-hint" style="border-color:var(--warn)">⚠ <b>${quoi} depuis la dernière préparation.</b>
     Le karaoké et le montage ne sont plus synchronisés : relance <b>Préparer</b> (fait automatiquement au prochain rendu,
     compte environ 1 minute de plus).</div>`;
@@ -241,6 +241,12 @@ Références visuelles souhaitées ? Ce qu'il faut éviter (personne réelle, vi
   <div class="card">
     <div class="row"><button class="primary" id="go-prep" ${S.audio && S.paroles ? "" : "disabled"}>▶ Préparer</button>
       <label class="small"><input type="checkbox" id="prep-force"> tout refaire (après changement d'audio ou de paroles)</label></div>
+    <div class="row" style="margin-top:10px"><label class="small">Calage des paroles :
+      <select id="whisper">${[["medium", "Précis : modèle medium (environ 5 Go de mémoire libre)"],
+        ["small", "Mémoire limitée : modèle small (environ 2 Go), karaoké moins précis"]].map(([v, t]) =>
+        `<option value="${v}" ${(S.cfg.whisper || "medium") === v ? "selected" : ""}>${t}</option>`).join("")}</select></label></div>
+    ${S.cfg.whisper === "small" ? `<p class="small muted" style="margin-top:6px">Avec « small », des vers peuvent être décalés
+      d'une demi-seconde ou plus. Utilise-le seulement si le calage plante faute de mémoire.</p>` : ""}
     <p class="small muted" style="margin-top:10px">Durée : environ 1 minute pour une chanson de 3 min (le calage des paroles est le plus long), plus un téléchargement unique de 1,5 Go la toute première fois.</p>
   </div>
   <div class="card"><h3>État</h3><table>
@@ -346,6 +352,12 @@ V.preparer_bind = () => {
         {intention: it.value.trim(), style: $("#style").value.trim() || S.cfg.style});
       toast("Intention et style enregistrés ✅"); await refresh(); }
     catch (e) { toast(e.message); }
+  };
+  $("#whisper").onchange = async e => {
+    try { await post(`/api/projet/${encodeURIComponent(nom())}/config`, {whisper: e.target.value});
+      toast(S.words ? "Modèle enregistré : relance « Préparer » pour recaler les paroles" : "Modèle enregistré ✅");
+      await refresh(); }
+    catch (err) { toast(err.message); }
   };
   $("#go-prep").onclick = () => run("prepare", $("#prep-force").checked ? ["--force"] : [], "Préparer");
   $("#ev-go") && ($("#ev-go").onclick = () => run("evaluate", [], "Évaluation du storyboard"));

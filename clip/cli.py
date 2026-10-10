@@ -33,6 +33,7 @@ PROJET_TEMPLATE = {
     "outro_image": None,
     "ajustements": {},
     "debut_chant": 0,         # début du chant (s) si l'alignement place les premiers vers trop tôt
+    "whisper": "medium",      # calage des paroles : "medium" (~5 Go de mémoire) ou "small" (~2 Go, moins précis)
     "bpm_hint": "auto",       # "auto" = tempo estimé automatiquement, sinon un nombre (BPM) imposé
     "fps": 30,
     "size": [1920, 1080],
@@ -205,16 +206,29 @@ def _fsig(f):
     return f"{f.name}:{st.st_size}:{st.st_mtime_ns}"
 
 
+WHISPER = ("medium", "small")
+
+
+def _whisper(args, cfg):
+    """Modèle Whisper : --model s'il est donné, sinon le réglage du projet (medium par défaut)."""
+    m = getattr(args, "model", None) or cfg.get("whisper") or "medium"
+    if m not in WHISPER:
+        raise Stop(f"Modèle Whisper inconnu : {m} (choix : {', '.join(WHISPER)})")
+    return m
+
+
 def _sig(p, cfg, kind):
     audio = _fsig(p / cfg["audio"]) if cfg.get("audio") else None
     if kind == "beats":
         return f"{audio}|{cfg.get('bpm_hint', 'auto')}"
     paroles = _fsig(p / cfg["paroles"]) if cfg.get("paroles") else None
-    return f"{audio}|{paroles}|{float(cfg.get('debut_chant') or 0)}"
+    m = cfg.get("whisper") or "medium"                # absent pour medium : empreintes d'avant ce réglage inchangées
+    return f"{audio}|{paroles}{'' if m == 'medium' else '|' + m}|{float(cfg.get('debut_chant') or 0)}"
 
 
 def perimes(p, cfg):
-    """Analyses à refaire : "beats" et / ou "paroles" (mp3, paroles, tempo imposé ou début du chant modifiés)."""
+    """Analyses à refaire : "beats" et / ou "paroles" (mp3, paroles, tempo imposé, début du chant ou modèle Whisper
+    modifiés)."""
     b, out = p / "build", []
     for kind, f in (("beats", b / "beats.npy"), ("paroles", b / "words.json")):
         if not f.exists():
@@ -237,8 +251,9 @@ def _analyses_a_jour(p, cfg, args):
         print("  ⚠ Le mp3 (ou le tempo imposé) a changé depuis « Préparer » : nouveaux beats")
         cmd_beats(argparse.Namespace(nom=p.name))
     if "paroles" in todo:
-        print("  ⚠ Le mp3, les paroles ou le début du chant ont changé depuis « Préparer » : nouvel alignement")
-        cmd_align(argparse.Namespace(nom=p.name, model=getattr(args, "model", "medium"), repair_only=False))
+        print("  ⚠ Le mp3, les paroles, le début du chant ou le modèle Whisper ont changé depuis « Préparer » : "
+              "nouvel alignement")
+        cmd_align(argparse.Namespace(nom=p.name, model=getattr(args, "model", None), repair_only=False))
     return _projet(p.name)[1] if todo else cfg
 
 
@@ -352,9 +367,10 @@ def cmd_align(args):
             _save(p, cfg)
         return 0
     _need(p, cfg, "audio", "paroles")
-    align(p / cfg["audio"], p / cfg["paroles"], p / "build" / "words.json",
-          model_name=getattr(args, "model", "medium"), debut_chant=t0)
+    m = _whisper(args, cfg)
+    align(p / cfg["audio"], p / cfg["paroles"], p / "build" / "words.json", model_name=m, debut_chant=t0)
     cfg = _projet(args.nom)[1]
+    cfg["whisper"] = m                            # modèle réellement utilisé (--model compris)
     cfg["paroles_sig"] = _sig(p, cfg, "paroles")
     _save(p, cfg)
     return 0
@@ -690,7 +706,7 @@ def cmd_prepare(args):
     else:
         print("[1/4] Beats : déjà faits")
     if args.force or not (b / "words.json").exists() or "paroles" in old:
-        print("[2/4] Alignement des paroles" + (" (mp3, paroles ou début du chant modifiés)" if "paroles" in old else ""))
+        print("[2/4] Alignement des paroles" + (" (mp3, paroles, début du chant ou modèle modifiés)" if "paroles" in old else ""))
         cmd_align(args)
     else:
         print("[2/4] Alignement : déjà fait")
@@ -822,7 +838,7 @@ def main():
     add("new", cmd_new, "Crée un projet dans projets/<nom>")
     s = add("prepare", cmd_prepare, "Beats + alignement + prompts (tout ce qui précède les planches)")
     s.add_argument("--force", action="store_true", help="Refait beats et alignement")
-    s.add_argument("--model", default="medium")
+    s.add_argument("--model", default=None, choices=WHISPER, help="Modèle Whisper (défaut : réglage du projet)")
     for name, prev, h in (("build", False, "Vérif + découpe + plan + rendu final"),
                           ("build-preview", True, "Vérif + découpe + plan + aperçu")):
         s = add(name, cmd_build, h)
@@ -848,7 +864,7 @@ def main():
     s.add_argument("--scale", type=int, default=4, help="1 = sans upscale")
     add("beats", cmd_beats, "Détecte les beats → build/beats.npy")
     s = add("align", cmd_align, "Alignement mot-à-mot des paroles → build/words.json")
-    s.add_argument("--model", default="medium")
+    s.add_argument("--model", default=None, choices=WHISPER, help="Modèle Whisper (défaut : réglage du projet)")
     s.add_argument("--repair-only", action="store_true", help="Répare words.json sans réaligner")
     add("prompts", cmd_prompts, "Shotlist + prompts (ou liste à décrire) → build/")
     s = add("plan", cmd_plan, "Génère la timeline dans projet.json")
