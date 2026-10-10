@@ -11,7 +11,7 @@ Pour qui veut comprendre, modifier ou dépanner le code (humain ou IA). L'utilis
 - [Traitements](#traitements)
 - [Détection des changements](#détection-des-changements)
 - [Claude](#claude)
-- [Portabilité Windows / Linux](#portabilité-windows--linux)
+- [Portabilité Windows / Linux / macOS](#portabilité-windows--linux--macos)
 - [Tests, captures, versions](#tests-captures-versions)
 
 ---
@@ -48,7 +48,7 @@ Clip Studio.bat / clip-studio.sh ──► python -m clip web ──► clip/web
 ---
 
 ## Commandes
-`python -m clip <commande> <projet> [options]` (`.venv\Scripts\python.exe` sous Windows, `.venv/bin/python` sous Linux).
+`python -m clip <commande> <projet> [options]` (`.venv\Scripts\python.exe` sous Windows, `.venv/bin/python` sous Linux et macOS).
 
 | Commande | Rôle | Sortie |
 |---|---|---|
@@ -198,30 +198,39 @@ Conservés d'un rendu à l'autre ; tous les effets sont désactivés par défaut
 
 ---
 
-## Portabilité Windows / Linux
-Le même code tourne sur les deux systèmes :
+## Portabilité Windows / Linux / macOS
+Le même code tourne sur les trois systèmes (macOS : expérimental, validé seulement par l'action GitHub) :
 - ouvrir un fichier : `_ouvrir()` (`web.py`) ;
 - polices : `_font()` (`panels.py`) et `FONT_CANDIDATES` (`cli.py`) ;
-- binaire Real-ESRGAN selon `sys.platform` ;
+- binaire Real-ESRGAN selon `sys.platform` (universel Intel / puces Apple sous macOS) ;
+- mémoire disponible : `_memoire_dispo()` (`render.py`, `/proc/meminfo`, API Windows ou `vm_stat`) ;
 - rendu en « spawn ».
 
+`installer.sh` sert à Linux et à macOS (Homebrew : Python 3.12 et ffmpeg ; torch depuis PyPI). Lanceur macOS :
+`Clip Studio.command`, qui appelle `clip-studio.sh`.
+
 À proscrire : `os.startfile`, `explorer`, chemins `.exe` ou polices Windows sans repli, `/tmp` codé en dur. Lanceurs :
-`.bat` (CRLF) et `.sh` (LF, exécutables), voir `.gitattributes`.
+`.bat` (CRLF), `.sh` et `.command` (LF, exécutables), voir `.gitattributes`.
 
 ---
 
 ## Tests, captures, versions
 - **Tests** : `python -m unittest` (dans `tests/`, moins de 1 s). À lancer après toute modification ; ajouter un test pour
   tout bug de logique corrigé (shotlist, paroles, montage, empreintes, découpe). Sur GitHub, l'action « Tests » les
-  lance sous Windows et Linux à chaque envoi sur `main` et à chaque pull request.
+  lance sous Windows, Linux et macOS à chaque envoi sur `main` et à chaque pull request.
+- **Essai complet** : `python scripts/essai_complet.py voix.wav` fabrique une chanson à partir d'une voix (synthèse
+  vocale des paroles du script), prépare avec Whisper « small », crée des planches factices, découpe, monte et rend un
+  aperçu, puis contrôle le mp4. Sans appel à Claude (`CLIP_SANS_CLAUDE=1`). L'action « Tests » le lance après
+  `installer.sh` sous Linux (voix `espeak-ng`) et macOS (voix `say`).
 - **Captures du README** : `python scripts/captures.py [projet]`. Le script travaille sur une copie temporaire du projet ;
   `?sel=p1_c3` dans l'adresse présélectionne une image à l'étape Vidéos.
 - **Versions** :
   1. noter les changements dans [CHANGELOG.md](../CHANGELOG.md), sous un titre `## [x.y.z] - AAAA-MM-JJ` ;
   2. `git tag vx.y.z && git push origin vx.y.z`.
 
-  L'action `.github/workflows/release.yml` crée alors la Release avec deux zips (`…-Windows.zip` sans les `.sh`,
-  `…-Linux.zip` sans les `.bat`) et reprend la section du CHANGELOG comme notes.
+  L'action `.github/workflows/release.yml` crée alors la Release avec trois zips (`…-Windows.zip` sans les `.sh`,
+  `…-Linux.zip` sans les `.bat`, `…-macOS.zip` comme Linux plus `Clip Studio.command`) et reprend la section du
+  CHANGELOG comme notes.
 - **Performances** : temps mesurés dans [GUIDE.md](GUIDE.md#temps-de-calcul) (chanson de 3 min 14, 16 cœurs et 4 cœurs
   simulés). Le rendu dépend surtout du processeur : l'encodeur GPU (h264_amf) ne gagne qu'environ 10 % sur libx264.
   Pour mesurer, `CLIP_WORKERS` et `CLIP_THREADS` forcent le nombre de processus de rendu et de threads par processus

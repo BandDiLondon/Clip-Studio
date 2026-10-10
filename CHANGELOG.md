@@ -6,6 +6,11 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; numéros de 
 ## [Non publié]
 
 ### Ajouté
+- **macOS (expérimental)** : `installer.sh` installe aussi sous macOS (Homebrew : Python 3.12 et ffmpeg ; Real-ESRGAN
+  universel Intel / puces Apple), lanceur `Clip Studio.command`, police Arial et mémoire disponible sous macOS. Zip
+  `…-macOS.zip` dans chaque Release. Validé automatiquement sur les Mac de GitHub, pas encore sur un vrai Mac.
+- Essai complet automatique (`scripts/essai_complet.py`) : chanson synthétique → aperçu vidéo contrôlé, lancé sur
+  GitHub sous Linux et macOS après `installer.sh`.
 - Étape 2 : choix du modèle de calage des paroles. « Précis » (Whisper medium, ~5 Go de mémoire, par défaut) ou
   « Mémoire limitée » (Whisper small, ~2 Go, deux fois plus rapide mais karaoké moins précis). Le choix est gardé dans
   le projet (`whisper`) ; le changer fait recaler les paroles au prochain « Préparer ». Les projets existants ne sont

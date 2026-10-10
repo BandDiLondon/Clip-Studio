@@ -14,6 +14,8 @@ FONT_CANDIDATES = [
     Path("C:/Windows/Fonts/arialbd.ttf"),
     Path("/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"),   # Linux : équivalent d'Arial
     Path("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"),
+    Path("/System/Library/Fonts/Supplemental/Arial Bold.ttf"),                # macOS
+    Path("/Library/Fonts/Arial Bold.ttf"),
 ]
 AUDIO_EXT = (".mp3", ".wav", ".flac", ".m4a", ".ogg")
 IMG_EXT = (".jpg", ".jpeg", ".png", ".webp")

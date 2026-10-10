@@ -7,7 +7,7 @@
 [![Licence GPLv3](https://img.shields.io/badge/licence-GPLv3-blue)](LICENSE)
 
 Clip Studio fabrique des clips musicaux illustrés à partir d'une chanson (mp3) et de ses paroles (txt). Le traitement tourne en
-local, sous **Windows** ou **Linux** : alignement des paroles, découpe des images, montage et rendu. Seuls les outils
+local, sous **Windows**, **Linux** ou **macOS** (expérimental) : alignement des paroles, découpe des images, montage et rendu. Seuls les outils
 que tu choisis d'utiliser passent par Internet : le générateur d'images ou de vidéos, et Claude si tu cliques sur un
 bouton « ✨ … avec Claude ».
 
@@ -35,8 +35,8 @@ bouton « ✨ … avec Claude ».
 ## Installation
 
 Télécharger la dernière version dans l'onglet **[Releases](../../releases/latest)** : un zip par système, avec
-seulement les fichiers utiles (`…-Windows.zip` ou `…-Linux.zip`). Puis décompresser.
-(Autres possibilités : **Code → Download ZIP**, qui contient les deux systèmes, ou `git clone`.)
+seulement les fichiers utiles (`…-Windows.zip`, `…-Linux.zip` ou `…-macOS.zip`). Puis décompresser.
+(Autres possibilités : **Code → Download ZIP**, qui contient tous les systèmes, ou `git clone`.)
 
 ### Windows 10 / 11
 Double-cliquer sur **`Installer.bat`**. Il installe, si besoin, sans droits administrateur ni redémarrage :
@@ -54,7 +54,20 @@ bash installer.sh
 Il installe au besoin, avec `sudo apt` : `python3-venv`, `ffmpeg`, `curl` et `fonts-liberation`. Puis il crée `.venv` avec
 les bibliothèques et télécharge Real-ESRGAN. Sur une autre distribution, installe ces paquets toi-même avant de le lancer.
 
-### Les deux
+### macOS (expérimental)
+Installer d'abord [Homebrew](https://brew.sh) (une ligne à coller dans le Terminal). Puis, dans le Terminal, depuis le
+dossier de Clip Studio :
+```
+bash installer.sh
+```
+Il installe au besoin, avec Homebrew, Python 3.12 et ffmpeg, puis crée `.venv` et télécharge Real-ESRGAN (Mac Intel et
+puces Apple).
+
+**Expérimental** : l'installation et une vidéo complète sont testées automatiquement sur les Mac de GitHub à chaque
+modification, mais personne n'a encore vérifié l'interface sur un vrai Mac. Un retour (même « ça marche ») dans les
+[issues](../../issues) est bienvenu.
+
+### Tous les systèmes
 - Optionnel : [Claude Code](https://claude.com/claude-code) pour les boutons « ✨ … avec Claude ».
 - Le premier alignement des paroles télécharge le modèle Whisper « medium » (~1,5 Go, une seule fois). Il lui faut
   environ **5 Go de mémoire vive**. Avec moins de mémoire, l'étape 2 propose le modèle « small » (~2 Go, karaoké moins
@@ -64,6 +77,8 @@ les bibliothèques et télécharge Real-ESRGAN. Sur une autre distribution, inst
 
 - **Windows** : double-clic sur **`Clip Studio.bat`**. Garde la fenêtre noire ouverte pendant que tu travailles.
 - **Linux** : `./clip-studio.sh`. Garde le terminal ouvert ; Ctrl+C arrête Clip Studio.
+- **macOS** : double-clic sur **`Clip Studio.command`** (la première fois, si macOS le bloque : clic droit → Ouvrir).
+  Garde la fenêtre du Terminal ouverte.
 
 L'interface s'ouvre dans le navigateur (`http://127.0.0.1:8765`).
 
@@ -91,10 +106,10 @@ Clip Studio guide pas à pas, en 8 étapes :
 
 Chaque projet vit dans `projets/<nom>/`. Ce dossier n'est pas versionné.
 
-- **Ligne de commande** : `.venv\Scripts\python.exe -m clip --help` (Windows) ou `.venv/bin/python -m clip --help` (Linux).
+- **Ligne de commande** : `.venv\Scripts\python.exe -m clip --help` (Windows) ou `.venv/bin/python -m clip --help` (Linux, macOS).
 - **Sauvegarde** : tes projets (mp3, images, vidéos) ne sont pas dans le dépôt. **`Sauvegarder les projets.bat`** (Windows)
-  ou `./sauvegarder-projets.sh` (Linux) les copie vers le dossier de ton choix.
-- **Tests** : `.venv\Scripts\python.exe -m unittest` (Windows) ou `.venv/bin/python -m unittest` (Linux).
+  ou `./sauvegarder-projets.sh` (Linux, macOS) les copie vers le dossier de ton choix.
+- **Tests** : `.venv\Scripts\python.exe -m unittest` (Windows) ou `.venv/bin/python -m unittest` (Linux, macOS).
 
 ## Documentation
 
@@ -104,21 +119,22 @@ Chaque projet vit dans `projets/<nom>/`. Ce dossier n'est pas versionné.
 - **Avec un assistant IA** (Claude Code, Codex, Cursor…) : ouvre le dossier de Clip Studio avec lui. Il trouvera ses
   instructions dans [AGENTS.md](AGENTS.md).
 
-## Prérequis et différences Windows / Linux
+## Prérequis et différences entre systèmes
 
-| | Windows | Linux |
-|---|---|---|
-| Agrandissement ×4 des cases (Real-ESRGAN) | carte graphique Vulkan | carte graphique Vulkan (pilotes Mesa / NVIDIA) ; sinon, découpe sans agrandissement |
-| Encodage | GPU AMD (h264_amf) si disponible, sinon libx264 | libx264 |
-| Boutons « Ouvrir » / « Dossier » | Explorateur | `xdg-open` (ouvre le dossier) |
-| Police du karaoké | Arial | Liberation Sans (mêmes dimensions) |
+| | Windows | Linux | macOS (expérimental) |
+|---|---|---|---|
+| Agrandissement ×4 des cases (Real-ESRGAN) | carte graphique Vulkan | carte graphique Vulkan (pilotes Mesa / NVIDIA) | Metal (via MoltenVK, inclus) |
+| Sans carte graphique compatible | agrandissement classique, un peu moins net | idem | idem |
+| Encodage | GPU AMD (h264_amf) si disponible, sinon libx264 | libx264 | libx264 |
+| Boutons « Ouvrir » / « Dossier » | Explorateur | `xdg-open` (ouvre le dossier) | Finder |
+| Police du karaoké | Arial | Liberation Sans (mêmes dimensions) | Arial |
 
 ## Comment Clip Studio a été fait
 
 Clip Studio est conçu et dirigé par **BandDiLondon** : l'idée, la méthode (dont les planches qui limitent les
 générations d'images), les choix fonctionnels et les tests sur de vraies chansons. Le code et la documentation ont été
 écrits en grande partie avec **Claude** (Anthropic), un assistant IA, sous sa direction. Chaque version est testée
-avant publication (tests automatiques et essais sous Windows et Linux).
+avant publication (tests automatiques sous Windows, Linux et macOS, et essais sous Windows et Linux).
 
 ## Licence
 

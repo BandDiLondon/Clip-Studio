@@ -228,6 +228,12 @@ def _memoire_dispo():
             m = MS(); m.dwLength = ctypes.sizeof(MS)
             ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(m))
             return m.ullAvailPhys / 2**20
+        if sys.platform == "darwin":                      # macOS : pages libres + inactives (récupérables)
+            out = subprocess.run(["vm_stat"], capture_output=True, text=True).stdout
+            page = int(re.search(r"page size of (\d+)", out).group(1))
+            pages = sum(int(m.group(1)) for k in ("free", "inactive", "speculative")
+                        if (m := re.search(rf"Pages {k}:\s+(\d+)", out)))
+            return pages * page / 2**20 or 8000
         dispo = None
         with open("/proc/meminfo") as f:                  # Linux
             for line in f:

@@ -1,4 +1,4 @@
-# Crée une Release avec un zip Windows et un zip Linux, à chaque étiquette de version (ex. v1.0.0).
+# Crée une Release avec un zip Windows, un zip Linux et un zip macOS, à chaque étiquette de version (ex. v1.0.0).
 #   git tag v1.0.0 && git push origin v1.0.0
 # Le code est le même dans les deux zips ; seuls les scripts propres à l'autre système sont retirés.
 name: Release
@@ -16,21 +16,27 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Fabriquer les deux zips
+      - name: Fabriquer les trois zips
         run: |
           set -e
-          mkdir -p dist stage/win stage/linux
+          mkdir -p dist stage/win stage/linux stage/mac
           commun=(--exclude ".git" --exclude ".git/*" --exclude ".github/*" --exclude "*.wsb" --exclude "dist/*" --exclude "stage" --exclude "docs/images" --exclude "scripts")
-          # Windows : sans les scripts Linux
-          rsync -a "${commun[@]}" --exclude "*.sh" ./ "stage/win/Clip-Studio/"
-          # Linux : sans les scripts Windows
-          rsync -a "${commun[@]}" --exclude "*.bat" ./ "stage/linux/Clip-Studio/"
+          # Windows : sans les scripts Linux / macOS
+          rsync -a "${commun[@]}" --exclude "*.sh" --exclude "*.command" ./ "stage/win/Clip-Studio/"
+          # Linux : sans les scripts Windows ni le lanceur macOS
+          rsync -a "${commun[@]}" --exclude "*.bat" --exclude "*.command" ./ "stage/linux/Clip-Studio/"
           chmod +x stage/linux/Clip-Studio/*.sh
+          # macOS (expérimental) : comme Linux, plus « Clip Studio.command » (double-clic dans le Finder)
+          rsync -a "${commun[@]}" --exclude "*.bat" ./ "stage/mac/Clip-Studio/"
+          chmod +x stage/mac/Clip-Studio/*.sh stage/mac/Clip-Studio/*.command
           (cd stage/win && zip -qr "../../dist/Clip-Studio-${GITHUB_REF_NAME}-Windows.zip" Clip-Studio)
           (cd stage/linux && zip -qr "../../dist/Clip-Studio-${GITHUB_REF_NAME}-Linux.zip" Clip-Studio)
+          (cd stage/mac && zip -qr "../../dist/Clip-Studio-${GITHUB_REF_NAME}-macOS.zip" Clip-Studio)
           ls -la dist
           unzip -l "dist/Clip-Studio-${GITHUB_REF_NAME}-Windows.zip" | grep -c "\.sh$" && exit 1 || true
           unzip -l "dist/Clip-Studio-${GITHUB_REF_NAME}-Linux.zip" | grep -c "\.bat$" && exit 1 || true
+          unzip -l "dist/Clip-Studio-${GITHUB_REF_NAME}-macOS.zip" | grep -c "\.bat$" && exit 1 || true
+          unzip -l "dist/Clip-Studio-${GITHUB_REF_NAME}-macOS.zip" | grep -q "Clip Studio.command"
 
       - name: Créer la Release
         env:
@@ -48,6 +54,7 @@ jobs:
           |---|---|---|
           | **Windows 10 / 11** | \`Clip-Studio-${GITHUB_REF_NAME}-Windows.zip\` | décompresser, double-clic sur **Installer.bat**, puis **Clip Studio.bat** |
           | **Linux** (Ubuntu, Debian…) | \`Clip-Studio-${GITHUB_REF_NAME}-Linux.zip\` | décompresser, \`bash installer.sh\`, puis \`./clip-studio.sh\` |
+          | **macOS** (expérimental) | \`Clip-Studio-${GITHUB_REF_NAME}-macOS.zip\` | installer [Homebrew](https://brew.sh), décompresser, \`bash installer.sh\` dans le Terminal, puis double-clic sur **Clip Studio.command** |
 
           Environ 5 Go de mémoire vive sont nécessaires pour caler les paroles. Mode d'emploi : [docs/GUIDE.md](https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/docs/GUIDE.md).
           EOF

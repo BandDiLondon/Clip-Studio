@@ -16,7 +16,10 @@ def _version_key(p):
 
 
 def find_claude():
-    """Chemin de Claude Code : PATH, installation autonome, npm, puis extension VS Code (la plus récente)."""
+    """Chemin de Claude Code : PATH, installation autonome, npm, puis extension VS Code (la plus récente).
+    CLIP_SANS_CLAUDE=1 : fait comme s'il était absent (essais automatiques, sans consommer l'abonnement)."""
+    if os.environ.get("CLIP_SANS_CLAUDE"):
+        return None
     found = shutil.which("claude")
     if found:
         return found

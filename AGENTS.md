@@ -6,7 +6,7 @@ par Clip Studio.
 
 **À lire** : [docs/GUIDE.md](docs/GUIDE.md) (utilisation, dépannage) et [docs/TECHNIQUE.md](docs/TECHNIQUE.md)
 (architecture, commandes, `projet.json`, conventions). Ne pas supposer un système : Clip Studio tourne sous
-Windows et sous Linux ; vérifier avec l'utilisateur ou dans l'environnement.
+Windows, sous Linux et sous macOS (expérimental) ; vérifier avec l'utilisateur ou dans l'environnement.
 
 ## Aider l'utilisateur
 - Il travaille surtout dans l'interface (`Clip Studio.bat` / `./clip-studio.sh`). Indique-lui l'étape et le bouton
@@ -29,7 +29,7 @@ Windows et sous Linux ; vérifier avec l'utilisateur ou dans l'environnement.
 - Python 3.10+ (testé en 3.12), dans `.venv`. Dépendances figées dans `requirements.txt`.
 - **Après toute modification : `python -m unittest`** (tests dans `tests/`, moins de 1 s). Ajouter un test pour tout
   bug de logique corrigé.
-- **Garder le code portable** Windows / Linux : pas de `os.startfile`, `explorer`, chemins `.exe` ou polices Windows
+- **Garder le code portable** Windows / Linux / macOS : pas de `os.startfile`, `explorer`, chemins `.exe` ou polices Windows
   sans repli, ni `/tmp` codé en dur ; chemins avec `pathlib`, relatifs au projet (voir TECHNIQUE.md, « Portabilité »).
 - **Claude n'est appelé que sur action de l'utilisateur** (sauf l'évaluation dans « Préparer ») : ne jamais ajouter
   d'appel automatique.

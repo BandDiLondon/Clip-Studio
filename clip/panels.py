@@ -170,8 +170,9 @@ def upscale(src_dir, dst_dir, scale=4, model="realesrgan-x4plus"):
 
 
 def _font(size):
-    """Arial gras (Windows), sinon DejaVu / Liberation (Linux), sinon la police intégrée de Pillow."""
-    for f in ("arialbd.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    """Arial gras (Windows, macOS), sinon DejaVu / Liberation (Linux), sinon la police intégrée de Pillow."""
+    for f in ("arialbd.ttf", "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+              "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
               "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"):
         try:
             return ImageFont.truetype(f, size)

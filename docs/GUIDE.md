@@ -41,7 +41,7 @@ Compte **15 à 25 minutes** pour une chanson de 3 minutes : environ 4 minutes de
 générer les planches dans ton générateur (1 à 2 minutes par planche, plus les essais) et relire. Détail dans
 [Temps de calcul](#temps-de-calcul).
 
-1. **Lance Clip Studio** (`Clip Studio.bat` sous Windows, `./clip-studio.sh` sous Linux) : la page s'ouvre dans ton
+1. **Lance Clip Studio** (`Clip Studio.bat` sous Windows, `./clip-studio.sh` sous Linux, `Clip Studio.command` sous macOS) : la page s'ouvre dans ton
    navigateur. Clique sur **« + Nouveau projet »** et donne un nom sans espaces (ex. `ma_chanson`).
 2. **Étape 1 · Projet** : dépose le mp3, puis colle les paroles dans le cadre et enregistre.
 3. **Étape 2 · Préparer** : écris en quelques lignes l'**intention** de la chanson (de quoi elle parle vraiment, le ton,
@@ -160,7 +160,7 @@ Mesurés sur une chanson de **3 min 14** (18 images, 3 planches), sur deux machi
 
 ## Sauvegarde et historique
 - Tes projets (mp3, images, vidéos) ne sont que sur ton ordinateur. **`Sauvegarder les projets.bat`** (Windows) ou
-  **`./sauvegarder-projets.sh`** (Linux) les copie vers le dossier de ton choix (OneDrive par défaut sous Windows), sans jamais rien
+  **`./sauvegarder-projets.sh`** (Linux, macOS) les copie vers le dossier de ton choix (OneDrive par défaut sous Windows), sans jamais rien
   supprimer dans la sauvegarde. Les rendus vidéo ne sont pas copiés : ils se refont.
 - Chaque modification des réglages d'un projet est gardée : à l'étape 1, **« 🕘 Historique des réglages »** permet de
   revenir à une version précédente.
