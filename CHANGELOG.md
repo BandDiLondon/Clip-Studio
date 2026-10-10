@@ -7,6 +7,8 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/); numéros de v
 
 ## [Non publié]
 
+## [1.4.0] - 2026-10-10
+
 ### Ajouté
 - **Clip Studio en anglais** : interface, messages, installateurs, lanceurs, ligne de commande et documentation en
   français et en anglais. Langue choisie en haut à droite de l'interface (par défaut, celle du navigateur); ailleurs,
