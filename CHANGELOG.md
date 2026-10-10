@@ -5,6 +5,8 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; numéros de 
 
 ## [Non publié]
 
+## [1.3.9] - 2026-10-10
+
 ### Ajouté
 - **macOS (expérimental)** : `installer.sh` installe aussi sous macOS (Homebrew : Python 3.12 et ffmpeg ; Real-ESRGAN
   universel Intel / puces Apple), lanceur `Clip Studio.command`, police Arial et mémoire disponible sous macOS. Zip
