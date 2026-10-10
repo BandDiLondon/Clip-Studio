@@ -1,5 +1,5 @@
 blank_issues_enabled: true
 contact_links:
-  - name: Faille de sécurité
+  - name: Faille de sécurité / Security vulnerability
     url: https://github.com/BandDiLondon/Clip-Studio/security/advisories/new
-    about: À signaler en privé, pas dans une issue publique.
+    about: À signaler en privé, pas dans une issue publique. / Report it privately, not in a public issue.

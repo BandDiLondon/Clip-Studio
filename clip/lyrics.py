@@ -3,6 +3,7 @@ import json
 import re
 
 from . import ecrire
+from .i18n import tr
 
 SECTION_RE = re.compile(r"^\s*\[(.+?)\]\s*$")
 
@@ -62,7 +63,7 @@ def _map_words(lines, aligned):
             times[(li, ti)] = (min(t0, s), max(t1, e))
         pos += n
     if pos != len(owner):
-        print(f"  ⚠ {len(owner)} caractères attendus, {pos} alignés")
+        print(tr(f"  ⚠ {len(owner)} caractères attendus, {pos} alignés", f"  ⚠ {len(owner)} characters expected, {pos} aligned"))
     return times
 
 
@@ -146,7 +147,8 @@ def _regroup(segments, debut_chant=0):
         for w, (a, b) in zip(cur["words"], rel):
             w["s"], w["e"] = round(new_s + a * dur, 3), round(new_s + b * dur, 3)
         cur["start"], cur["end"] = cur["words"][0]["s"], cur["words"][-1]["e"]
-        print(f"  vers recalé : « {cur['text']} » {old_s:.2f}s → {cur['start']:.2f}s")
+        print(tr(f"  vers recalé : « {cur['text']} » {old_s:.2f}s → {cur['start']:.2f}s",
+                 f"  line realigned: “{cur['text']}” {old_s:.2f}s → {cur['start']:.2f}s"))
         moved += len(cur["words"])
     return moved
 
@@ -181,7 +183,8 @@ def force_start(segments, t0):
                 if w["s"] is not None:
                     w["s"], w["e"] = round(w["s"] + delta, 3), round(w["e"] + delta, 3)
             s["start"], s["end"] = round(s["start"] + delta, 3), round(s["end"] + delta, 3)
-            print(f"  vers recalé (début du chant {t0} s) : « {s['text']} » → {s['start']:.2f}s")
+            print(tr(f"  vers recalé (début du chant {t0} s) : « {s['text']} » → {s['start']:.2f}s",
+                     f"  line realigned (singing start {t0} s): “{s['text']}” → {s['start']:.2f}s"))
         return sum(len(s["words"]) for s in first)
     stop = later[0]["start"] if later else t0 + 3.0 * len(early)
     if stop - t0 < 0.5 * len(early):                       # pas la place : 2,5 s par vers
@@ -200,7 +203,8 @@ def force_start(segments, t0):
         for w, (a, b) in zip(s["words"], _rhythm(s, segs)):
             w["s"], w["e"] = round(pos + a * dur, 3), round(pos + b * dur, 3)
         s["start"], s["end"] = s["words"][0]["s"], s["words"][-1]["e"]
-        print(f"  vers recalé (début du chant {t0} s) : « {s['text']} » → {s['start']:.2f}s")
+        print(tr(f"  vers recalé (début du chant {t0} s) : « {s['text']} » → {s['start']:.2f}s",
+                 f"  line realigned (singing start {t0} s): “{s['text']}” → {s['start']:.2f}s"))
         pos += dur
     moved = sum(len(s["words"]) for s in early)
     # vers suivants de la même section restés loin derrière : ils suivent (sinon la réparation
@@ -214,7 +218,8 @@ def force_start(segments, t0):
             if w["s"] is not None:
                 w["s"], w["e"] = round(w["s"] + delta, 3), round(w["e"] + delta, 3)
         s["start"], s["end"] = round(s["start"] + delta, 3), round(s["end"] + delta, 3)
-        print(f"  vers recalé (début du chant {t0} s) : « {s['text']} » → {s['start']:.2f}s")
+        print(tr(f"  vers recalé (début du chant {t0} s) : « {s['text']} » → {s['start']:.2f}s",
+                 f"  line realigned (singing start {t0} s): “{s['text']}” → {s['start']:.2f}s"))
         moved += len(s["words"])
         prev = s
     return moved
@@ -226,8 +231,10 @@ def align(audio_path, lyrics_path, out_path, model_name="medium", language="fr",
     text = "\n".join(t for _, t in lines)
     from pathlib import Path
     cache = Path.home() / ".cache" / "whisper" / f"{model_name}.pt"
-    print(f"  {len(lines)} vers, modèle whisper « {model_name} »"
-          + ("" if cache.exists() else " (1er usage : téléchargement unique du modèle, ~1,5 Go pour medium)"))
+    print(tr(f"  {len(lines)} vers, modèle whisper « {model_name} », langue « {language} »",
+             f"  {len(lines)} lines, whisper model “{model_name}”, language “{language}”")
+          + ("" if cache.exists() else tr(" (1er usage : téléchargement unique du modèle, ~1,5 Go pour medium)",
+                                          " (first use: one-time model download, ~1.5 GB for medium)")))
     model = stable_whisper.load_model(model_name, device="cpu")
     result = model.align(str(audio_path), text, language=language)
     aligned = [(w.word, float(w.start), float(w.end), float(getattr(w, "probability", 1.0) or 0))
@@ -248,11 +255,13 @@ def align(audio_path, lyrics_path, out_path, model_name="medium", language="fr",
                          "words": words})
     if debut_chant > 0:                          # avant la réparation automatique
         force_start(segments, debut_chant)
-    print(f"  réparation : {repair(segments, debut_chant)} mot(s) recollé(s)")
+    print(tr(f"  réparation : {repair(segments, debut_chant)} mot(s) recollé(s)",
+             f"  repair: {repair(segments, debut_chant)} word(s) re-attached"))
     ecrire(out_path, json.dumps({"segments": segments}, indent=1, ensure_ascii=False))
 
     doubtful = [(w, s, p) for w, s, e, p in aligned if p < 0.3 or e - s < 0.05]
-    print(f"  → {out_path.name} : {len(segments)} vers, {len(aligned)} mots, {len(doubtful)} douteux")
+    print(tr(f"  → {out_path.name} : {len(segments)} vers, {len(aligned)} mots, {len(doubtful)} douteux",
+             f"  → {out_path.name}: {len(segments)} lines, {len(aligned)} words, {len(doubtful)} doubtful"))
     for w, s, p in doubtful[:20]:
         print(f"     {s:7.2f}s  {w.strip():20s} p={p:.2f}")
     return segments

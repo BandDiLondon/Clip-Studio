@@ -2,7 +2,8 @@
 Usage : .venv\\Scripts\\python.exe scripts\\captures.py [projet]      (défaut : Henry)
 Travaille sur une COPIE temporaire du projet (prompts régénérés avec le modèle actuel ; le vrai projet n'est pas
 modifié), lance Clip Studio sur un port libre, photographie les étapes avec Edge (ou Chrome) sans fenêtre, en thème
-sombre, puis extrait une image du clip rendu (karaoké). Refaire après chaque évolution de l'interface."""
+sombre, en français puis en anglais (fichiers « -en »), puis extrait une image du clip rendu (karaoké). Refaire après
+chaque évolution de l'interface."""
 import shutil
 import socket
 import subprocess
@@ -109,8 +110,10 @@ def main():
         time.sleep(1.5)
         nav = navigateur()
         print(f"Captures de « {projet} » → {OUT}")
-        for nom, etape, extra, h in CAPTURES:
-            capture(nav, f"http://127.0.0.1:{web.PORT}/?projet={projet}{extra}#{etape}", OUT / nom, h)
+        for lg, suffixe in (("fr", ""), ("en", "-en")):
+            for nom, etape, extra, h in CAPTURES:
+                dest = OUT / nom.replace(".jpg", f"{suffixe}.jpg")
+                capture(nav, f"http://127.0.0.1:{web.PORT}/?projet={projet}&lang={lg}{extra}#{etape}", dest, h)
     image_du_clip(src, OUT / "clip-karaoke.jpg")
 
 

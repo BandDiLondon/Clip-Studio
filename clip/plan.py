@@ -3,6 +3,7 @@ passages instrumentaux → travelling sur solos, sinon images d'ambiance."""
 import bisect
 
 from .shots import key
+from .i18n import tr
 
 SNAP = 0.25        # une coupe se cale sur un beat s'il est à moins de SNAP s
 MIN_GAP = 3.0      # trou sans paroles au-delà duquel on remplit l'instrumental
@@ -68,5 +69,6 @@ def build(segments, beats, cfg, duration, shotlist):
         elif filler:
             ev += filler.fill(snap(prev_end + 0.3, beats), duration, "outro")
     if missing:
-        print(f"  ⚠ {len(missing)} vers sans image dans la shotlist : {missing[:3]}")
+        print(tr(f"  ⚠ {len(missing)} vers sans image dans la shotlist : {missing[:3]}",
+                 f"  ⚠ {len(missing)} line(s) without an image in the shotlist: {missing[:3]}"))
     return ev

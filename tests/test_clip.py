@@ -118,8 +118,16 @@ class Prompts(unittest.TestCase):
             self.assertNotIn(lab, p)
         self.assertIn("il court", p)
 
+    def test_prose_anglais(self):
+        p = prompts.prose("Shot: wide ; Subject: a man ; Action: he runs ; Setting: a street ; Lighting: night", "en")
+        for lab in ("Shot:", "Subject", "Setting", "Lighting:"):
+            self.assertNotIn(lab, p)
+        self.assertIn("he runs", p)
+        self.assertIn("wide shot", p.lower())
+
     def test_entete_sans_storyboard(self):
-        self.assertNotIn("storyboard", prompts.HEADER.lower())
+        for lg in ("fr", "en"):
+            self.assertNotIn("storyboard", prompts.HEADER[lg].lower())
 
 
 class Projet(unittest.TestCase):
@@ -246,6 +254,65 @@ class Whisper(unittest.TestCase):
         self.assertEqual(cli._whisper(argparse.Namespace(), {}), "medium")
         with self.assertRaises(cli.Stop):
             cli._whisper(argparse.Namespace(model=None), {"whisper": "large-v3"})
+
+
+class Langues(unittest.TestCase):
+    def tearDown(self):
+        from clip import i18n
+        i18n.fixer(None)
+
+    def test_langue_des_messages(self):
+        import os
+        from unittest import mock
+        from clip import i18n
+        with mock.patch.dict(os.environ, {"CLIP_LANG": "en"}):
+            self.assertEqual(i18n.tr("bonjour", "hello"), "hello")
+            i18n.fixer("fr")                                   # la requête web l'emporte sur CLIP_LANG
+            self.assertEqual(i18n.tr("bonjour", "hello"), "bonjour")
+        i18n.fixer(None)
+        with mock.patch.dict(os.environ, {"CLIP_LANG": ""}):
+            self.assertEqual(i18n.tr("bonjour", "hello"), "bonjour")      # défaut : français
+
+    def test_langue_du_projet(self):
+        from clip import i18n, prompts, publish
+        self.assertEqual(i18n.langue_projet({}), "fr")                    # anciens projets : français
+        self.assertEqual(i18n.tp({"langue": "en"}, "a", "b"), "b")
+        pl = {"grid": [2, 3], "ratio": "32:27"}
+        en = prompts.render_prompt(pl, [({"text": "x"}, "Shot: wide ; Action: he runs")], {"langue": "en"})
+        self.assertIn("EXACTLY 6", en)
+        self.assertIn("wide shot", en.lower())
+        segs = [seg("a b", t, 2.0, s) for t, s in ((12, "Verse 1"), (16, "Verse 1"), (30, "Chorus"), (34, "Chorus"),
+                                                    (50, "Verse 2"))]
+        ch = publish.chapitres(segs, 70, langue="en")
+        self.assertTrue(any("Verse 1" in c for c in ch) and any("Chorus" in c for c in ch), ch)
+        self.assertTrue(any("Couplet 1" in c for c in publish.chapitres(segs, 70)))
+
+    def test_langue_dans_l_empreinte(self):
+        # langue absente de l'empreinte en français (pas de recalage des anciens projets), présente en anglais
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d)
+            (p / "a.mp3").write_bytes(b"x")
+            (p / "a.txt").write_text("un vers", encoding="utf-8")
+            cfg = {"audio": "a.mp3", "paroles": "a.txt"}
+            self.assertEqual(cli._sig(p, cfg, "paroles"), cli._sig(p, {**cfg, "langue": "fr"}, "paroles"))
+            self.assertNotEqual(cli._sig(p, cfg, "paroles"), cli._sig(p, {**cfg, "langue": "en"}, "paroles"))
+
+    def test_erreurs_du_serveur_dans_la_langue_de_la_page(self):
+        import http.client
+        import json as js
+        import threading
+        from clip.web import Handler, Server
+        srv = Server(("127.0.0.1", 0), Handler)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        try:
+            for lg, attendu in (("en", "Project not found"), ("fr", "Projet introuvable")):
+                c = http.client.HTTPConnection("127.0.0.1", srv.server_address[1], timeout=5)
+                c.request("GET", "/api/projet/zz_absent_zz", headers={"X-Lang": lg})
+                self.assertIn(attendu, js.loads(c.getresponse().read())["erreur"])
+                c.close()
+        finally:
+            srv.shutdown()
+            srv.server_close()
 
 
 class Ecriture(unittest.TestCase):

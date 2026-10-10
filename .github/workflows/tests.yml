@@ -80,3 +80,16 @@ jobs:
 
       - name: Essai complet (préparer, découper, rendre un aperçu)
         run: .venv/bin/python scripts/essai_complet.py "$VOIX"
+
+      - name: Essai complet en anglais (chanson en anglais, messages en anglais)
+        run: |
+          texte="The sun is rising on the town. The cars are rolling without a sound. Sing along with us tonight.
+          Sing it one more time. The rain is falling on the roofs. The wind is blowing through the night.
+          Sing along with us tonight. Sing it one more time."
+          if [ "$RUNNER_OS" = macOS ]; then
+            voix=$(say -v '?' | awk '/en_US/ {print $1; exit}')
+            say ${voix:+-v "$voix"} -r 150 -o voice_en.aiff "$texte"; f=voice_en.aiff
+          else
+            espeak-ng -v en -s 130 -w voice_en.wav "$texte"; f=voice_en.wav
+          fi
+          .venv/bin/python scripts/essai_complet.py "$f" --langue en

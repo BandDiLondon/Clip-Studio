@@ -14,6 +14,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageOps
 
 from . import effects as FX
+from .i18n import tp, tr
 
 XFADE = 0.15          # durée du fondu enchaîné entre deux plans (s)
 YELLOW_ASS = "&H0050DCFF&"   # (255,220,80) en BGR ASS
@@ -22,27 +23,34 @@ WHITE_ASS = "&H00FFFFFF&"
 # ---------------------------------------------------------------- timeline
 
 def camera_from_plan(desc):
-    """Mouvement de caméra déduit du champ « Plan : … » d'une description de vignette."""
-    m = re.search(r"Plan\s*:\s*([^;]+)", desc or "", re.I)
+    """Mouvement de caméra déduit du champ « Plan : … » (ou « Shot: … » en anglais) d'une description de vignette."""
+    m = re.search(r"(?:Plan|Shot)\s*:\s*([^;]+)", desc or "", re.I)
     plan = (m.group(1) if m else "").lower()
-    if "large" in plan:
+    if "large" in plan or "wide" in plan or "establishing" in plan or "long shot" in plan:
         return "pan"          # plan large / très large : travelling latéral
-    if "gros" in plan or "rapproch" in plan:
+    if "gros" in plan or "rapproch" in plan or "close" in plan or "tight" in plan:
         return "push"         # gros plan / rapproché : zoom avant
-    if "moyen" in plan:
+    if "moyen" in plan or "medium" in plan:
         return "pull"         # plan moyen : zoom arrière
     return "push"
 
 
 PARTICULES = [
-    # (type, mots-clés cherchés dans la description de la vignette) — le premier qui correspond gagne
-    ("etincelles", ("étincelle", "etincelle", "feu d'artifice", "feux d'artifice", "soudure", "meuleuse")),
-    ("pluie", ("pluie", "pleut", "pleuvoir", "averse", "orage", "trempé", "parapluie")),
-    ("confettis", ("confetti", "paillette", "fête", "célébr", "victoire", "trophée", "disque d'or", "remise de prix")),
-    ("braises", ("feu", "flamme", "braise", "tison", "incendi", "enfer", "brûl", "brasier", "forge", "bûcher", "cendre")),
-    ("neige", ("neige", "enneig", "flocon", "hiver", "blizzard")),
-    ("bokeh", ("luciole", "guirlande", "bokeh", "lanterne", "bougie", "chandelle")),
-    ("poussiere", ("bar", "taverne", "enfum", "fumée", "sous-sol", "grange", "scène", "salle")),
+    # (type, mots-clés cherchés dans la description de la vignette, français puis anglais) — le premier qui
+    # correspond gagne. En anglais, « fire » seul attraperait « firefly » : formes précises seulement.
+    ("etincelles", ("étincelle", "etincelle", "feu d'artifice", "feux d'artifice", "soudure", "meuleuse",
+                    "spark", "firework", "welding", "grinder")),
+    ("pluie", ("pluie", "pleut", "pleuvoir", "averse", "orage", "trempé", "parapluie",
+               "rain", "storm", "downpour", "drenched", "umbrella")),
+    ("confettis", ("confetti", "paillette", "fête", "célébr", "victoire", "trophée", "disque d'or", "remise de prix",
+                   "glitter", "party", "celebrat", "victory", "trophy", "gold record", "award")),
+    ("braises", ("feu", "flamme", "braise", "tison", "incendi", "enfer", "brûl", "brasier", "forge", "bûcher", "cendre",
+                 "on fire", "fire ", "fire,", "fire.", "fires", "bonfire", "campfire", "wildfire", "fireplace", "flame", "ember", "blaze", "burning", "inferno", "hellfire", "pyre", "ashes")),
+    ("neige", ("neige", "enneig", "flocon", "hiver", "blizzard", "snow", "winter")),
+    ("bokeh", ("luciole", "guirlande", "bokeh", "lanterne", "bougie", "chandelle",
+               "firefl", "string light", "fairy light", "lantern", "candle")),
+    ("poussiere", ("bar", "taverne", "enfum", "fumée", "sous-sol", "grange", "scène", "salle",
+                   "tavern", "smoky", "basement", "barn", "on stage", "nightclub", "concert hall")),
 ]
 
 # (luminosité, saturation) par section quand "look_sections" est actif
@@ -56,16 +64,20 @@ SECTION_TONES = {
 
 FUMEES = [
     # (type, mots-clés) — le premier qui correspond gagne
-    ("brouillard", ("brouillard", "brume", "brumeu")),
-    ("fumee", ("fumée", "fumee", "enfum", "fumig", "vapeur", "incendi", "brasier", "flamme", "cigare", "smoke")),
+    ("brouillard", ("brouillard", "brume", "brumeu", "fog", "mist", "haze")),
+    ("fumee", ("fumée", "fumee", "enfum", "fumig", "vapeur", "incendi", "brasier", "flamme", "cigare",
+               "smoke", "smoky", "steam", "vapor", "blaze", "flame", "cigar")),
 ]
 
 
 LUMIERES = {
-    "flammes": ("flamme", "incendi", "brasier", "bûcher", "bucher", "en feu", "enfer", "brûl", "brul", "feu de camp"),
-    "eclairs": ("orage", "éclair", "eclair", "tempête", "tempete", "foudre"),
+    "flammes": ("flamme", "incendi", "brasier", "bûcher", "bucher", "en feu", "enfer", "brûl", "brul", "feu de camp",
+                "flame", "blaze", "burning", "on fire", "inferno", "pyre", "bonfire", "campfire", "wildfire"),
+    "eclairs": ("orage", "éclair", "eclair", "tempête", "tempete", "foudre", "storm", "lightning", "thunder"),
     "rayons": ("église", "eglise", "cathédrale", "vitrail", "faisceau", "rayon de lumière", "rayons de lumière",
-               "projecteur", "lumière divine", "grenier"),
+               "projecteur", "lumière divine", "grenier",
+               "church", "cathedral", "stained glass", "light beam", "beam of light", "rays of light", "spotlight",
+               "god rays", "sunbeam", "attic"),
 }
 
 
@@ -913,7 +925,8 @@ def _use_videos(projet_dir, shots, size, fps):
                                 "-q:v", "3", str(d / "%05d.jpg")], check=True)
             n = len(list(d.glob("*.jpg")))
             done[key] = (str(d), n)
-            print(f"  vidéo {v.name} : {n} images ({n / fps:.1f} s) → remplace {key}")
+            print(tr(f"  vidéo {v.name} : {n} images ({n / fps:.1f} s) → remplace {key}",
+                     f"  video {v.name}: {n} frames ({n / fps:.1f} s) → replaces {key}"))
         d, n = done[key]
         if n:
             out.append((start, end, "video", d, {**opts, "nframes": n}))
@@ -1002,7 +1015,7 @@ def render(projet_dir, cfg, preview=False, start=None, duration=None, workers=No
     k = karaoke_opts(cfg, ts, lb, W, H)
     ment = None
     if cfg.get("mention_ia_ecran"):
-        ment = {"texte": cfg.get("mention_ia_texte") or "Version IA", "coin": cfg.get("mention_ia_position", "bas-droite"),
+        ment = {"texte": cfg.get("mention_ia_texte") or tp(cfg, "Version IA", "AI Version"), "coin": cfg.get("mention_ia_position", "bas-droite"),
                 "debut": d0, "fin": d1}
     ass = build / ("preview.ass" if preview else "karaoke.ass")
     spans = write_ass(segments, ass, (W, H), k, titles=_titles(cfg, segments, d0, d1, ts), mention=ment)
@@ -1090,7 +1103,8 @@ def render(projet_dir, cfg, preview=False, start=None, duration=None, workers=No
            *_video_codec(cfg.get("encoder", "auto"), preview, W * H),
            "-pix_fmt", "yuv420p", "-r", str(fps),
            "-c:a", "aac", "-b:a", "192k", "-shortest", "-movflags", "+faststart", name]
-    print(f"  {len(shots)} plans, {f1 - f0} frames {W}×{H}@{fps} ({fmt}) → {out}")
+    print(tr(f"  {len(shots)} plans, {f1 - f0} frames {W}×{H}@{fps} ({fmt}) → {out}",   # « frames » : lu par web.py
+             f"  {len(shots)} shots, {f1 - f0} frames {W}×{H}@{fps} ({fmt}) → {out}"))
     ff = subprocess.Popen(cmd, stdin=subprocess.PIPE, cwd=build)
     # file bornée : Pool.imap n'a pas de contre-pression → les frames (6 Mo) s'accumulent en RAM
     # si ffmpeg encode moins vite que les workers ne rendent, et le pipe Windows finit par casser
@@ -1098,7 +1112,7 @@ def render(projet_dir, cfg, preview=False, start=None, duration=None, workers=No
     # CLIP_WORKERS / CLIP_THREADS : forcer ces valeurs (mesures de performance)
     workers = (workers or int(os.environ.get("CLIP_WORKERS") or 0)
                or max(1, min(12, os.cpu_count() or 4, int((_memoire_dispo() - 700) // 450))))
-    print(f"  {workers} processus de rendu")
+    print(tr(f"  {workers} processus de rendu", f"  {workers} render processes"))
     pending = deque()
     # threads de calcul par worker = cœurs / workers : sinon numpy / OpenCV en lancent chacun autant que de cœurs,
     # et les workers se gênent (mesuré : rendu 2× plus lent sur 32 threads). Hérité par les workers au démarrage.
@@ -1116,5 +1130,5 @@ def render(projet_dir, cfg, preview=False, start=None, duration=None, workers=No
             ff.stdin.write(pending.popleft().get())
     ff.stdin.close()
     if ff.wait() != 0:
-        raise RuntimeError("ffmpeg a échoué")
+        raise RuntimeError(tr("ffmpeg a échoué", "ffmpeg failed"))
     return out

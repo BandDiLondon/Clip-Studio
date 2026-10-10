@@ -1,47 +1,51 @@
-name: Signaler un problème
-description: Quelque chose ne marche pas dans Clip Studio
+name: Signaler un problème / Report a problem
+description: Quelque chose ne marche pas dans Clip Studio / Something does not work in Clip Studio
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        Merci ! Projet personnel : la réponse arrive au mieux, sans délai garanti.
-        Avant d'envoyer, regarde la section **Dépannage** du [guide](../blob/main/docs/GUIDE.md).
+        Merci! Projet personnel : la réponse arrive au mieux, sans délai garanti. Avant d'envoyer, regarde la section
+        **Dépannage** du [guide](../blob/main/docs/GUIDE.md). Écris en français ou en anglais.
+
+        Thanks! Personal project: answers come on a best-effort basis, with no guaranteed delay. Before sending, check the
+        **Troubleshooting** section of the [guide](../blob/main/docs/GUIDE.en.md). Write in English or French.
   - type: input
     id: version
     attributes:
-      label: Version de Clip Studio
-      placeholder: "1.3.4"
+      label: Version de Clip Studio / Clip Studio version
+      placeholder: "1.4.0"
     validations:
       required: true
   - type: dropdown
     id: systeme
     attributes:
-      label: Système
+      label: Système / System
       options:
         - Windows 11
         - Windows 10
         - Linux (Ubuntu / Debian)
         - Linux (WSL)
-        - Autre
+        - macOS
+        - Autre / Other
     validations:
       required: true
   - type: textarea
     id: probleme
     attributes:
-      label: Ce qui se passe
-      description: Ce que tu faisais, ce que tu attendais, ce qui s'est passé.
+      label: Ce qui se passe / What happens
+      description: Ce que tu faisais, ce que tu attendais, ce qui s'est passé. / What you were doing, what you expected, what happened.
     validations:
       required: true
   - type: textarea
     id: erreur
     attributes:
-      label: Message d'erreur
-      description: Le texte affiché dans Clip Studio ou dans la fenêtre noire.
+      label: Message d'erreur / Error message
+      description: Le texte affiché dans Clip Studio ou dans sa fenêtre. / The text shown in Clip Studio or in its window.
       render: text
   - type: textarea
     id: check
     attributes:
-      label: Résultat de la vérification
-      description: "Sortie de `.venv\\Scripts\\python -m clip check` (Windows) ou `.venv/bin/python -m clip check` (Linux)."
+      label: Résultat de la vérification / Check output
+      description: "`.venv\\Scripts\\python -m clip check` (Windows) · `.venv/bin/python -m clip check` (Linux, macOS)"
       render: text

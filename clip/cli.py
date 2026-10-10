@@ -9,6 +9,7 @@ from pathlib import Path
 
 from . import PROJETS, ecrire
 from .demandes import A_DECRIRE, REFAIRE, SOLOS, VIDEOS
+from .i18n import langue, langue_projet, tp, tr
 
 FONT_CANDIDATES = [
     Path("C:/Windows/Fonts/arialbd.ttf"),
@@ -21,6 +22,7 @@ AUDIO_EXT = (".mp3", ".wav", ".flac", ".m4a", ".ogg")
 IMG_EXT = (".jpg", ".jpeg", ".png", ".webp")
 
 PROJET_TEMPLATE = {
+    "langue": "fr",           # langue de la chanson : calage Whisper, textes de Claude, prompts (fr | en)
     "audio": None,            # None = premier fichier audio trouvé dans le projet
     "paroles": None,          # None = premier .txt trouvé dans le projet
     "planches": "planches",
@@ -73,7 +75,7 @@ PROJET_TEMPLATE = {
     "logo": None,             # image du logo (dans le dossier du projet)
     "logo_position": "haut-droite",
     "mention_ia_ecran": False,
-    "mention_ia_texte": "Version IA",
+    "mention_ia_texte": None,  # None = « Version IA » / « AI Version » selon la langue du projet
     "mention_ia_position": "bas-droite",
     "transition": "fondu",    # fondu | coupe | noir | flash | glissement | zoom
     "duree_max_image": 0,     # découpe les plans plus longs (s, 0 = non)
@@ -141,7 +143,7 @@ def _projet(nom):
     p = PROJETS / nom
     f = p / "projet.json"
     if not f.exists():
-        raise Stop(f"projet.json introuvable dans {p}")
+        raise Stop(tr(f"projet.json introuvable dans {p}", f"projet.json not found in {p}"))
     cfg = {**PROJET_TEMPLATE, **json.loads(f.read_text(encoding="utf-8-sig"))}
     changed = False
     if not cfg["audio"] or not (p / cfg["audio"]).exists():
@@ -167,7 +169,8 @@ def _style(cfg):
     L'intention n'est pas envoyée au générateur d'images : seules les descriptions en tiennent compte."""
     s = cfg.get("style", "") or ""
     it = (cfg.get("intention") or "").strip()
-    return f"{s}\nIntention de l'auteur (ambiance, sens, contexte — à respecter) : {it}" if it else s
+    return (s + tp(cfg, f"\nIntention de l'auteur (ambiance, sens, contexte — à respecter) : {it}",
+                   f"\nAuthor's intent (mood, meaning, context — to respect): {it}")) if it else s
 
 
 HISTO_MAX = 30          # versions de projet.json gardées dans build/historique/
@@ -215,7 +218,8 @@ def _whisper(args, cfg):
     """Modèle Whisper : --model s'il est donné, sinon le réglage du projet (medium par défaut)."""
     m = getattr(args, "model", None) or cfg.get("whisper") or "medium"
     if m not in WHISPER:
-        raise Stop(f"Modèle Whisper inconnu : {m} (choix : {', '.join(WHISPER)})")
+        raise Stop(tr(f"Modèle Whisper inconnu : {m} (choix : {', '.join(WHISPER)})",
+                      f"Unknown Whisper model: {m} (choices: {', '.join(WHISPER)})"))
     return m
 
 
@@ -224,13 +228,15 @@ def _sig(p, cfg, kind):
     if kind == "beats":
         return f"{audio}|{cfg.get('bpm_hint', 'auto')}"
     paroles = _fsig(p / cfg["paroles"]) if cfg.get("paroles") else None
-    m = cfg.get("whisper") or "medium"                # absent pour medium : empreintes d'avant ce réglage inchangées
-    return f"{audio}|{paroles}{'' if m == 'medium' else '|' + m}|{float(cfg.get('debut_chant') or 0)}"
+    # modèle et langue absents s'ils valent medium / fr : empreintes d'avant ces réglages inchangées
+    m, lg = cfg.get("whisper") or "medium", langue_projet(cfg)
+    extra = ("" if m == "medium" else "|" + m) + ("" if lg == "fr" else "|" + lg)
+    return f"{audio}|{paroles}{extra}|{float(cfg.get('debut_chant') or 0)}"
 
 
 def perimes(p, cfg):
-    """Analyses à refaire : "beats" et / ou "paroles" (mp3, paroles, tempo imposé, début du chant ou modèle Whisper
-    modifiés)."""
+    """Analyses à refaire : "beats" et / ou "paroles" (mp3, paroles, tempo imposé, début du chant, modèle Whisper ou
+    langue de la chanson modifiés)."""
     b, out = p / "build", []
     for kind, f in (("beats", b / "beats.npy"), ("paroles", b / "words.json")):
         if not f.exists():
@@ -250,11 +256,14 @@ def _analyses_a_jour(p, cfg, args):
     """Refait beats / alignement si le mp3 ou les paroles ont changé depuis « Préparer »."""
     todo = perimes(p, cfg)
     if "beats" in todo:
-        print("  ⚠ Le mp3 (ou le tempo imposé) a changé depuis « Préparer » : nouveaux beats")
+        print(tr("  ⚠ Le mp3 (ou le tempo imposé) a changé depuis « Préparer » : nouveaux beats",
+                 "  ⚠ The mp3 (or the forced tempo) changed since “Prepare”: new beats"))
         cmd_beats(argparse.Namespace(nom=p.name))
     if "paroles" in todo:
-        print("  ⚠ Le mp3, les paroles, le début du chant ou le modèle Whisper ont changé depuis « Préparer » : "
-              "nouvel alignement")
+        print(tr("  ⚠ Le mp3, les paroles, le début du chant, le modèle Whisper ou la langue ont changé depuis "
+                 "« Préparer » : nouvel alignement",
+                 "  ⚠ The mp3, lyrics, singing start, Whisper model or language changed since “Prepare”: "
+                 "new alignment"))
         cmd_align(argparse.Namespace(nom=p.name, model=getattr(args, "model", None), repair_only=False))
     return _projet(p.name)[1] if todo else cfg
 
@@ -262,8 +271,8 @@ def _analyses_a_jour(p, cfg, args):
 def _need(p, cfg, *keys):
     for k in keys:
         if not cfg.get(k) or not (p / cfg[k]).exists():
-            what = "fichier audio (.mp3)" if k == "audio" else "paroles (.txt)"
-            raise Stop(f"{what} introuvable dans {p}")
+            what = tr("fichier audio (.mp3)", "audio file (.mp3)") if k == "audio" else tr("paroles (.txt)", "lyrics (.txt)")
+            raise Stop(tr(f"{what} introuvable dans {p}", f"{what} not found in {p}"))
 
 
 def _duration(path):
@@ -276,14 +285,15 @@ def _shotlist(p):
     from .shots import load
     sl = load(p / "build" / "shotlist.json")
     if sl is None:
-        raise Stop("build/shotlist.json absent : lancer d'abord « prepare » (ou « prompts »)")
+        raise Stop(tr("build/shotlist.json absent : lance d'abord « Préparer » (prepare)",
+                      "build/shotlist.json missing: run “Prepare” first (prepare)"))
     return sl
 
 
 # ------------------------------------------------------------------ commandes
 
 def cmd_check(_args):
-    print("Environnement :")
+    print(tr("Environnement :", "Environment:"))
     good = _ok("Python >= 3.10", sys.version_info >= (3, 10), sys.version.split()[0])
     for mod in ("numpy", "PIL", "librosa", "soundfile"):
         try:
@@ -293,27 +303,28 @@ def cmd_check(_args):
             good &= _ok(mod, False, "pip install -r requirements.txt")
     try:
         importlib.import_module("stable_whisper")
-        good &= _ok("stable-ts (alignement)", True)
+        good &= _ok(tr("stable-ts (alignement)", "stable-ts (alignment)"), True)
     except ImportError:
-        good &= _ok("stable-ts (alignement)", False, "voir requirements.txt")
+        good &= _ok(tr("stable-ts (alignement)", "stable-ts (alignment)"), False, tr("voir requirements.txt", "see requirements.txt"))
     try:
         importlib.import_module("rapidocr")
         importlib.import_module("onnxruntime")
-        _ok("RapidOCR (texte dans les cases)", True)
+        _ok(tr("RapidOCR (texte dans les cases)", "RapidOCR (text in cells)"), True)
     except ImportError:
-        print("  [--] RapidOCR (texte dans les cases, optionnel) — relancer l'installateur")
+        print(tr("  [--] RapidOCR (texte dans les cases, optionnel) — relance l'installateur",
+                 "  [--] RapidOCR (text in cells, optional) — run the installer again"))
     from .panels import ESRGAN
     good &= _ok("Real-ESRGAN (upscale)", ESRGAN.exists(), str(ESRGAN))
     ff = shutil.which("ffmpeg")
-    good &= _ok("ffmpeg dans le PATH", bool(ff), ff or "introuvable")
+    good &= _ok(tr("ffmpeg dans le PATH", "ffmpeg in PATH"), bool(ff), ff or tr("introuvable", "not found"))
     if ff:
-        good &= _ok("encodeur libx264", _ffmpeg_has("encoders", "libx264"))
-        good &= _ok("filtre ass (karaoké)", _ffmpeg_has("filters", "ass"))
-        good &= _ok("filtre xfade", _ffmpeg_has("filters", "xfade"))
-        print(f"  [{'OK' if _amf_works() else '--'}] h264_amf (GPU AMD, optionnel)")
+        good &= _ok(tr("encodeur libx264", "libx264 encoder"), _ffmpeg_has("encoders", "libx264"))
+        good &= _ok(tr("filtre ass (karaoké)", "ass filter (karaoke)"), _ffmpeg_has("filters", "ass"))
+        good &= _ok(tr("filtre xfade", "xfade filter"), _ffmpeg_has("filters", "xfade"))
+        print(f"  [{'OK' if _amf_works() else '--'}] h264_amf ({tr('GPU AMD, optionnel', 'AMD GPU, optional')})")
     font = next((f for f in FONT_CANDIDATES if f.exists()), None)
-    good &= _ok("police karaoké", bool(font), str(font) if font else "aucune trouvée")
-    print("\nTout est prêt." if good else "\nÉléments manquants ci-dessus.")
+    good &= _ok(tr("police karaoké", "karaoke font"), bool(font), str(font) if font else tr("aucune trouvée", "none found"))
+    print(tr("\nTout est prêt.", "\nAll set.") if good else tr("\nÉléments manquants ci-dessus.", "\nMissing items above."))
     return 0 if good else 1
 
 
@@ -327,13 +338,19 @@ def cmd_list(_args):
 def cmd_new(args):
     p = PROJETS / args.nom
     if p.exists():
-        raise Stop(f"Existe déjà : {p}")
+        raise Stop(tr(f"Existe déjà : {p}", f"Already exists: {p}"))
     for sub in ("planches", "solos", "retouches", "cases", "build"):
         (p / sub).mkdir(parents=True)
-    _save(p, PROJET_TEMPLATE)
-    print(f"Projet créé : {p}\n"
-          f"Déposer : la chanson (.mp3) et les paroles (.txt) dans le dossier du projet,\n"
-          f"          les photos de solo (solo1.png…) dans solos/ (optionnel).")
+    cfg = {**PROJET_TEMPLATE, "langue": langue()}     # langue de la chanson : celle de l'interface au départ
+    if langue() == "en":
+        cfg["style"] = "gritty satirical photorealistic rock, cinematic film grain, high contrast, dramatic lighting, dark palette"
+    _save(p, cfg)
+    print(tr(f"Projet créé : {p}\n"
+             f"Dépose la chanson (.mp3) et les paroles (.txt) dans le dossier du projet,\n"
+             f"et les photos de solo (solo1.png…) dans solos/ (optionnel).",
+             f"Project created: {p}\n"
+             f"Put the song (.mp3) and the lyrics (.txt) in the project folder,\n"
+             f"and the solo photos (solo1.png…) in solos/ (optional)."))
     return 0
 
 
@@ -361,7 +378,8 @@ def cmd_align(args):
         data = json.loads(f.read_text(encoding="utf-8"))
         if t0 > 0:                                # début du chant : avant la réparation automatique
             force_start(data["segments"], t0)
-        print(f"  réparation : {repair(data['segments'], t0)} mot(s) recollé(s)")
+        print(tr(f"  réparation : {repair(data['segments'], t0)} mot(s) recollé(s)",
+                 f"  repair: {repair(data['segments'], t0)} word(s) re-attached"))
         ecrire(f, json.dumps(data, indent=1, ensure_ascii=False))
         new = _sig(p, cfg, "paroles")             # même mp3 et mêmes paroles : seul le début du chant a bougé
         if (cfg.get("paroles_sig") or "").rsplit("|", 1)[0] == new.rsplit("|", 1)[0]:
@@ -370,7 +388,8 @@ def cmd_align(args):
         return 0
     _need(p, cfg, "audio", "paroles")
     m = _whisper(args, cfg)
-    align(p / cfg["audio"], p / cfg["paroles"], p / "build" / "words.json", model_name=m, debut_chant=t0)
+    align(p / cfg["audio"], p / cfg["paroles"], p / "build" / "words.json", model_name=m,
+          language=langue_projet(cfg), debut_chant=t0)
     cfg = _projet(args.nom)[1]
     cfg["whisper"] = m                            # modèle réellement utilisé (--model compris)
     cfg["paroles_sig"] = _sig(p, cfg, "paroles")
@@ -391,42 +410,64 @@ def cmd_prompts(args):
         try:
             desc.update(json.loads(fj.read_text(encoding="utf-8-sig")))
         except json.JSONDecodeError as e:
-            raise Stop(f"build/descriptions.json invalide : {e}")
+            raise Stop(tr(f"build/descriptions.json invalide : {e}", f"invalid build/descriptions.json: {e}"))
         pers = desc.pop("_personnages", None)
         if pers and not cfg.get("personnages"):
             cfg["personnages"] = pers
             _save(p, cfg)
-            print(f"  {len(pers)} personnage(s) récurrent(s) importé(s) dans projet.json")
+            print(tr(f"  {len(pers)} personnage(s) récurrent(s) importé(s) dans projet.json",
+                     f"  {len(pers)} recurring character(s) imported into projet.json"))
     sl, md = skeleton(cfg, p / cfg["paroles"], desc)
     save(sl, p / "build" / "shotlist.json")
     todo = [s for s in sl["shots"] if s["id"] not in desc]
     amb = sum(1 for s in sl["shots"] if s.get("ambiance"))
-    print(f"  {len(sl['shots']) - amb} images de vers + {amb} d'ambiance → {len(sl['planches'])} planche(s)")
+    print(tr(f"  {len(sl['shots']) - amb} images de vers + {amb} d'ambiance → {len(sl['planches'])} planche(s)",
+             f"  {len(sl['shots']) - amb} lyric images + {amb} ambiance → {len(sl['planches'])} panel(s)"))
     for pl in sl["planches"]:
-        print(f"    {pl['id'].upper()} : grille {pl['grid'][0]}×{pl['grid'][1]}, format {pl['ratio']}")
+        print(tr(f"    {pl['id'].upper()} : grille {pl['grid'][0]}×{pl['grid'][1]}, format {pl['ratio']}",
+                 f"    {pl['id'].upper()}: grid {pl['grid'][0]}×{pl['grid'][1]}, format {pl['ratio']}"))
     if todo:
-        pers = "; ".join(f"{k} = {v}" for k, v in (cfg.get("personnages") or {}).items()) or "(aucun)"
+        pers = "; ".join(f"{k} = {v}" for k, v in (cfg.get("personnages") or {}).items()) or tp(cfg, "(aucun)", "(none)")
         idees = cfg.get("ambiance_idees") or []
         amb = [s["id"] for s in sl["shots"] if s.get("ambiance")]
-        items = "\n".join(f"{s['id']} : {s['text']}" if s["text"] else
-                          f"{s['id']} : (ambiance : passage instrumental, liée au thème de la chanson"
-                          + (f" ; idée : {idees[amb.index(s['id'])]}" if amb.index(s['id']) < len(idees) else "") + ")"
+        items = "\n".join(f"{s['id']} : {s['text']}" if s["text"] else f"{s['id']} : " + _ambiance(cfg, idees, amb, s)
                           for s in todo)
-        pers_todo = "" if cfg.get("personnages") else (
-            "\n- Aucun personnage défini : propose 1 à 3 personnages récurrents (apparence précise) "
-            "dans la clé \"_personnages\": {\"nom\": \"description\"} du même JSON.")
         (p / "build" / "a_decrire.md").write_text(
-            A_DECRIRE.format(style=_style(cfg), pers=pers, items=items, pers_todo=pers_todo),
+            A_DECRIRE[langue_projet(cfg)].format(style=_style(cfg), pers=pers, items=items,
+                                                 pers_todo="" if cfg.get("personnages") else _pers_todo(cfg)),
             encoding="utf-8")
         (p / "build" / "prompts_planches.md").unlink(missing_ok=True)
-        print(f"  {len(todo)} image(s) à décrire → {p / 'build' / 'a_decrire.md'}\n"
-              f"  (à coller à Claude ; enregistrer sa réponse dans build/descriptions.json, "
-              f"puis relancer « prepare »)")
+        print(tr(f"  {len(todo)} image(s) à décrire → {p / 'build' / 'a_decrire.md'}\n"
+                 f"  (à coller à Claude; enregistrer sa réponse dans build/descriptions.json, puis relancer « prepare »)",
+                 f"  {len(todo)} image(s) to describe → {p / 'build' / 'a_decrire.md'}\n"
+                 f"  (paste it to Claude; save its answer in build/descriptions.json, then run “prepare” again)"))
     else:
         (p / "build" / "a_decrire.md").unlink(missing_ok=True)
         (p / "build" / "prompts_planches.md").write_text(md, encoding="utf-8")
-        print(f"  Prompts prêts → {p / 'build' / 'prompts_planches.md'}")
+        print(tr(f"  Prompts prêts → {p / 'build' / 'prompts_planches.md'}",
+                 f"  Prompts ready → {p / 'build' / 'prompts_planches.md'}"))
     return 0
+
+
+def _ambiance(cfg, idees, amb_ids, s):
+    """Libellé d'une image d'ambiance pour Claude (langue du projet)."""
+    j = amb_ids.index(s["id"])
+    idee = tp(cfg, f" ; idée : {idees[j]}", f"; idea: {idees[j]}") if j < len(idees) else ""
+    return tp(cfg, f"(ambiance : passage instrumental, liée au thème de la chanson{idee})",
+              f"(ambiance: instrumental part, tied to the song's theme{idee})")
+
+
+def _pers_todo(cfg):
+    return tp(cfg, "\n- Aucun personnage défini : propose 1 à 3 personnages récurrents (apparence précise) "
+                   "dans la clé \"_personnages\": {\"nom\": \"description\"} du même JSON.",
+              "\n- No character defined: propose 1 to 3 recurring characters (precise appearance) "
+              "in the key \"_personnages\": {\"name\": \"description\"} of the same JSON.")
+
+
+def _consigne(cfg, consigne, puce=True):
+    if not consigne:
+        return ""
+    return ("\n- " if puce else "\n") + tp(cfg, f"Consigne de l'utilisateur : {consigne}", f"User instruction: {consigne}")
 
 
 def cmd_describe(args):
@@ -444,42 +485,37 @@ def cmd_describe(args):
                      ambiance=cfg.get("ambiance", 0))
     shots = {s["id"]: s for s in sl["shots"]}
     pers_dict = cfg.get("personnages") or desc.get("_personnages") or {}
-    pers = "; ".join(f"{k} = {v}" for k, v in pers_dict.items()) or "(aucun)"
+    pers = "; ".join(f"{k} = {v}" for k, v in pers_dict.items()) or tp(cfg, "(aucun)", "(none)")
     consigne = (getattr(args, "consigne", None) or "").strip()
     idees = cfg.get("ambiance_idees") or []
     amb_ids = [s["id"] for s in sl["shots"] if s.get("ambiance")]
 
     def label(s):
-        if s["text"]:
-            return s["text"]
-        j = amb_ids.index(s["id"])
-        idee = f" ; idée : {idees[j]}" if j < len(idees) else ""
-        return f"(ambiance : passage instrumental, liée au thème de la chanson{idee})"
+        return s["text"] or _ambiance(cfg, idees, amb_ids, s)
 
     ids = [i.strip().lower() for i in (getattr(args, "ids", None) or "").split(",") if i.strip()]
     if ids:                                                   # refaire des images précises
         bad = [i for i in ids if i not in shots]
         if bad:
-            raise Stop(f"Image(s) inconnue(s) : {', '.join(bad)}")
-        items = "\n".join(f"{i} : vers « {label(shots[i])} » — description actuelle : "
-                          f"{known.get(i, '(aucune)')}" for i in ids)
-        prompt = REFAIRE.format(style=_style(cfg), pers=pers, items=items,
-                                consigne=f"\n- Consigne de l'utilisateur : {consigne}" if consigne else "")
-        print(f"  Claude réécrit {len(ids)} description(s)…")
+            raise Stop(tr(f"Image(s) inconnue(s) : {', '.join(bad)}", f"Unknown image(s): {', '.join(bad)}"))
+        items = "\n".join(tp(cfg, f"{i} : vers « {label(shots[i])} » — description actuelle : {known.get(i, '(aucune)')}",
+                             f"{i}: line \"{label(shots[i])}\" — current description: {known.get(i, '(none)')}")
+                          for i in ids)
+        prompt = REFAIRE[langue_projet(cfg)].format(style=_style(cfg), pers=pers, items=items,
+                                                    consigne=_consigne(cfg, consigne))
+        print(tr(f"  Claude réécrit {len(ids)} description(s)…", f"  Claude is rewriting {len(ids)} description(s)…"))
     else:                                                     # rédiger ce qui manque (ou tout)
         todo = [s for s in sl["shots"] if getattr(args, "tout", False) or s["id"] not in known]
         if not todo:
-            print("  Toutes les images sont déjà décrites (option « tout refaire » pour recommencer).")
+            print(tr("  Toutes les images sont déjà décrites (option « tout réécrire » pour recommencer).",
+                     "  All images are already described (“rewrite all” option to start over)."))
             return cmd_prompts(args)
-        pers_todo = "" if pers_dict else (
-            "\n- Aucun personnage défini : propose 1 à 3 personnages récurrents (apparence précise) "
-            "dans la clé \"_personnages\": {\"nom\": \"description\"} du même JSON.")
-        if consigne:
-            pers_todo += f"\n- Consigne de l'utilisateur : {consigne}"
+        pers_todo = ("" if pers_dict else _pers_todo(cfg)) + _consigne(cfg, consigne)
         items = "\n".join(f"{s['id']} : {label(s)}" for s in todo)
-        prompt = A_DECRIRE.format(style=_style(cfg), pers=pers, items=items, pers_todo=pers_todo)
+        prompt = A_DECRIRE[langue_projet(cfg)].format(style=_style(cfg), pers=pers, items=items, pers_todo=pers_todo)
         ids = [s["id"] for s in todo]
-        print(f"  Claude rédige {len(todo)} description(s) (environ 30 s à 2 min)…")
+        print(tr(f"  Claude rédige {len(todo)} description(s) (environ 30 s à 2 min)…",
+                 f"  Claude is writing {len(todo)} description(s) (about 30 s to 2 min)…"))
     try:
         data = ask_json(prompt)
     except ClaudeError as e:
@@ -493,8 +529,9 @@ def cmd_describe(args):
     for i in sorted(got):
         print(f"  {i} : {got[i][:110]}{'…' if len(got[i]) > 110 else ''}")
     if missing:
-        print(f"  ⚠ sans réponse pour : {', '.join(missing)} (relancer pour les compléter)")
-    print(f"  {len(got)} description(s) enregistrée(s)")
+        print(tr(f"  ⚠ sans réponse pour : {', '.join(missing)} (relance pour les compléter)",
+                 f"  ⚠ no answer for: {', '.join(missing)} (run again to complete them)"))
+    print(tr(f"  {len(got)} description(s) enregistrée(s)", f"  {len(got)} description(s) saved"))
     return cmd_prompts(args)
 
 
@@ -505,14 +542,18 @@ def cmd_publish(args):
     p, cfg = _projet(args.nom)
     _need(p, cfg, "audio", "paroles")
     if not cfg.get("titre") or not cfg.get("artiste"):
-        raise Stop("Renseigne d'abord le titre et l'artiste (étape 7 ou Options).")
+        raise Stop(tr("Indique d'abord le titre et l'artiste (étape 8 ou Options).",
+                      "Enter the title and the artist first (step 8 or Options)."))
     paroles = pub_mod.paroles_propres((p / cfg["paroles"]).read_text(encoding="utf-8-sig"))
     wf = p / "build" / "words.json"
     segs = json.loads(wf.read_text(encoding="utf-8"))["segments"] if wf.exists() else []
-    chaps = pub_mod.chapitres(segs, _duration(p / cfg["audio"]))
-    print(f"  {len(chaps)} chapitre(s) calculé(s) à partir du calage des paroles" if chaps
-          else "  Chapitres omis (calage des paroles absent ou chanson trop courte)")
-    print("  Claude rédige le titre, l'accroche, les hashtags et la miniature…")
+    chaps = pub_mod.chapitres(segs, _duration(p / cfg["audio"]), langue=langue_projet(cfg))
+    print(tr(f"  {len(chaps)} chapitre(s) calculé(s) à partir du calage des paroles",
+             f"  {len(chaps)} chapter(s) computed from the lyrics alignment") if chaps
+          else tr("  Chapitres omis (calage des paroles absent ou chanson trop courte)",
+                  "  Chapters skipped (no lyrics alignment or song too short)"))
+    print(tr("  Claude rédige le titre, l'accroche, les hashtags et la miniature…",
+             "  Claude is writing the title, the hook, the hashtags and the thumbnail…"))
     try:
         ia = ask_json(pub_mod.demande(cfg, paroles, (getattr(args, "consigne", None) or "").strip()))
     except ClaudeError as e:
@@ -523,8 +564,8 @@ def cmd_publish(args):
            "miniature_sans_texte": (ia.get("miniature_sans_texte") or "").strip(),
            "chapitres": chaps}
     (p / "build").mkdir(exist_ok=True)
-    pub_mod.save(p / "build", pub)
-    print(f"  Titre : {pub['titre']}")
+    pub_mod.save(p / "build", pub, langue_projet(cfg))
+    print(tr(f"  Titre : {pub['titre']}", f"  Title: {pub['titre']}"))
     for c in chaps:
         print(f"    {c}")
     print(f"  → {p / 'build' / 'publication.md'}")
@@ -545,11 +586,12 @@ def cmd_evaluate(args):
         ia = json.loads(ef.read_text(encoding="utf-8"))["ia"]
         cfg["ambiance"], cfg["ambiance_idees"] = ia["ambiance"], ia.get("idees_ambiance", [])
         _save(p, cfg)
-        print(f"  Appliqué : {ia['ambiance']} image(s) d'ambiance")
+        print(tr(f"  Appliqué : {ia['ambiance']} image(s) d'ambiance", f"  Applied: {ia['ambiance']} ambiance image(s)"))
         return cmd_prompts(args)
     wf = p / "build" / "words.json"
     if not wf.exists():
-        raise Stop("Paroles pas encore calées : lance d'abord « Préparer ».")
+        raise Stop(tr("Paroles pas encore calées : lance d'abord « Préparer ».",
+                      "Lyrics not aligned yet: run “Prepare” first."))
     segs = json.loads(wf.read_text(encoding="utf-8"))["segments"]
     bf = p / "build" / "beats.npy"
     bpm = None
@@ -558,9 +600,11 @@ def cmd_evaluate(args):
         bpm = 60 / float(np.median(np.diff(b))) if len(b) > 2 else None
     f = ev.faits(segs, _duration(p / cfg["audio"]), read_lyrics(p / cfg["paroles"]),
                  cfg.get("ambiance", 0), len(cfg.get("solos_list") or []), bpm)
-    print(f"  {f['vers']} vers, {f['images_de_vers']} images de vers, {f['instrumental_total']} s sans paroles "
-          f"en {len(f['passages_sans_paroles'])} passage(s), {f['photos_de_solo']} photo(s) de solo")
-    print("  Claude évalue le storyboard…")
+    print(tr(f"  {f['vers']} vers, {f['images_de_vers']} images de vers, {f['instrumental_total']} s sans paroles "
+             f"en {len(f['passages_sans_paroles'])} passage(s), {f['photos_de_solo']} photo(s) de solo",
+             f"  {f['vers']} lines, {f['images_de_vers']} lyric images, {f['instrumental_total']} s without lyrics "
+             f"in {len(f['passages_sans_paroles'])} part(s), {f['photos_de_solo']} solo photo(s)"))
+    print(tr("  Claude évalue le storyboard…", "  Claude is evaluating the storyboard…"))
     try:
         ia = ask_json(ev.demande(cfg, paroles_propres((p / cfg["paroles"]).read_text(encoding="utf-8-sig")), f))
     except ClaudeError as e:
@@ -571,15 +615,17 @@ def cmd_evaluate(args):
     (p / "build" / "evaluation.json").write_text(json.dumps({"faits": f, "ia": ia}, indent=1, ensure_ascii=False),
                                                  encoding="utf-8")
     from .shots import _pack
-    print(f"  Recommandation : {n} image(s) d'ambiance → {f['images_de_vers'] + n} images, "
-          f"{len(_pack(f['images_de_vers'] + n))} planche(s) ; préréglage « {ia.get('preset', '?')} »")
+    print(tr(f"  Recommandation : {n} image(s) d'ambiance → {f['images_de_vers'] + n} images, "
+             f"{len(_pack(f['images_de_vers'] + n))} planche(s) ; préréglage « {ia.get('preset', '?')} »",
+             f"  Recommendation: {n} ambiance image(s) → {f['images_de_vers'] + n} images, "
+             f"{len(_pack(f['images_de_vers'] + n))} panel(s); preset “{ia.get('preset', '?')}”"))
     print(f"  {ia.get('raison', '')}")
     for r in ia.get("remarques") or []:
         print(f"  • {r}")
     if getattr(args, "appliquer", False):
         cfg["ambiance"], cfg["ambiance_idees"] = n, ia["idees_ambiance"]
         _save(p, cfg)
-        print(f"  Appliqué : {n} image(s) d'ambiance")
+        print(tr(f"  Appliqué : {n} image(s) d'ambiance", f"  Applied: {n} ambiance image(s)"))
         return cmd_prompts(args)
     return 0
 
@@ -592,28 +638,30 @@ def cmd_solos(args):
     _need(p, cfg, "paroles")
     n = max(1, min(8, int(getattr(args, "nombre", None) or 3)))
     ef = p / "build" / "evaluation.json"
-    passages = "inconnus"
+    passages = tp(cfg, "inconnus", "unknown")
     if ef.exists():
         f = json.loads(ef.read_text(encoding="utf-8"))["faits"]
-        passages = ", ".join(f"{t['type']} {t['duree']} s" for t in f["passages_sans_paroles"]) or "aucun"
-    pers = "; ".join(f"{k} = {v}" for k, v in (cfg.get("personnages") or {}).items()) or "(aucun)"
+        passages = ", ".join(f"{t['type']} {t['duree']} s" for t in f["passages_sans_paroles"]) or tp(cfg, "aucun", "none")
+    pers = "; ".join(f"{k} = {v}" for k, v in (cfg.get("personnages") or {}).items()) or tp(cfg, "(aucun)", "(none)")
     consigne = (getattr(args, "consigne", None) or "").strip()
-    prompt = SOLOS.format(titre=cfg.get("titre") or "(sans titre)", artiste=cfg.get("artiste") or "",
-                          style=_style(cfg), pers=pers, passages=passages, n=n,
-                          paroles=paroles_propres((p / cfg["paroles"]).read_text(encoding="utf-8-sig")),
-                          consigne=f"\nConsigne de l'utilisateur : {consigne}" if consigne else "")
-    print(f"  Claude écrit {n} prompt(s) de photo de solo…")
+    prompt = SOLOS[langue_projet(cfg)].format(
+        titre=cfg.get("titre") or tp(cfg, "(sans titre)", "(untitled)"), artiste=cfg.get("artiste") or "",
+        style=_style(cfg), pers=pers, passages=passages, n=n,
+        paroles=paroles_propres((p / cfg["paroles"]).read_text(encoding="utf-8-sig")),
+        consigne=_consigne(cfg, consigne, puce=False))
+    print(tr(f"  Claude écrit {n} prompt(s) de photo de solo…", f"  Claude is writing {n} solo photo prompt(s)…"))
     try:
         data = ask_json(prompt)
     except ClaudeError as e:
         raise Stop(str(e))
     solos = [s for s in (data.get("solos") or []) if isinstance(s, dict) and s.get("prompt")][:n]
     if not solos:
-        raise Stop("Claude n'a renvoyé aucun prompt exploitable")
+        raise Stop(tr("Claude n'a renvoyé aucun prompt exploitable", "Claude returned no usable prompt"))
     (p / "build").mkdir(exist_ok=True)
     (p / "build" / "solos.json").write_text(json.dumps({"solos": solos}, indent=1, ensure_ascii=False), encoding="utf-8")
-    md = ["# Prompts des photos de solo (panoramiques 21:9)\n",
-          "Enregistrer chaque image sous `solos/solo1.png`, `solo2.png`… (ou la déposer dans Clip Studio, étape 2).\n"]
+    md = [tp(cfg, "# Prompts des photos de solo (panoramiques 21:9)\n", "# Solo photo prompts (21:9 panoramas)\n"),
+          tp(cfg, "Enregistrer chaque image sous `solos/solo1.png`, `solo2.png`… (ou la déposer dans Clip Studio, étape 2).\n",
+             "Save each image as `solos/solo1.png`, `solo2.png`… (or drop it in Clip Studio, step 2).\n")]
     for i, s in enumerate(solos, 1):
         md += [f"## solo{i} — {s.get('titre', '')}\n", "```", s["prompt"].strip(), "```\n"]
         print(f"  solo{i} : {s.get('titre', '')}")
@@ -642,7 +690,8 @@ def cmd_videos(args):
     p, cfg = _projet(args.nom)
     ids = [i.strip().lower() for i in (getattr(args, "ids", None) or "").split(",") if i.strip()]
     if not ids and not cfg.get("timeline"):
-        raise Stop("Pas encore de montage : fais d'abord un aperçu ou un rendu (étape Rendu), ou choisis une image précise.")
+        raise Stop(tr("Pas encore de montage : fais d'abord un aperçu ou un rendu (étape Rendu), ou choisis une image précise.",
+                      "No edit yet: make a preview or a render first (Render step), or pick a specific image."))
     if cfg.get("timeline"):
         cfg = _plan_a_jour(p, cfg)
     occ = _screen_time(p, cfg) if cfg.get("timeline") else {}
@@ -663,33 +712,39 @@ def cmd_videos(args):
     solos = {f.stem.lower() for f in sd.glob("*")} if sd.is_dir() else set()
     bad = [i for i in ids if i not in desc and i not in solos and not (p / "cases" / f"{i}.png").exists()]
     if bad:
-        raise Stop(f"Image(s) inconnue(s) : {', '.join(bad)}")
-    fmt = lambda k: " + ".join(f"{d} s à {int(t // 60)}:{int(t % 60):02d}" for t, d in occ.get(k, []))
-    items = "\n".join(f"- {k} — {fmt(k)} — {desc.get(k, '(pas de description : photo de solo)')[:600]}" for k in ids)
-    pers = "; ".join(f"{k} = {v}" for k, v in (cfg.get("personnages") or {}).items()) or "(aucun)"
+        raise Stop(tr(f"Image(s) inconnue(s) : {', '.join(bad)}", f"Unknown image(s): {', '.join(bad)}"))
+    fmt = lambda k: " + ".join(tp(cfg, f"{d} s à {int(t // 60)}:{int(t % 60):02d}", f"{d} s at {int(t // 60)}:{int(t % 60):02d}")
+                               for t, d in occ.get(k, []))
+    sans = tp(cfg, "(pas de description : photo de solo)", "(no description: solo photo)")
+    items = "\n".join(f"- {k} — {fmt(k)} — {desc.get(k, sans)[:600]}" for k in ids)
+    pers = "; ".join(f"{k} = {v}" for k, v in (cfg.get("personnages") or {}).items()) or tp(cfg, "(aucun)", "(none)")
     consigne = (getattr(args, "consigne", None) or "").strip()
-    print(f"  Claude écrit {len(ids)} prompt(s) vidéo : {', '.join(ids)}")
+    print(tr(f"  Claude écrit {len(ids)} prompt(s) vidéo : {', '.join(ids)}",
+             f"  Claude is writing {len(ids)} video prompt(s): {', '.join(ids)}"))
     try:
-        data = ask_json(VIDEOS.format(titre=cfg.get("titre") or "(sans titre)", artiste=cfg.get("artiste") or "",
-                                      style=_style(cfg), pers=pers, items=items,
-                                      consigne=f"\nConsigne de l'utilisateur : {consigne}" if consigne else ""))
+        data = ask_json(VIDEOS[langue_projet(cfg)].format(
+            titre=cfg.get("titre") or tp(cfg, "(sans titre)", "(untitled)"), artiste=cfg.get("artiste") or "",
+            style=_style(cfg), pers=pers, items=items, consigne=_consigne(cfg, consigne, puce=False)))
     except ClaudeError as e:
         raise Stop(str(e))
     vids = [dict(v, ecran=fmt(v["id"])) for v in (data.get("videos") or [])
             if isinstance(v, dict) and v.get("id") in ids and v.get("prompt")]
     if not vids:
-        raise Stop("Claude n'a renvoyé aucun prompt exploitable")
+        raise Stop(tr("Claude n'a renvoyé aucun prompt exploitable", "Claude returned no usable prompt"))
     fv = p / "build" / "videos.json"
     if getattr(args, "ids", None) and fv.exists():  # image précise : on garde les autres prompts
         keep = [v for v in json.loads(fv.read_text(encoding="utf-8-sig")).get("videos", []) if v.get("id") not in ids]
         vids = keep + vids
     (p / "build" / "videos.json").write_text(json.dumps({"videos": vids}, indent=1, ensure_ascii=False), encoding="utf-8")
-    md = ["# Prompts vidéo pour Flow (image vers vidéo, ~10 s)\n",
-          "Dans Flow : « Images vers vidéo », image de départ = l'image indiquée, format 16:9, puis coller le prompt.",
-          "Déposer chaque vidéo dans `videos/` avec le même nom que l'image (`solo1.mp4`, `p4_c4.mp4`…).\n"]
+    md = [tp(cfg, "# Prompts vidéo pour Flow (image vers vidéo, ~10 s)\n", "# Video prompts for Flow (image to video, ~10 s)\n"),
+          tp(cfg, "Dans Flow : « Images vers vidéo », image de départ = l'image indiquée, format 16:9, puis coller le prompt.",
+             "In Flow: “Images to video”, starting image = the given image, 16:9 format, then paste the prompt."),
+          tp(cfg, "Déposer chaque vidéo dans `videos/` avec le même nom que l'image (`solo1.mp4`, `p4_c4.mp4`…).\n",
+             "Put each video in `videos/` with the same name as the image (`solo1.mp4`, `p4_c4.mp4`…).\n")]
     for v in vids:
         src = f"solos/{v['id']}.png" if v["id"].startswith("solo") else f"cases/{v['id']}.png"
-        md += [f"## {v['id']} — {v.get('titre', '')}", f"Image de départ : `{src}` · à l'écran : {v['ecran']}\n",
+        md += [f"## {v['id']} — {v.get('titre', '')}",
+               tp(cfg, f"Image de départ : `{src}` · à l'écran : {v['ecran']}\n", f"Starting image: `{src}` · on screen: {v['ecran']}\n"),
                "```", v["prompt"].strip(), "```\n"]
         print(f"  {v['id']} : {v.get('titre', '')}")
     (p / "build" / "prompts_videos.md").write_text("\n".join(md), encoding="utf-8")
@@ -704,19 +759,21 @@ def cmd_prepare(args):
     b = p / "build"
     old = perimes(p, cfg)
     if args.force or not (b / "beats.npy").exists() or "beats" in old:
-        print("[1/4] Beats" + (" (mp3 modifié)" if "beats" in old else "")); cmd_beats(args)
+        print("[1/4] Beats" + (tr(" (mp3 modifié)", " (mp3 changed)") if "beats" in old else "")); cmd_beats(args)
     else:
-        print("[1/4] Beats : déjà faits")
+        print(tr("[1/4] Beats : déjà faits", "[1/4] Beats: already done"))
     if args.force or not (b / "words.json").exists() or "paroles" in old:
-        print("[2/4] Alignement des paroles" + (" (mp3, paroles, début du chant ou modèle modifiés)" if "paroles" in old else ""))
+        print(tr("[2/4] Alignement des paroles", "[2/4] Lyrics alignment")
+              + (tr(" (mp3, paroles, début du chant, modèle ou langue modifiés)",
+                    " (mp3, lyrics, singing start, model or language changed)") if "paroles" in old else ""))
         cmd_align(args)
     else:
-        print("[2/4] Alignement : déjà fait")
+        print(tr("[2/4] Alignement : déjà fait", "[2/4] Alignment: already done"))
     from .ai import find_claude
     pdir = p / cfg.get("planches", "planches")
     planches_faites = pdir.is_dir() and any(pdir.glob("P*.*"))
     if find_claude() and (args.force or not (b / "evaluation.json").exists()):
-        print("[3/4] Évaluation du storyboard par Claude")
+        print(tr("[3/4] Évaluation du storyboard par Claude", "[3/4] Storyboard evaluation by Claude"))
         try:
             # appliquée automatiquement tant qu'aucune planche n'est générée (sinon : simple conseil)
             cmd_evaluate(argparse.Namespace(nom=args.nom, appliquer=False))
@@ -725,13 +782,15 @@ def cmd_prepare(args):
                 cfg = _projet(args.nom)[1]
                 cfg["ambiance"], cfg["ambiance_idees"] = ev["ambiance"], ev["idees_ambiance"]
                 _save(p, cfg)
-                print(f"  Appliqué : {ev['ambiance']} image(s) d'ambiance")
+                print(tr(f"  Appliqué : {ev['ambiance']} image(s) d'ambiance", f"  Applied: {ev['ambiance']} ambiance image(s)"))
             else:
-                print("  Planches déjà générées : recommandation non appliquée (voir l'étape 2)")
+                print(tr("  Planches déjà générées : recommandation non appliquée (voir l'étape 2)",
+                         "  Panels already generated: recommendation not applied (see step 2)"))
         except Stop as e:
-            print(f"  ⚠ Évaluation impossible : {e}")
+            print(tr(f"  ⚠ Évaluation impossible : {e}", f"  ⚠ Evaluation not possible: {e}"))
     else:
-        print("[3/4] Évaluation : " + ("déjà faite" if find_claude() else "Claude Code introuvable, ignorée"))
+        print(tr("[3/4] Évaluation : ", "[3/4] Evaluation: ") + (tr("déjà faite", "already done") if find_claude()
+              else tr("Claude Code introuvable, ignorée", "Claude Code not found, skipped")))
     print("[4/4] Prompts"); cmd_prompts(args)
     return 0
 
@@ -740,8 +799,9 @@ def cmd_verify(args):
     from .panels import verify
     p, cfg = _projet(args.nom)
     problems = verify(p, cfg.get("planches", "planches"), _shotlist(p))
-    print("\nPlanches OK." if not problems else f"\n{len(problems)} problème(s) : régénérer les planches concernées "
-          f"ou continuer quand même (recadrage).")
+    print(tr("\nPlanches OK.", "\nPanels OK.") if not problems else
+          tr(f"\n{len(problems)} problème(s) : régénère les planches concernées ou continue quand même (recadrage).",
+             f"\n{len(problems)} problem(s): regenerate the panels concerned or continue anyway (cropping)."))
     return 0 if not problems else 2
 
 
@@ -755,7 +815,7 @@ def cmd_cut(args):
     missing = [s["id"] for s in sl["shots"]
                if not (p / "cases" / f"{s['id']}.png").exists()]
     if missing:
-        print(f"  ⚠ cases manquantes : {', '.join(missing)}")
+        print(tr(f"  ⚠ cases manquantes : {', '.join(missing)}", f"  ⚠ missing cells: {', '.join(missing)}"))
     from .ocr import verifier
     verifier(p, {s["id"] for s in sl["shots"]})           # légendes, enseignes… (avertissement seulement)
     return 0
@@ -774,7 +834,8 @@ def _plan_a_jour(p, cfg):
     """Refait la timeline si elle ne correspond plus au mp3 / paroles calées / beats / planches / solos."""
     if cfg.get("timeline") and cfg.get("timeline_sig") == _plan_sig(p, cfg):
         return cfg
-    print("  Montage périmé (mp3, paroles, beats, planches ou solos modifiés) : recalcul du plan")
+    print(tr("  Montage périmé (mp3, paroles, beats, planches ou solos modifiés) : recalcul du plan",
+             "  Edit out of date (mp3, lyrics, beats, panels or solos changed): recomputing the plan"))
     cmd_plan(argparse.Namespace(nom=p.name, force=True, quiet=True))
     return _projet(p.name)[1]
 
@@ -784,8 +845,10 @@ def cmd_plan(args):
     from .plan import build
     p, cfg = _projet(args.nom)
     if cfg.get("timeline") and not args.force:
-        raise Stop("projet.json a déjà une timeline (--force pour la régénérer ; "
-                   "les « ajustements », intro_image et outro_image sont conservés)")
+        raise Stop(tr("projet.json a déjà une timeline (--force pour la régénérer; "
+                      "les « ajustements », intro_image et outro_image sont conservés)",
+                      "projet.json already has a timeline (--force to regenerate it; "
+                      "“ajustements”, intro_image and outro_image are kept)"))
     sl = _shotlist(p)
     segs = json.loads((p / "build" / "words.json").read_text(encoding="utf-8"))["segments"]
     beats = np.load(p / "build" / "beats.npy").tolist()
@@ -795,7 +858,7 @@ def cmd_plan(args):
     if not getattr(args, "quiet", False):
         for e in cfg["timeline"]:
             print(f"  {e['t']:7.2f}  {e.get('img') or '~ ' + e['travel']:14s} {e['note']}")
-    print(f"  {len(cfg['timeline'])} plans")
+    print(tr(f"  {len(cfg['timeline'])} plans", f"  {len(cfg['timeline'])} shots"))
     return 0
 
 
@@ -813,12 +876,13 @@ def cmd_build(args):
     """vérification + découpe + plan + rendu (aperçu ou final)."""
     p, cfg = _projet(args.nom)
     _analyses_a_jour(p, cfg, args)
-    print("[1/4] Vérification des planches")
+    print(tr("[1/4] Vérification des planches", "[1/4] Checking the panels"))
     if cmd_verify(args) != 0 and not args.force:
-        raise Stop("Planches à corriger (ou relancer avec --force pour continuer malgré tout)")
-    print("[2/4] Découpe + upscale"); cmd_cut(args)
-    print("[3/4] Plan"); cmd_plan(argparse.Namespace(nom=args.nom, force=True, quiet=True))
-    print("[4/4] Rendu"); cmd_render(args)
+        raise Stop(tr("Planches à corriger (ou relance avec --force pour continuer malgré tout)",
+                      "Panels to fix (or run again with --force to continue anyway)"))
+    print(tr("[2/4] Découpe + agrandissement", "[2/4] Cutting + upscaling")); cmd_cut(args)
+    print(tr("[3/4] Plan", "[3/4] Plan")); cmd_plan(argparse.Namespace(nom=args.nom, force=True, quiet=True))
+    print(tr("[4/4] Rendu", "[4/4] Render")); cmd_render(args)
     return 0
 
 
@@ -833,49 +897,64 @@ def main():
         s.set_defaults(fn=fn)
         return s
 
-    add("check", cmd_check, "Vérifie l'environnement", nom=False)
+    add("check", cmd_check, tr("Vérifie l'environnement", "Checks the environment"), nom=False)
     add("web", lambda a: __import__("clip.web", fromlist=["serve"]).serve() or 0,
-        "Ouvre Clip Studio (interface web locale)", nom=False)
-    add("list", cmd_list, "Liste les projets", nom=False)
-    add("new", cmd_new, "Crée un projet dans projets/<nom>")
-    s = add("prepare", cmd_prepare, "Beats + alignement + prompts (tout ce qui précède les planches)")
-    s.add_argument("--force", action="store_true", help="Refait beats et alignement")
-    s.add_argument("--model", default=None, choices=WHISPER, help="Modèle Whisper (défaut : réglage du projet)")
-    for name, prev, h in (("build", False, "Vérif + découpe + plan + rendu final"),
-                          ("build-preview", True, "Vérif + découpe + plan + aperçu")):
+        tr("Ouvre Clip Studio (interface web locale)", "Opens Clip Studio (local web interface)"), nom=False)
+    add("list", cmd_list, tr("Liste les projets", "Lists the projects"), nom=False)
+    add("new", cmd_new, tr("Crée un projet dans projets/<nom>", "Creates a project in projets/<name>"))
+    s = add("prepare", cmd_prepare, tr("Beats + alignement + prompts (tout ce qui précède les planches)",
+                                       "Beats + alignment + prompts (everything before the panels)"))
+    s.add_argument("--force", action="store_true", help=tr("Refait beats et alignement", "Redoes beats and alignment"))
+    s.add_argument("--model", default=None, choices=WHISPER,
+                   help=tr("Modèle Whisper (défaut : réglage du projet)", "Whisper model (default: project setting)"))
+    for name, prev, h in (("build", False, tr("Vérif + découpe + plan + rendu final", "Check + cut + plan + final render")),
+                          ("build-preview", True, tr("Vérif + découpe + plan + aperçu", "Check + cut + plan + preview"))):
         s = add(name, cmd_build, h)
-        s.add_argument("--force", action="store_true", help="Continue malgré les problèmes de planches")
+        s.add_argument("--force", action="store_true",
+                       help=tr("Continue malgré les problèmes de planches", "Continues despite panel problems"))
         s.set_defaults(preview=prev, start=None, duration=None, scale=4)
-    s = add("describe", cmd_describe, "Descriptions rédigées par Claude (Claude Code, abonnement)")
-    s.add_argument("--ids", default=None, help="Images à refaire, ex. p1_c2,p3_c1")
-    s.add_argument("--consigne", default=None, help="Consigne libre, ex. « plus sombre »")
-    s.add_argument("--tout", action="store_true", help="Réécrire toutes les descriptions")
-    s = add("evaluate", cmd_evaluate, "Claude évalue le storyboard (images d'ambiance, préréglage)")
-    s.add_argument("--appliquer", action="store_true", help="Applique le nombre d'images recommandé")
-    s = add("videos", cmd_videos, "Prompts vidéo Flow/Veo (à la demande seulement, Claude)")
+    s = add("describe", cmd_describe, tr("Descriptions rédigées par Claude (Claude Code, abonnement)",
+                                         "Descriptions written by Claude (Claude Code, subscription)"))
+    s.add_argument("--ids", default=None, help=tr("Images à refaire, ex. p1_c2,p3_c1", "Images to redo, e.g. p1_c2,p3_c1"))
+    s.add_argument("--consigne", default=None, help=tr("Consigne libre, ex. « plus sombre »", "Free instruction, e.g. “darker”"))
+    s.add_argument("--tout", action="store_true", help=tr("Réécrire toutes les descriptions", "Rewrite all the descriptions"))
+    s = add("evaluate", cmd_evaluate, tr("Claude évalue le storyboard (images d'ambiance, préréglage)",
+                                         "Claude evaluates the storyboard (ambiance images, preset)"))
+    s.add_argument("--appliquer", action="store_true",
+                   help=tr("Applique le nombre d'images recommandé", "Applies the recommended number of images"))
+    s = add("videos", cmd_videos, tr("Prompts vidéo Flow/Veo (à la demande seulement, Claude)",
+                                     "Flow/Veo video prompts (on request only, Claude)"))
     s.add_argument("--nombre", type=int, default=5)
-    s.add_argument("--ids", default=None, help="Images précises, ex. solo1,p4_c4")
+    s.add_argument("--ids", default=None, help=tr("Images précises, ex. solo1,p4_c4", "Specific images, e.g. solo1,p4_c4"))
     s.add_argument("--consigne", default=None)
-    s = add("solos", cmd_solos, "Prompts de photos de solo panoramiques (Claude, abonnement)")
+    s = add("solos", cmd_solos, tr("Prompts de photos de solo panoramiques (Claude, abonnement)",
+                                   "Panoramic solo photo prompts (Claude, subscription)"))
     s.add_argument("--nombre", type=int, default=3)
     s.add_argument("--consigne", default=None)
-    s = add("publish", cmd_publish, "Titre, description et miniature YouTube (Claude, abonnement)")
+    s = add("publish", cmd_publish, tr("Titre, description et miniature YouTube (Claude, abonnement)",
+                                       "YouTube title, description and thumbnail (Claude, subscription)"))
     s.add_argument("--consigne", default=None)
-    add("verify", cmd_verify, "Contrôle les planches (format, grille, taille)")
-    s = add("cut", cmd_cut, "Découpe les planches en cases + retouches + upscale")
-    s.add_argument("--scale", type=int, default=4, help="1 = sans upscale")
-    add("beats", cmd_beats, "Détecte les beats → build/beats.npy")
-    s = add("align", cmd_align, "Alignement mot-à-mot des paroles → build/words.json")
-    s.add_argument("--model", default=None, choices=WHISPER, help="Modèle Whisper (défaut : réglage du projet)")
-    s.add_argument("--repair-only", action="store_true", help="Répare words.json sans réaligner")
-    add("prompts", cmd_prompts, "Shotlist + prompts (ou liste à décrire) → build/")
-    s = add("plan", cmd_plan, "Génère la timeline dans projet.json")
+    add("verify", cmd_verify, tr("Contrôle les planches (format, grille, taille)", "Checks the panels (format, grid, size)"))
+    s = add("cut", cmd_cut, tr("Découpe les planches en cases + retouches + agrandissement",
+                               "Cuts the panels into cells + retouches + upscaling"))
+    s.add_argument("--scale", type=int, default=4, help=tr("1 = sans agrandissement", "1 = no upscaling"))
+    add("beats", cmd_beats, tr("Détecte les beats → build/beats.npy", "Detects the beats → build/beats.npy"))
+    s = add("align", cmd_align, tr("Alignement mot à mot des paroles → build/words.json",
+                                   "Word-by-word lyrics alignment → build/words.json"))
+    s.add_argument("--model", default=None, choices=WHISPER,
+                   help=tr("Modèle Whisper (défaut : réglage du projet)", "Whisper model (default: project setting)"))
+    s.add_argument("--repair-only", action="store_true",
+                   help=tr("Répare words.json sans réaligner", "Repairs words.json without realigning"))
+    add("prompts", cmd_prompts, tr("Shotlist + prompts (ou liste à décrire) → build/",
+                                   "Shotlist + prompts (or list to describe) → build/"))
+    s = add("plan", cmd_plan, tr("Génère la timeline dans projet.json", "Generates the timeline in projet.json"))
     s.add_argument("--force", action="store_true")
     for name, prev in (("render", False), ("preview", True)):
-        s = add(name, cmd_render, ("Aperçu 960×540@15" if prev else "Rendu final") + " avec audio")
+        s = add(name, cmd_render, tr("Aperçu 960×540@15 avec audio", "960×540@15 preview with audio") if prev
+                else tr("Rendu final avec audio", "Final render with audio"))
         s.add_argument("--start", type=float, default=None)
         s.add_argument("--duration", type=float, default=None)
-        s.add_argument("--out", default=None, help="Nom du fichier de sortie dans build/")
+        s.add_argument("--out", default=None, help=tr("Nom du fichier de sortie dans build/", "Output file name in build/"))
         s.set_defaults(preview=prev)
     args = ap.parse_args()
     try:

@@ -1,7 +1,7 @@
 """Essai complet du pipeline sur une chanson synthétique : sert à valider un système sans intervention
 (GitHub Actions macOS / Linux). Préparer → fausses planches → découpe → plan → aperçu vidéo, puis contrôle du mp4.
 
-  python scripts/essai_complet.py voix.wav            (voix chantée ou parlée des PAROLES ci-dessous)
+  python scripts/essai_complet.py voix.wav [--langue en]      (voix chantée ou parlée des PAROLES ci-dessous)
 
 La voix est mélangée à une pulsation à 120 BPM (pour la détection des beats). Le projet « essai_auto » est créé
 dans projets/ puis supprimé (--garder pour le conserver). Code de sortie 0 = tout est passé."""
@@ -18,7 +18,7 @@ os.environ.update(CLIP_SANS_CLAUDE="1", PYTHONUTF8="1")
 sys.path.insert(0, str(ROOT))
 import clip  # noqa: E402,F401  (met tools/ffmpeg/bin en tête du PATH, comme Clip Studio)
 NOM = "essai_auto"
-PAROLES = """[Verse 1]
+PAROLES = {"fr": """[Verse 1]
 Le soleil se lève sur la ville
 Les voitures roulent sans bruit
 [Chorus]
@@ -30,7 +30,19 @@ Le vent souffle dans la nuit
 [Chorus]
 Chante avec nous ce soir
 Chante encore une fois
-"""
+""", "en": """[Verse 1]
+The sun is rising on the town
+The cars are rolling without a sound
+[Chorus]
+Sing along with us tonight
+Sing it one more time
+[Verse 2]
+The rain is falling on the roofs
+The wind is blowing through the night
+[Chorus]
+Sing along with us tonight
+Sing it one more time
+"""}
 COULEURS = [(200, 60, 60), (60, 160, 70), (60, 90, 200), (210, 170, 40), (150, 60, 180), (40, 170, 170)]
 
 
@@ -65,10 +77,14 @@ def main():
     ap.add_argument("voix", type=Path)
     ap.add_argument("--model", default="small")
     ap.add_argument("--garder", action="store_true")
+    ap.add_argument("--langue", default="fr", choices=("fr", "en"), help="langue de la chanson (paroles ci-dessus)")
     a = ap.parse_args()
+    os.environ["CLIP_LANG"] = a.langue            # un nouveau projet prend la langue de l'interface
     p = ROOT / "projets" / NOM
     shutil.rmtree(p, ignore_errors=True)
     clip("new", NOM)
+    if json.loads((p / "projet.json").read_text(encoding="utf-8"))["langue"] != a.langue:
+        sys.exit("ÉCHEC : langue du projet")
     # voix + pulsation 120 BPM (grosse caisse synthétique), 2 s de silence avant le chant
     pulse = "aevalsrc=0.6*sin(2*PI*55*t)*exp(-25*mod(t\\,0.5)):s=44100:d=600"
     r = subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(a.voix), "-f", "lavfi", "-i", pulse,
@@ -76,7 +92,7 @@ def main():
                         "apad=pad_dur=2", "-ac", "2", "-b:a", "192k", str(p / "essai.mp3")])
     if r.returncode:
         sys.exit("ÉCHEC : fabrication du mp3")
-    (p / "essai.txt").write_text(PAROLES, encoding="utf-8")
+    (p / "essai.txt").write_text(PAROLES[a.langue], encoding="utf-8")
     clip("prepare", NOM, "--model", a.model)
     words = json.loads((p / "build" / "words.json").read_text(encoding="utf-8"))["segments"]
     print(f"  calage : {len(words)} vers, premier à {words[0]['start']:.1f} s, dernier à {words[-1]['start']:.1f} s")

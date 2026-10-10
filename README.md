@@ -2,6 +2,8 @@
 
 # Clip Studio
 
+**Français** | [English](README.en.md)
+
 [![Tests](https://github.com/BandDiLondon/Clip-Studio/actions/workflows/tests.yml/badge.svg)](https://github.com/BandDiLondon/Clip-Studio/actions/workflows/tests.yml)
 [![Dernière version](https://img.shields.io/github/v/release/BandDiLondon/Clip-Studio)](../../releases/latest)
 [![Licence GPLv3](https://img.shields.io/badge/licence-GPLv3-blue)](LICENSE)
@@ -9,17 +11,18 @@
 Clip Studio fabrique des clips musicaux illustrés à partir d'une chanson (mp3) et de ses paroles (txt). Le traitement
 tourne en local, sous **Windows**, **Linux** ou **macOS** (expérimental) : alignement des paroles, découpe des images,
 montage et rendu. Seuls les outils que tu choisis d'utiliser passent par Internet : le générateur d'images ou de
-vidéos, et Claude si tu cliques sur un bouton « ✨ … avec Claude ».
+vidéos, et Claude si tu cliques sur un bouton « ✨ … avec Claude ». Interface et documentation en **français et en
+anglais**.
 
 ![Une image d'un clip réalisé avec Clip Studio : la scène illustre le vers chanté, les paroles s'affichent en karaoké mot à mot](docs/images/clip-karaoke.jpg)
 <sub>Une image du clip « Henry » (KPR) : la scène illustre le vers chanté, le mot en cours est surligné.</sub>
 
-> **Projet personnel**, partagé tel quel : l'interface et la documentation sont en français, et l'aide est apportée au
-> mieux, sans délai garanti. Pour signaler un problème, ouvre une [issue](../../issues) en indiquant ton système, la
-> version de Clip Studio et le message d'erreur.
+> **Projet personnel**, partagé tel quel : l'aide est apportée au mieux, sans délai garanti. Pour signaler un
+> problème, ouvre une [issue](../../issues) en indiquant ton système, la version de Clip Studio et le message d'erreur.
 
 - Chaque vers unique a son image. Les images sont générées par **planches** (6 cases par image générée) pour limiter les générations IA.
-- Les paroles s'affichent en **karaoké mot à mot**, grâce à un alignement automatique (Whisper / stable-ts).
+- Les paroles s'affichent en **karaoké mot à mot**, grâce à un alignement automatique (Whisper / stable-ts), pour des
+  chansons en français ou en anglais.
 - Le montage est calé sur les **beats** détectés.
 - Les solos passent en **travelling** sur des photos panoramiques.
 - Des **vidéos** de ~10 s (Flow, Veo…) peuvent remplacer n'importe quelle image.
@@ -27,9 +30,9 @@ vidéos, et Claude si tu cliques sur un bouton « ✨ … avec Claude ».
 - Claude (Claude Code, avec un abonnement Claude Pro/Max) peut rédiger, **uniquement quand tu cliques sur un bouton** : descriptions de scènes, évaluation du storyboard, prompts de solos et de vidéos, titre et description YouTube.
   Ces appels sont conçus pour **ménager ta limite d'utilisation** :
   - appel « nu » : sans outils, connecteurs ni réglages de Claude Code, depuis un dossier vide. Environ **700 tokens**
-    de contexte par appel au lieu de ~34 500 (mesuré), pour la même réponse ;
+    de contexte par appel au lieu de ~34 500 (mesuré), pour la même réponse;
   - une seule demande pour toutes les images à décrire, et seulement celles qui n'ont pas encore de description (ou
-    celles que tu choisis de refaire) ;
+    celles que tu choisis de refaire);
   - des demandes courtes en texte seul, avec des réponses en JSON directement utilisées par Clip Studio.
 
 ## Installation
@@ -40,14 +43,14 @@ seulement les fichiers utiles (`…-Windows.zip`, `…-Linux.zip` ou `…-macOS.
 
 ### Windows 10 / 11
 Double-cliquer sur **`Installer.bat`**. Il installe, si besoin, sans droits administrateur ni redémarrage :
-- Python 3.12 (python.org) ;
-- l'environnement `.venv` et les bibliothèques, aux versions testées ;
-- ffmpeg 8.0.1 (dans `tools\ffmpeg`) ;
+- Python 3.12 (python.org);
+- l'environnement `.venv` et les bibliothèques, aux versions testées;
+- ffmpeg 8.0.1 (dans `tools\ffmpeg`);
 - Real-ESRGAN (dans `tools\realesrgan`).
 
 Chaque fichier téléchargé est vérifié par son empreinte SHA256 avant d'être utilisé.
 
-### Linux (Ubuntu 24.04, Debian et dérivés ; WSL compris)
+### Linux (Ubuntu 24.04, Debian et dérivés; WSL compris)
 ```
 bash installer.sh
 ```
@@ -72,18 +75,20 @@ modification, mais personne n'a encore vérifié l'interface sur un vrai Mac. Un
 - Le premier alignement des paroles télécharge le modèle Whisper « medium » (~1,5 Go, une seule fois). Il lui faut
   environ **5 Go de mémoire vive**. Avec moins de mémoire, l'étape 2 propose le modèle « small » (~2 Go, karaoké moins
   précis).
+- Les installateurs et les lanceurs parlent la langue du système (français ou anglais). Pour la forcer : `CLIP_LANG=fr`.
 
 ## Utilisation
 
 - **Windows** : double-clic sur **`Clip Studio.bat`**. Garde la fenêtre noire ouverte pendant que tu travailles.
-- **Linux** : `./clip-studio.sh`. Garde le terminal ouvert ; Ctrl+C arrête Clip Studio.
+- **Linux** : `./clip-studio.sh`. Garde le terminal ouvert; Ctrl+C arrête Clip Studio.
 - **macOS** : double-clic sur **`Clip Studio.command`** (la première fois, si macOS le bloque : clic droit → Ouvrir).
   Garde la fenêtre du Terminal ouverte.
 
-L'interface s'ouvre dans le navigateur (`http://127.0.0.1:8765`).
+L'interface s'ouvre dans le navigateur (`http://127.0.0.1:8765`). La langue (Français / English) se choisit en haut
+à droite.
 
 Clip Studio guide pas à pas, en 8 étapes :
-1. **Projet** : la chanson et ses paroles.
+1. **Projet** : la chanson, ses paroles et sa langue.
 2. **Préparer** : rythme et paroles calées sur la voix.
 3. **Descriptions** : une scène par vers.
 4. **Planches** : les prompts à copier dans ton générateur d'images, et les planches à déposer.
@@ -107,6 +112,7 @@ Clip Studio guide pas à pas, en 8 étapes :
 Chaque projet vit dans `projets/<nom>/`. Ce dossier n'est pas versionné.
 
 - **Ligne de commande** : `.venv\Scripts\python.exe -m clip --help` (Windows) ou `.venv/bin/python -m clip --help` (Linux, macOS).
+  Messages en anglais avec `CLIP_LANG=en`.
 - **Sauvegarde** : tes projets (mp3, images, vidéos) ne sont pas dans le dépôt. **`Sauvegarder les projets.bat`** (Windows)
   ou `./sauvegarder-projets.sh` (Linux, macOS) les copie vers le dossier de ton choix.
 - **Tests** : `.venv\Scripts\python.exe -m unittest` (Windows) ou `.venv/bin/python -m unittest` (Linux, macOS).

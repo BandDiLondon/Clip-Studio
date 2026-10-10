@@ -5,6 +5,8 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
+from .i18n import tr
+
 MODEL = "depth-anything/Depth-Anything-V2-Small-hf"
 MAX_SIDE = 1024          # la profondeur n'a pas besoin de la pleine résolution
 
@@ -23,7 +25,8 @@ def compute(projet_dir, names, force=False):
     if not todo:
         return 0
     from transformers import pipeline
-    print(f"  profondeur : {len(todo)} image(s) (modèle {MODEL.split('/')[-1]}, 1er lancement : téléchargement)")
+    print(tr(f"  profondeur : {len(todo)} image(s) (modèle {MODEL.split('/')[-1]}, 1er lancement : téléchargement)",
+             f"  depth: {len(todo)} image(s) (model {MODEL.split('/')[-1]}, first run: download)"))
     pipe = pipeline(task="depth-estimation", model=MODEL, device=-1)
     for n, src, dst in todo:
         im = Image.open(src).convert("RGB")

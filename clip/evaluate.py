@@ -3,6 +3,7 @@ libres), Claude recommande le nombre d'images d'ambiance, des idées de sujets e
 import json
 import math
 
+from .i18n import langue_projet
 from .shots import _pack, key
 
 GAP = 3.0            # trou sans paroles considéré comme instrumental
@@ -45,7 +46,7 @@ def faits(segments, duree, lines, ambiance, solos, bpm):
     }
 
 
-DEMANDE = """Tu évalues le storyboard d'un clip musical avant la génération des images.
+DEMANDE = {"fr": """Tu évalues le storyboard d'un clip musical avant la génération des images.
 Principe : chaque vers unique a sa propre image ; les passages sans paroles (intro, instrumentaux, outro)
 sont couverts par les photos de solo (travelling sur panoramique, si fournies) et par des images
 d'« ambiance » que l'on ajoute au storyboard ; si les deux existent, elles alternent. Une photo de solo
@@ -69,10 +70,37 @@ Réponds UNIQUEMENT par un JSON :
  "raison": "<2-3 phrases : pourquoi ce nombre, en tenant compte des passages sans paroles, des photos de solo et des cases libres>",
  "idees_ambiance": ["<exactement une idée de scène courte par image d'ambiance (autant que le total), liée au thème de la chanson>", …],
  "preset": "<ballade | rock | sobre : l'énergie apparente de la chanson (tempo, paroles)>",
- "remarques": ["<0 à 3 remarques utiles pour le montage, ex. une image affichée trop longtemps>"]}}"""
+ "remarques": ["<0 à 3 remarques utiles pour le montage, ex. une image affichée trop longtemps>"]}}""",
+           "en": """You evaluate the storyboard of a music video before the images are generated.
+Principle: each unique lyric line has its own image; the parts without lyrics (intro, instrumentals, outro) are
+covered by the solo photos (tracking shot over a panorama, if provided) and by "ambiance" images added to the
+storyboard; if both exist, they alternate. A solo photo lasts ~8 s per part; with enough solo photos, 0 ambiance
+image is a good answer. Images are generated in panels of 6: one panel costs one generation, so filling the free cells
+of the last panel is free, while going past one costs one more. The last panel adapts: 6 cells, or 4, 2 or 1 if fewer
+are left (e.g. 28 images = 4 panels of 6 + 1 panel of 4, no wasted cell; 17 images = 3 panels, 1 free cell). A still
+image holds well for about 5 to 8 s on screen (with camera movement); beyond ~10 s it gets boring; an ambiance image
+can be reused, but not too often.
+
+Song: "{titre}" — visual style: {style}
+Author's intent (mood, meaning, context): {intention}
+Lyrics:
+{paroles}
+
+Measurements (seconds):
+{faits}
+
+Write the texts in English. Answer ONLY with a JSON:
+{{"ambiance": <TOTAL number of ambiance images the storyboard must have, 0 to 12 (it replaces ambiance_actuelle,
+   it is not an addition); total images = images_de_vers + ambiance>,
+ "raison": "<2-3 sentences: why this number, considering the parts without lyrics, the solo photos and the free cells>",
+ "idees_ambiance": ["<exactly one short scene idea per ambiance image (as many as the total), tied to the song's theme>", …],
+ "preset": "<ballade | rock | sobre: the apparent energy of the song (tempo, lyrics)>",
+ "remarques": ["<0 to 3 useful remarks for the edit, e.g. an image shown for too long>"]}}"""}
 
 
 def demande(cfg, paroles, f):
-    return DEMANDE.format(titre=cfg.get("titre") or "(sans titre)", style=cfg.get("style", ""),
-                          intention=(cfg.get("intention") or "(non précisée)").strip(),
-                          paroles=paroles, faits=json.dumps(f, ensure_ascii=False, indent=1))
+    en = langue_projet(cfg) == "en"
+    return DEMANDE[langue_projet(cfg)].format(
+        titre=cfg.get("titre") or ("(untitled)" if en else "(sans titre)"), style=cfg.get("style", ""),
+        intention=(cfg.get("intention") or ("(not specified)" if en else "(non précisée)")).strip(),
+        paroles=paroles, faits=json.dumps(f, ensure_ascii=False, indent=1))

@@ -10,6 +10,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 from . import ROOT
+from .i18n import tr
 
 ESRGAN = ROOT / "tools" / "realesrgan" / ("realesrgan-ncnn-vulkan.exe" if sys.platform == "win32" else "realesrgan-ncnn-vulkan")
 DARK = 30        # luminance (90e percentile) max d'une ligne/colonne de gouttière
@@ -120,8 +121,9 @@ def verify(projet_dir, planches_dir, shotlist):
         cols, rows = pl["grid"]
         f = files.pop(pl["id"], None)
         if f is None:
-            problems.append(f"{pl['id'].upper()} : fichier absent ({src.name}/{pl['id'].upper()}.png attendu)")
-            print(f"  [XX] {pl['id'].upper()} absent")
+            problems.append(tr(f"{pl['id'].upper()} : fichier absent ({src.name}/{pl['id'].upper()}.png attendu)",
+                               f"{pl['id'].upper()}: missing file ({src.name}/{pl['id'].upper()}.png expected)"))
+            print(tr(f"  [XX] {pl['id'].upper()} absent", f"  [XX] {pl['id'].upper()} missing"))
             continue
         im = Image.open(f).convert("RGB")
         want = cols * 16 / (rows * 9)
@@ -132,36 +134,40 @@ def verify(projet_dir, planches_dir, shotlist):
         cell_ratio = cw / ch
         msgs = []
         if abs(got / want - 1) > 0.08:
-            msgs.append(f"format {im.width}×{im.height} ({got:.2f}) au lieu de {pl['ratio']}")
+            msgs.append(tr(f"format {im.width}×{im.height} ({got:.2f}) au lieu de {pl['ratio']}",
+                           f"format {im.width}×{im.height} ({got:.2f}) instead of {pl['ratio']}"))
         if found < (cols - 1) + (rows - 1):
-            msgs.append(f"{found}/{(cols - 1) + (rows - 1)} séparations trouvées : "
-                        f"grille {cols}×{rows} non respectée ?")
+            msgs.append(tr(f"{found}/{(cols - 1) + (rows - 1)} séparations trouvées : grille {cols}×{rows} non respectée?",
+                           f"{found}/{(cols - 1) + (rows - 1)} separations found: {cols}×{rows} grid not respected?"))
         notes = []
         dev = cell_ratio / (16 / 9) - 1
         if abs(dev) > 0.25:                   # vraiment hors format : têtes ou côtés fortement coupés
-            msgs.append(f"vignettes {cell_ratio:.2f}:1 au lieu de 16:9 (1.78) : recadrage important")
+            msgs.append(tr(f"vignettes {cell_ratio:.2f}:1 au lieu de 16:9 (1.78) : recadrage important",
+                           f"cells {cell_ratio:.2f}:1 instead of 16:9 (1.78): heavy cropping"))
         elif abs(dev) > 0.08:                 # écart modéré : simple note, pas de blocage
             perte = round(100 * (1 - min(cell_ratio, 16 / 9) / max(cell_ratio, 16 / 9)) / 2)
-            cote = "chaque côté" if dev > 0 else "en haut et en bas"
-            notes.append(f"vignettes {cell_ratio:.2f}:1 (16:9 = 1.78) : ~{perte} % recadré de {cote}, sans gravité")
+            cote = tr("de chaque côté", "on each side") if dev > 0 else tr("en haut et en bas", "at the top and bottom")
+            notes.append(tr(f"vignettes {cell_ratio:.2f}:1 (16:9 = 1.78) : ~{perte} % recadré {cote}, sans gravité",
+                            f"cells {cell_ratio:.2f}:1 (16:9 = 1.78): ~{perte} % cropped {cote}, harmless"))
         if im.width / cols < 400:
-            msgs.append(f"vignettes étroites ({int(cw)} px) : image générée trop petite")
+            msgs.append(tr(f"vignettes étroites ({int(cw)} px) : image générée trop petite",
+                           f"narrow cells ({int(cw)} px): generated image too small"))
         state = "OK" if not msgs else "⚠ "
-        print(f"  [{state}] {f.name} {im.width}×{im.height}, grille {cols}×{rows}, "
-              f"vignettes ~{int(cw)}×{int(ch)}")
+        print(tr(f"  [{state}] {f.name} {im.width}×{im.height}, grille {cols}×{rows}, vignettes ~{int(cw)}×{int(ch)}",
+                 f"  [{state}] {f.name} {im.width}×{im.height}, grid {cols}×{rows}, cells ~{int(cw)}×{int(ch)}"))
         for m in msgs:
             print(f"        - {m}")
         for m in notes:
             print(f"        · note : {m}")
         problems += [f"{f.name} : {m}" for m in msgs]
     for extra in files.values():
-        print(f"  [--] {extra.name} ignorée (pas dans la shotlist)")
+        print(tr(f"  [--] {extra.name} ignorée (pas dans la shotlist)", f"  [--] {extra.name} ignored (not in the shotlist)"))
     return problems
 
 
 def upscale(src_dir, dst_dir, scale=4, model="realesrgan-x4plus"):
     if not ESRGAN.exists():
-        raise FileNotFoundError(f"Real-ESRGAN absent : {ESRGAN}")
+        raise FileNotFoundError(tr(f"Real-ESRGAN absent : {ESRGAN}", f"Real-ESRGAN missing: {ESRGAN}"))
     r = subprocess.run([str(ESRGAN), "-i", str(src_dir), "-o", str(dst_dir),
                         "-s", str(scale), "-n", model, "-f", "png"],
                        capture_output=True, text=True)
@@ -236,7 +242,7 @@ def cut_all(projet_dir, planches_dir="planches", scale=4, grid=(2, 3), grids=Non
                     cell.save(tmp / f"{name}.png")
             w, h = cells[0].size
             warn = "" if abs(w / h - 16 / 9) < 0.15 else f"  ⚠ ratio {w / h:.2f} ≠ 16:9 (1.78)"
-            print(f"  {p.name} → {len(cells)} cases {w}×{h}{warn}")
+            print(tr(f"  {p.name} → {len(cells)} cases {w}×{h}{warn}", f"  {p.name} → {len(cells)} cells {w}×{h}{warn}"))
         big = []
         for name, f in retouches.items():
             im = Image.open(f).convert("RGB")
@@ -245,7 +251,7 @@ def cut_all(projet_dir, planches_dir="planches", scale=4, grid=(2, 3), grids=Non
                 big.append((name, im))
             else:
                 im.save(tmp / f"{name}.png")
-            print(f"  retouche {f.name} ({im.width}×{im.height}) → {name}")
+            print(tr(f"  retouche {f.name} ({im.width}×{im.height}) → {name}", f"  retouch {f.name} ({im.width}×{im.height}) → {name}"))
         if scale > 1 and any(tmp.iterdir()):
             print(f"  Real-ESRGAN ×{scale} …")
             import time
@@ -257,8 +263,10 @@ def cut_all(projet_dir, planches_dir="planches", scale=4, grid=(2, 3), grids=Non
             ratees = [f for f in tmp.iterdir()
                       if not (cases / f.name).exists() or (cases / f.name).stat().st_mtime < t0]
             if ratees:
-                print(f"  ⚠ Real-ESRGAN indisponible{f' ({err})' if err else ''} : agrandissement classique "
-                      f"de {len(ratees)} case(s), moins net")
+                print(tr(f"  ⚠ Real-ESRGAN indisponible{f' ({err})' if err else ''} : agrandissement classique "
+                         f"de {len(ratees)} case(s), moins net",
+                         f"  ⚠ Real-ESRGAN unavailable{f' ({err})' if err else ''}: classic upscaling "
+                         f"of {len(ratees)} cell(s), less sharp"))
                 for f in ratees:
                     im = Image.open(f)
                     w = min(im.width * scale, MAX_W)
@@ -276,6 +284,7 @@ def cut_all(projet_dir, planches_dir="planches", scale=4, grid=(2, 3), grids=Non
     for f in stale:
         f.unlink()
     if stale:
-        print(f"  {len(stale)} case(s) obsolète(s) supprimée(s)")
+        print(tr(f"  {len(stale)} case(s) obsolète(s) supprimée(s)", f"  {len(stale)} obsolete cell(s) deleted"))
     contact_sheet(cases, projet_dir / "build" / "planche_contact.jpg", [p.stem.lower() for p in planches])
-    print(f"  Planche-contact : {projet_dir / 'build' / 'planche_contact.jpg'}")
+    print(tr(f"  Planche-contact : {projet_dir / 'build' / 'planche_contact.jpg'}",
+             f"  Contact sheet: {projet_dir / 'build' / 'planche_contact.jpg'}"))

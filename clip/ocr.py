@@ -4,6 +4,8 @@ jamais bloquant. Le but est de repérer qu'il y a du texte, pas de le lire exact
 import json
 from pathlib import Path
 
+from .i18n import tr
+
 LARGEUR = 1280      # analyse en 1280 px : 2× plus rapide qu'en pleine taille, même détection (mesuré)
 SEUIL = 0.5         # confiance minimale d'une ligne (0,55 éliminait de vrais textes)
 _MOTEUR = None
@@ -69,15 +71,17 @@ def verifier(projet_dir, noms=None):
         files = [f for f in files if f.stem.lower() in noms]
     found = textes(files)
     if found is None:
-        print("  (détection de texte indisponible : RapidOCR n'est pas installé ; vérifie les cases à l'œil)")
+        print(tr("  (détection de texte indisponible : RapidOCR n'est pas installé; vérifie les cases à l'œil)",
+                 "  (text detection unavailable: RapidOCR is not installed; check the cells by eye)"))
         return {}
     (projet_dir / "build").mkdir(exist_ok=True)
     (projet_dir / "build" / "texte_detecte.json").write_text(json.dumps(found, indent=1, ensure_ascii=False),
                                                               encoding="utf-8")
     if found:
-        print(f"  ⚠ Texte lisible dans {len(found)} case(s) — à retoucher si ce n'est pas voulu :")
+        print(tr(f"  ⚠ Texte lisible dans {len(found)} case(s) — à retoucher si ce n'est pas voulu :",
+                 f"  ⚠ Readable text in {len(found)} cell(s) — retouch them if it is not intended:"))
         for k, v in found.items():
             print(f"     {k} : « {' / '.join(v)[:80]} »")
     else:
-        print("  Aucun texte lisible détecté dans les cases.")
+        print(tr("  Aucun texte lisible détecté dans les cases.", "  No readable text detected in the cells."))
     return found

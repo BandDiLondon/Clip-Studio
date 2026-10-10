@@ -4,6 +4,8 @@ from pathlib import Path
 
 import numpy as np
 
+from .i18n import tr
+
 SR = 44100
 HOP = 512
 
@@ -111,15 +113,17 @@ def detect(audio_path, out_path, bpm_hint="auto"):
     auto = bpm_hint in (None, "", "auto", 0)
     if auto:                                          # tempo global estimé automatiquement
         bpm_hint = estimate_tempo(x)
-        print(f"  tempo estimé automatiquement : {bpm_hint} BPM")
+        print(tr(f"  tempo estimé automatiquement : {bpm_hint} BPM", f"  tempo estimated automatically: {bpm_hint} BPM"))
     else:
         bpm_hint = float(bpm_hint)
-        print(f"  tempo imposé : {bpm_hint} BPM")
+        print(tr(f"  tempo imposé : {bpm_hint} BPM", f"  forced tempo: {bpm_hint} BPM"))
     beats = track_beats(onset_envelope(x), t_hop, bpm_hint)
     np.save(out_path, beats)
     ibi = np.diff(beats)
-    print(f"  {len(x) / SR:.2f} s audio, {len(beats)} beats, "
-          f"tempo médian {60 / np.median(ibi):.1f} BPM (min {60 / ibi.max():.0f}, max {60 / ibi.min():.0f})")
+    print(tr(f"  {len(x) / SR:.2f} s audio, {len(beats)} beats, "
+             f"tempo médian {60 / np.median(ibi):.1f} BPM (min {60 / ibi.max():.0f}, max {60 / ibi.min():.0f})",
+             f"  {len(x) / SR:.2f} s audio, {len(beats)} beats, "
+             f"median tempo {60 / np.median(ibi):.1f} BPM (min {60 / ibi.max():.0f}, max {60 / ibi.min():.0f})"))
     return beats, round(60 / float(np.median(ibi)), 1)
 
 

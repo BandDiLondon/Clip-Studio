@@ -43,12 +43,34 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           v="${GITHUB_REF_NAME#v}"
-          # notes = section « ## [x.y.z] » du CHANGELOG, puis le tableau des téléchargements
-          awk -v v="$v" '/^## \[/{ok = index($0, "[" v "]") > 0; next} ok' CHANGELOG.md > notes.md
-          [ -s notes.md ] || echo "Voir [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/CHANGELOG.md)." > notes.md
-          cat >> notes.md <<EOF
+          # notes = section « ## [x.y.z] » des deux journaux (anglais puis français), puis le tableau des téléchargements
+          section() { awk -v v="$v" '/^## \[/{ok = index($0, "[" v "]") > 0; next} ok' "$1"; }
+          base="https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}"
+          {
+            echo "**English** · [Français](#français)"
+            echo
+            section CHANGELOG.en.md | grep . >/dev/null && section CHANGELOG.en.md || echo "See [CHANGELOG.en.md]($base/CHANGELOG.en.md)."
+            cat <<EOF
 
-          ## Téléchargement
+          ### Download
+
+          | System | File | Installation |
+          |---|---|---|
+          | **Windows 10 / 11** | \`Clip-Studio-${GITHUB_REF_NAME}-Windows.zip\` | unzip, double-click **Installer.bat**, then **Clip Studio.bat** |
+          | **Linux** (Ubuntu, Debian…) | \`Clip-Studio-${GITHUB_REF_NAME}-Linux.zip\` | unzip, \`bash installer.sh\`, then \`./clip-studio.sh\` |
+          | **macOS** (experimental) | \`Clip-Studio-${GITHUB_REF_NAME}-macOS.zip\` | install [Homebrew](https://brew.sh), unzip, \`bash installer.sh\` in the Terminal, then double-click **Clip Studio.command** |
+
+          About 5 GB of memory are needed to align the lyrics. User guide: [docs/GUIDE.en.md]($base/docs/GUIDE.en.md).
+
+          ---
+
+          ## Français
+
+          EOF
+            section CHANGELOG.md | grep . >/dev/null && section CHANGELOG.md || echo "Voir [CHANGELOG.md]($base/CHANGELOG.md)."
+            cat <<EOF
+
+          ### Téléchargement
 
           | Système | Fichier | Installation |
           |---|---|---|
@@ -56,7 +78,8 @@ jobs:
           | **Linux** (Ubuntu, Debian…) | \`Clip-Studio-${GITHUB_REF_NAME}-Linux.zip\` | décompresser, \`bash installer.sh\`, puis \`./clip-studio.sh\` |
           | **macOS** (expérimental) | \`Clip-Studio-${GITHUB_REF_NAME}-macOS.zip\` | installer [Homebrew](https://brew.sh), décompresser, \`bash installer.sh\` dans le Terminal, puis double-clic sur **Clip Studio.command** |
 
-          Environ 5 Go de mémoire vive sont nécessaires pour caler les paroles. Mode d'emploi : [docs/GUIDE.md](https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/docs/GUIDE.md).
+          Environ 5 Go de mémoire vive sont nécessaires pour caler les paroles. Mode d'emploi : [docs/GUIDE.md]($base/docs/GUIDE.md).
           EOF
+          } > notes.md
           cat notes.md
           gh release create "$GITHUB_REF_NAME" dist/*.zip             --title "Clip Studio $v" --notes-file notes.md --verify-tag

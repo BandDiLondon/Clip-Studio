@@ -14,6 +14,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
 from . import PROJETS, ROOT, ecrire
+from .i18n import fixer, langue, tr
 
 HERE = Path(__file__).resolve().parent / "web"
 PORT = 8765
@@ -64,9 +65,10 @@ class Job:
     def start(self, nom, cmd, args):
         with self.lock:
             if self.running():
-                raise RuntimeError("Une tâche est déjà en cours")
+                raise RuntimeError(tr("Une tâche est déjà en cours", "A task is already running"))
             self.reset(nom, " ".join([cmd] + args))
-            env = {**os.environ, "PYTHONUTF8": "1", "PYTHONUNBUFFERED": "1", "PYTHONIOENCODING": "utf-8"}
+            env = {**os.environ, "PYTHONUTF8": "1", "PYTHONUNBUFFERED": "1", "PYTHONIOENCODING": "utf-8",
+                   "CLIP_LANG": langue()}
             self.proc = subprocess.Popen([sys.executable, "-m", "clip", cmd, nom, *args], cwd=ROOT, env=env,
                                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                          creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
@@ -124,7 +126,8 @@ def _ouvrir(f, montrer=False):
     try:                                              # Linux : pas de sélection, on ouvre le dossier
         subprocess.Popen(["xdg-open", str(f.parent if montrer else f)])
     except FileNotFoundError:
-        raise ValueError(f"Impossible d'ouvrir automatiquement (xdg-open absent) : {f}")
+        raise ValueError(tr(f"Impossible d'ouvrir automatiquement (xdg-open absent) : {f}",
+                            f"Cannot open automatically (xdg-open missing): {f}"))
 
 
 def code_perime():
@@ -147,10 +150,11 @@ def _save_cfg(p, cfg):
 
 def _project(nom):
     if not NOM_RE.match(nom or ""):
-        raise ValueError("Nom de projet invalide (lettres, chiffres, - et _ seulement)")
+        raise ValueError(tr("Nom de projet invalide (lettres, chiffres, - et _ seulement)",
+                            "Invalid project name (letters, digits, - and _ only)"))
     p = PROJETS / nom
     if not (p / "projet.json").exists():
-        raise FileNotFoundError(f"Projet introuvable : {nom}")
+        raise FileNotFoundError(tr(f"Projet introuvable : {nom}", f"Project not found: {nom}"))
     return p
 
 
@@ -210,7 +214,7 @@ def status(nom):
         "solos_dir": cfg.get("solos", "solos"),
         "perimes": perimes(p, cfg),
         "texte_detecte": json.loads(_read(b / "texte_detecte.json", "{}")),
-        "historique": [{"nom": f.name, "date": time.strftime("%d/%m/%Y %H:%M", time.localtime(f.stat().st_mtime))}
+        "historique": [{"nom": f.name, "date": time.strftime("%Y-%m-%d %H:%M", time.localtime(f.stat().st_mtime))}
                        for f in sorted((b / "historique").glob("projet_*.json"), reverse=True)]
         if (b / "historique").is_dir() else [],
     }
@@ -240,11 +244,12 @@ class Handler(BaseHTTPRequestHandler):
 
     def _file(self, f):
         if not f.is_file():
-            return self._err("Fichier introuvable", 404)
+            return self._err(tr("Fichier introuvable", "File not found"), 404)
         size = f.stat().st_size
         ctype = mimetypes.guess_type(f.name)[0] or "application/octet-stream"
         if f.suffix in (".md", ".txt", ".json") or ctype.startswith("text/"):
-            ctype = {".html": "text/html", ".css": "text/css", ".js": "text/javascript"}.get(f.suffix, "text/plain")                 + "; charset=utf-8"
+            ctype = {".html": "text/html", ".css": "text/css", ".js": "text/javascript"}.get(f.suffix, "text/plain") \
+                + "; charset=utf-8"
         start, end = 0, size - 1
         m = re.match(r"bytes=(\d*)-(\d*)", self.headers.get("Range") or "")
         if m and size:                                  # lecture vidéo avec avance rapide
@@ -281,8 +286,10 @@ class Handler(BaseHTTPRequestHandler):
         port = self.server.server_address[1]
         hotes = {f"127.0.0.1:{port}", f"localhost:{port}"}
         origine = self.headers.get("Origin")
-        if (self.headers.get("Host") or "").lower() not in hotes or                 (origine is not None and origine.lower() not in {f"http://{h}" for h in hotes}):
-            self._err("Requête refusée : elle ne vient pas de Clip Studio", 403)
+        if (self.headers.get("Host") or "").lower() not in hotes or \
+                (origine is not None and origine.lower() not in {f"http://{h}" for h in hotes}):
+            self._err(tr("Requête refusée : elle ne vient pas de Clip Studio",
+                         "Request refused: it does not come from Clip Studio"), 403)
             return True
         return False
 
@@ -292,6 +299,7 @@ class Handler(BaseHTTPRequestHandler):
             {k: v[0] for k, v in parse_qs(u.query).items()}
 
     def do_GET(self):
+        fixer(self.headers.get("X-Lang"))                 # langue de la page : erreurs dans la même langue
         if self._etranger():
             return
         parts, _ = self._parts()
@@ -320,13 +328,14 @@ class Handler(BaseHTTPRequestHandler):
                 p = _project(parts[1]).resolve()
                 f = (p / "/".join(parts[2:])).resolve()
                 if p not in f.parents:
-                    return self._err("Accès refusé", 403)
+                    return self._err(tr("Accès refusé", "Access denied"), 403)
                 return self._file(f)
-            self._err("Introuvable", 404)
+            self._err(tr("Introuvable", "Not found"), 404)
         except (ValueError, FileNotFoundError) as e:
             self._err(e, 404)
 
     def do_POST(self):
+        fixer(self.headers.get("X-Lang"))
         if self._etranger():
             return
         parts, q = self._parts()
@@ -334,31 +343,32 @@ class Handler(BaseHTTPRequestHandler):
             if parts == ["api", "projets"]:
                 nom = json.loads(self._body() or b"{}").get("nom", "").strip()
                 if not NOM_RE.match(nom):
-                    raise ValueError("Nom invalide : lettres, chiffres, - et _ seulement (pas d'espaces)")
+                    raise ValueError(tr("Nom invalide : lettres, chiffres, - et _ seulement (pas d'espaces)",
+                                        "Invalid name: letters, digits, - and _ only (no spaces)"))
                 if (PROJETS / nom).exists():
-                    raise ValueError("Ce projet existe déjà")
+                    raise ValueError(tr("Ce projet existe déjà", "This project already exists"))
                 r = subprocess.run([sys.executable, "-m", "clip", "new", nom], cwd=ROOT, capture_output=True,
-                                   text=True, env={**os.environ, "PYTHONUTF8": "1"})
+                                   text=True, env={**os.environ, "PYTHONUTF8": "1", "CLIP_LANG": langue()})
                 if r.returncode:
                     raise ValueError(r.stdout + r.stderr)
                 return self._json({"ok": True})
             if len(parts) < 4 or parts[:2] != ["api", "projet"]:
-                return self._err("Introuvable", 404)
+                return self._err(tr("Introuvable", "Not found"), 404)
             nom, action = parts[2], parts[3]
             p = _project(nom)
             if action == "run":
                 data = json.loads(self._body() or b"{}")
                 cmd, args = data.get("cmd"), data.get("args") or []
                 if cmd not in COMMANDS:
-                    raise ValueError(f"Commande non autorisée : {cmd}")
+                    raise ValueError(tr(f"Commande non autorisée : {cmd}", f"Command not allowed: {cmd}"))
                 i = 0
                 while i < len(args):
                     a = args[i]
                     if a not in COMMANDS[cmd]:
-                        raise ValueError(f"Argument non autorisé : {a}")
+                        raise ValueError(tr(f"Argument non autorisé : {a}", f"Argument not allowed: {a}"))
                     if a in ARG_VALUES:                       # l'option attend une valeur
                         if i + 1 >= len(args) or not ARG_VALUES[a].match(str(args[i + 1])):
-                            raise ValueError(f"Valeur invalide pour {a}")
+                            raise ValueError(tr(f"Valeur invalide pour {a}", f"Invalid value for {a}"))
                         i += 1
                     i += 1
                 JOB.start(nom, cmd, args)
@@ -371,8 +381,12 @@ class Handler(BaseHTTPRequestHandler):
                 cfg = _cfg(p)
                 data = json.loads(self._body() or b"{}")
                 from .cli import WHISPER
+                from .i18n import LANGUES
                 if "whisper" in data and data["whisper"] not in WHISPER:
-                    raise ValueError(f"Modèle Whisper inconnu : {data['whisper']}")
+                    raise ValueError(tr(f"Modèle Whisper inconnu : {data['whisper']}",
+                                        f"Unknown Whisper model: {data['whisper']}"))
+                if "langue" in data and data["langue"] not in LANGUES:
+                    raise ValueError(tr(f"Langue inconnue : {data['langue']}", f"Unknown language: {data['langue']}"))
                 cfg.update(data)
                 _save_cfg(p, cfg)
                 return self._json({"ok": True})
@@ -381,7 +395,8 @@ class Handler(BaseHTTPRequestHandler):
                 m = re.search(r"\{.*\}", txt, re.S)            # tolère ```json … ``` autour
                 data = json.loads(m.group(0) if m else txt)
                 if not isinstance(data, dict):
-                    raise ValueError("Le JSON doit être un objet {\"p1_c1\": \"…\"}")
+                    raise ValueError(tr("Le JSON doit être un objet {\"p1_c1\": \"…\"}",
+                                        "The JSON must be an object {\"p1_c1\": \"…\"}"))
                 (p / "build").mkdir(exist_ok=True)
                 f = p / "build" / "descriptions.json"
                 old = json.loads(_read(f, "{}"))
@@ -394,14 +409,14 @@ class Handler(BaseHTTPRequestHandler):
                 name = q.get("f", "")
                 f = p / "build" / "historique" / name
                 if not re.match(r"^projet_\d{8}_\d{6}\.json$", name) or not f.is_file():
-                    raise ValueError("Version introuvable")
+                    raise ValueError(tr("Version introuvable", "Version not found"))
                 from .cli import _save
                 _save(p, json.loads(f.read_text(encoding="utf-8-sig")), garder=True)
                 return self._json({"ok": True})
             if action == "retirer-clip":
                 pid = q.get("id", "")
                 if not re.match(r"^(p\d+_c\d+|solo\d+)$", pid, re.I):
-                    raise ValueError("Identifiant invalide")
+                    raise ValueError(tr("Identifiant invalide", "Invalid identifier"))
                 for f in (p / "videos").glob(f"{pid.lower()}.*"):
                     f.unlink()
                 return self._json({"ok": True})
@@ -409,24 +424,26 @@ class Handler(BaseHTTPRequestHandler):
                 name = Path(q.get("nom", "")).name              # nom seul : pas de chemin
                 f = (p / "build" / name).resolve()
                 if not re.match(r"^[\w\-. ]+\.mp4$", name) or f.parent != (p / "build").resolve() or not f.is_file():
-                    raise ValueError("Vidéo introuvable")
+                    raise ValueError(tr("Vidéo introuvable", "Video not found"))
                 if action == "reveler":                          # explorateur avec le fichier sélectionné
                     _ouvrir(f, montrer=True)
                 else:
                     if JOB.running() and JOB.nom == p.name:
-                        raise ValueError("Un rendu est en cours sur ce projet : attends la fin")
+                        raise ValueError(tr("Un rendu est en cours sur ce projet : attends la fin",
+                                            "A render is running on this project: wait until it ends"))
                     try:
                         f.unlink()
                     except PermissionError:
-                        raise ValueError("La vidéo est encore ouverte (lecteur vidéo ?) : ferme-la puis réessaie")
+                        raise ValueError(tr("La vidéo est encore ouverte (lecteur vidéo?) : ferme-la puis réessaie",
+                                            "The video is still open (video player?): close it and try again"))
                 return self._json({"ok": True})
             if action == "ouvrir":
                 f = (p / q.get("chemin", "")).resolve()
                 if f != p.resolve() and p.resolve() not in f.parents:
-                    raise ValueError("Accès refusé")
+                    raise ValueError(tr("Accès refusé", "Access denied"))
                 _ouvrir(f)                                # explorateur / lecteur vidéo du système
                 return self._json({"ok": True})
-            self._err("Action inconnue", 404)
+            self._err(tr("Action inconnue", "Unknown action"), 404)
         except (ValueError, FileNotFoundError, RuntimeError, json.JSONDecodeError, OSError) as e:
             self._err(e)
 
@@ -474,7 +491,7 @@ class Handler(BaseHTTPRequestHandler):
                 old.unlink()
             (d / f"{pid.lower()}{ext}").write_bytes(data)
         else:
-            raise ValueError("Type de fichier non accepté ici")
+            raise ValueError(tr("Type de fichier non accepté ici", "File type not accepted here"))
         _save_cfg(p, cfg)
         return self._json({"ok": True})
 
@@ -499,16 +516,18 @@ def serve(open_browser=True):
                     perime = json.loads(r.read()).get("perime")
             except Exception:
                 continue
-            print(f"Clip Studio tourne déjà : {url}")
+            print(tr(f"Clip Studio tourne déjà : {url}", f"Clip Studio is already running: {url}"))
             if perime:
-                print("⚠ Il tourne avec une ancienne version du code : ferme son autre fenêtre noire, puis relance.")
+                print(tr("⚠ Il tourne avec une ancienne version du code : ferme son autre fenêtre, puis relance.",
+                         "⚠ It is running an older version of the code: close its other window, then restart."))
             if open_browser:
                 webbrowser.open(url)
             return
     if srv is None:
-        print(f"Aucun port libre entre {PORT} et {PORT + 9}.")
+        print(tr(f"Aucun port libre entre {PORT} et {PORT + 9}.", f"No free port between {PORT} and {PORT + 9}."))
         return
-    print(f"Clip Studio : {url}\nGarder cette fenêtre ouverte ; la fermer arrête Clip Studio.")
+    print(tr(f"Clip Studio : {url}\nGarde cette fenêtre ouverte : la fermer arrête Clip Studio.",
+             f"Clip Studio: {url}\nKeep this window open: closing it stops Clip Studio."))
     if open_browser:
         threading.Timer(0.8, lambda: webbrowser.open(url)).start()
     try:
