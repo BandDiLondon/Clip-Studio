@@ -41,7 +41,7 @@ set "FFOK="
 where ffmpeg >nul 2>&1 && set "FFOK=1"
 if exist "tools\ffmpeg\bin\ffmpeg.exe" set "FFOK=1"
 if not defined FFOK (
-  echo [3/5] ffmpeg introuvable : telechargement de ffmpeg 8.0.1 (build gyan.dev)...
+  echo [3/5] ffmpeg introuvable : telechargement de ffmpeg 8.0.1 depuis gyan.dev...
   powershell -NoProfile -Command "$ErrorActionPreference='Stop'; [Net.ServicePointManager]::SecurityProtocol='Tls12'; $z=Join-Path $env:TEMP 'ffmpeg.zip'; $t=Join-Path $env:TEMP 'ffmpeg_x'; Invoke-WebRequest 'https://github.com/GyanD/codexffmpeg/releases/download/8.0.1/ffmpeg-8.0.1-essentials_build.zip' -OutFile $z; if ((Get-FileHash $z -Algorithm SHA256).Hash -ne 'e2aaeaa0fdbc397d4794828086424d4aaa2102cef1fb6874f6ffd29c0b88b673') { Remove-Item $z; throw 'Fichier telecharge corrompu ou modifie (empreinte SHA256 incorrecte)' }; if (Test-Path $t) { Remove-Item $t -Recurse -Force }; Expand-Archive $z -DestinationPath $t; $b=(Get-ChildItem $t -Recurse -Filter ffmpeg.exe | Select-Object -First 1).DirectoryName; New-Item -ItemType Directory -Force 'tools\ffmpeg\bin' | Out-Null; Copy-Item (Join-Path $b '*') 'tools\ffmpeg\bin' -Force; Remove-Item $z, $t -Recurse -Force"
   if not exist "tools\ffmpeg\bin\ffmpeg.exe" (echo Echec du telechargement de ffmpeg & pause & exit /b 1)
 )

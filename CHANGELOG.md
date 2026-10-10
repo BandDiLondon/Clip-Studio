@@ -5,6 +5,12 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; numéros de 
 
 ## [Non publié]
 
+## [1.3.6] - 2026-10-10
+
+### Corrigé
+- `Installer.bat` (1.3.5) : l'installation s'arrêtait à l'étape ffmpeg (« ... était inattendu ») quand ffmpeg
+  n'était pas déjà installé, à cause de parenthèses dans un message.
+
 ## [1.3.5] - 2026-10-10
 
 ### Sécurité
