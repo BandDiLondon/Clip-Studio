@@ -7,6 +7,8 @@ import json
 import re
 import unicodedata
 
+from . import ecrire
+
 # grille (colonnes, rangées) selon le nombre de vignettes de la planche → ratio de l'image complète
 GRIDS = {6: (2, 3), 4: (2, 2), 2: (1, 2), 1: (1, 1)}
 RATIOS = {(2, 3): "32:27 (2048×1728 ou 1536×1296)", (2, 2): "16:9 (2048×1152)",
@@ -57,7 +59,7 @@ def build(lines, dedupe=True, ambiance=0):
 
 
 def save(sl, path):
-    path.write_text(json.dumps(sl, indent=1, ensure_ascii=False), encoding="utf-8")
+    ecrire(path, json.dumps(sl, indent=1, ensure_ascii=False))
 
 
 def load(path):

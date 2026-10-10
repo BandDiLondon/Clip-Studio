@@ -13,7 +13,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
-from . import PROJETS, ROOT
+from . import PROJETS, ROOT, ecrire
 
 HERE = Path(__file__).resolve().parent / "web"
 PORT = 8765
@@ -382,7 +382,7 @@ class Handler(BaseHTTPRequestHandler):
                 f = p / "build" / "descriptions.json"
                 old = json.loads(_read(f, "{}"))
                 old.update(data)
-                f.write_text(json.dumps(old, indent=1, ensure_ascii=False), encoding="utf-8")
+                ecrire(f, json.dumps(old, indent=1, ensure_ascii=False))
                 return self._json({"ok": True, "n": len([k for k in data if not k.startswith("_")])})
             if action == "upload":
                 return self._upload(p, q)

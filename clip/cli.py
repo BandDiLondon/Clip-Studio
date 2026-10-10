@@ -7,7 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from . import PROJETS
+from . import PROJETS, ecrire
 from .demandes import A_DECRIRE, REFAIRE, SOLOS, VIDEOS
 
 FONT_CANDIDATES = [
@@ -188,7 +188,7 @@ def _save(p, cfg, garder=False):
                 (h / name).write_text(old, encoding="utf-8")
             for x in sorted(h.glob("projet_*.json"))[:-HISTO_MAX]:
                 x.unlink()
-    f.write_text(txt, encoding="utf-8")
+    ecrire(f, txt)
 
 
 def _fsig(f):
@@ -345,7 +345,7 @@ def cmd_align(args):
         if t0 > 0:                                # début du chant : avant la réparation automatique
             force_start(data["segments"], t0)
         print(f"  réparation : {repair(data['segments'], t0)} mot(s) recollé(s)")
-        f.write_text(json.dumps(data, indent=1, ensure_ascii=False), encoding="utf-8")
+        ecrire(f, json.dumps(data, indent=1, ensure_ascii=False))
         new = _sig(p, cfg, "paroles")             # même mp3 et mêmes paroles : seul le début du chant a bougé
         if (cfg.get("paroles_sig") or "").rsplit("|", 1)[0] == new.rsplit("|", 1)[0]:
             cfg["paroles_sig"] = new
@@ -471,7 +471,7 @@ def cmd_describe(args):
     desc.update(got)
     if isinstance(data.get("_personnages"), dict) and not pers_dict:
         desc["_personnages"] = data["_personnages"]
-    fj.write_text(json.dumps(desc, indent=1, ensure_ascii=False), encoding="utf-8")
+    ecrire(fj, json.dumps(desc, indent=1, ensure_ascii=False))
     for i in sorted(got):
         print(f"  {i} : {got[i][:110]}{'…' if len(got[i]) > 110 else ''}")
     if missing:

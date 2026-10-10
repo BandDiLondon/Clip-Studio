@@ -6,8 +6,10 @@
 [![Dernière version](https://img.shields.io/github/v/release/BandDiLondon/Clip-Studio)](../../releases/latest)
 [![Licence GPLv3](https://img.shields.io/badge/licence-GPLv3-blue)](LICENSE)
 
-Clip Studio fabrique des clips musicaux illustrés à partir d'une chanson (mp3) et de ses paroles (txt). Tout tourne en local,
-sous **Windows** ou **Linux**.
+Clip Studio fabrique des clips musicaux illustrés à partir d'une chanson (mp3) et de ses paroles (txt). Le traitement tourne en
+local, sous **Windows** ou **Linux** : alignement des paroles, découpe des images, montage et rendu. Seuls les outils
+que tu choisis d'utiliser passent par Internet : le générateur d'images ou de vidéos, et Claude si tu cliques sur un
+bouton « ✨ … avec Claude ».
 
 ![Une image d'un clip réalisé avec Clip Studio : la scène illustre le vers chanté, les paroles s'affichent en karaoké mot à mot](docs/images/clip-karaoke.jpg)
 <sub>Une image du clip « Henry » (KPR) : la scène illustre le vers chanté, le mot en cours est surligné.</sub>

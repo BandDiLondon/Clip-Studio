@@ -226,6 +226,23 @@ class Import(unittest.TestCase):
             importlib.import_module(f"clip.{m}")
 
 
+class Ecriture(unittest.TestCase):
+    def test_ecriture_atomique(self):
+        # projet.json & co : une écriture interrompue laisse l'ancienne version intacte
+        from unittest import mock
+        from clip import ecrire
+        with tempfile.TemporaryDirectory() as d:
+            f = Path(d) / "projet.json"
+            ecrire(f, '{"v": 1}')
+            ecrire(f, '{"v": 2}')
+            self.assertEqual(f.read_text(encoding="utf-8"), '{"v": 2}')
+            self.assertEqual([x.name for x in Path(d).iterdir()], ["projet.json"])   # pas de .tmp qui traîne
+            with mock.patch("os.replace", side_effect=OSError("coupure")):
+                with self.assertRaises(OSError):
+                    ecrire(f, '{"v": 3}')
+            self.assertEqual(f.read_text(encoding="utf-8"), '{"v": 2}')
+
+
 class Console(unittest.TestCase):
     def test_sortie_redirigee_cp1252(self):
         # sortie redirigée sous Windows (cp1252) : « → » ne doit pas faire planter la commande

@@ -5,6 +5,14 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; numéros de 
 
 ## [Non publié]
 
+### Corrigé
+- `projet.json`, les descriptions, l'alignement des paroles (`words.json`) et la liste d'images sont écrits d'un
+  coup (fichier temporaire puis remplacement) : une coupure pendant l'écriture laisse l'ancienne version intacte au
+  lieu d'un fichier vide.
+
+### Modifié
+- README : précise ce qui tourne en local et ce qui passe par Internet (générateur d'images, Claude).
+
 ## [1.3.7] - 2026-10-10
 
 ### Sécurité

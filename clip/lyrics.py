@@ -2,6 +2,8 @@
 import json
 import re
 
+from . import ecrire
+
 SECTION_RE = re.compile(r"^\s*\[(.+?)\]\s*$")
 
 
@@ -247,7 +249,7 @@ def align(audio_path, lyrics_path, out_path, model_name="medium", language="fr",
     if debut_chant > 0:                          # avant la réparation automatique
         force_start(segments, debut_chant)
     print(f"  réparation : {repair(segments, debut_chant)} mot(s) recollé(s)")
-    out_path.write_text(json.dumps({"segments": segments}, indent=1, ensure_ascii=False), encoding="utf-8")
+    ecrire(out_path, json.dumps({"segments": segments}, indent=1, ensure_ascii=False))
 
     doubtful = [(w, s, p) for w, s, e, p in aligned if p < 0.3 or e - s < 0.05]
     print(f"  → {out_path.name} : {len(segments)} vers, {len(aligned)} mots, {len(doubtful)} douteux")
