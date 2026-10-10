@@ -9,6 +9,15 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; numéros de 
 - `setuptools` 83.0.0 (au lieu de 78.1.0) : corrige deux failles signalées par Dependabot, qui ne touchaient pas
   Clip Studio (fonctions non utilisées).
 
+### Ajouté
+- `Installer.bat` s'arrête avec un message clair si le dossier de Clip Studio a un chemin trop long pour Windows
+  (plus de 100 caractères, sauf si les chemins longs sont activés), au lieu d'échouer au milieu de l'installation.
+- Tests automatiques sous Windows et Linux sur GitHub à chaque envoi et à chaque pull request.
+
+### Corrigé
+- Les commandes ne plantent plus quand leur sortie est redirigée vers un fichier sous Windows (caractères comme
+  « → » impossibles à écrire en cp1252).
+
 ## [1.3.6] - 2026-10-10
 
 ### Corrigé

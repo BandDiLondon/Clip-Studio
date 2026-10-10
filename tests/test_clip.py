@@ -226,6 +226,17 @@ class Import(unittest.TestCase):
             importlib.import_module(f"clip.{m}")
 
 
+class Console(unittest.TestCase):
+    def test_sortie_redirigee_cp1252(self):
+        # sortie redirigée sous Windows (cp1252) : « → » ne doit pas faire planter la commande
+        import os
+        import subprocess
+        import sys
+        r = subprocess.run([sys.executable, "-c", "import clip; print('vers → 1.0 s ✨')"], capture_output=True,
+                           env={**os.environ, "PYTHONIOENCODING": "cp1252", "PYTHONUTF8": "0"})
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+
 class Claude(unittest.TestCase):
     def test_appel_allege(self):
         # appel sans outils, connecteurs ni réglages (surcoût de ~34 000 tokens par appel sinon)

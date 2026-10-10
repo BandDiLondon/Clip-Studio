@@ -2,6 +2,10 @@
 
 # Clip Studio
 
+[![Tests](https://github.com/BandDiLondon/Clip-Studio/actions/workflows/tests.yml/badge.svg)](https://github.com/BandDiLondon/Clip-Studio/actions/workflows/tests.yml)
+[![Dernière version](https://img.shields.io/github/v/release/BandDiLondon/Clip-Studio)](../../releases/latest)
+[![Licence GPLv3](https://img.shields.io/badge/licence-GPLv3-blue)](LICENSE)
+
 Clip Studio fabrique des clips musicaux illustrés à partir d'une chanson (mp3) et de ses paroles (txt). Tout tourne en local,
 sous **Windows** ou **Linux**.
 

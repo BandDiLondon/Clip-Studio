@@ -1,0 +1,9 @@
+# Mises à jour des actions GitHub (checkout, setup-python) une fois par mois.
+# Les bibliothèques Python restent figées aux versions testées : seules les failles de sécurité
+# déclenchent une proposition de mise à jour (« Dependabot security updates »).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

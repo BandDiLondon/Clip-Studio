@@ -8,6 +8,16 @@ echo   Installation de Clip Studio (Windows 10/11)
 echo ==============================================
 echo.
 
+rem ---------- Chemin du dossier : Windows limite un chemin a 260 caracteres et les bibliotheques en ajoutent ~150
+if "%CD:~100,1%"=="" goto chemin_ok
+reg query "HKLM\SYSTEM\CurrentControlSet\Control\FileSystem" /v LongPathsEnabled 2>nul | find "0x1" >nul && goto chemin_ok
+echo Le dossier de Clip Studio a un chemin trop long pour Windows :
+echo   %CD%
+echo Deplace le dossier Clip-Studio plus pres de la racine, par exemple C:\Clip-Studio, puis relance Installer.bat.
+pause
+exit /b 1
+:chemin_ok
+
 rem ---------- 1. Python 3.12 (installation par utilisateur, sans droits administrateur ni redemarrage)
 set "PYLOCAL=%LOCALAPPDATA%\Programs\Python\Python312\python.exe"
 set "USEPY="

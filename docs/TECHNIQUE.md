@@ -211,7 +211,8 @@ Le même code tourne sur les deux systèmes :
 
 ## Tests, captures, versions
 - **Tests** : `python -m unittest` (dans `tests/`, moins de 1 s). À lancer après toute modification ; ajouter un test pour
-  tout bug de logique corrigé (shotlist, paroles, montage, empreintes, découpe).
+  tout bug de logique corrigé (shotlist, paroles, montage, empreintes, découpe). Sur GitHub, l'action « Tests » les
+  lance sous Windows et Linux à chaque envoi sur `main` et à chaque pull request.
 - **Captures du README** : `python scripts/captures.py [projet]`. Le script travaille sur une copie temporaire du projet ;
   `?sel=p1_c3` dans l'adresse présélectionne une image à l'étape Vidéos.
 - **Versions** :
