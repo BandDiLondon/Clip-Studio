@@ -9,7 +9,8 @@ body:
         **Dépannage** du [guide](../blob/main/docs/GUIDE.md). Écris en français ou en anglais.
 
         Thanks! Personal project: answers come on a best-effort basis, with no guaranteed delay. Before sending, check the
-        **Troubleshooting** section of the [guide](../blob/main/docs/GUIDE.en.md). Write in English or French.
+        **Troubleshooting** section of the [guide](../blob/main/docs/GUIDE.en.md). Write in English or French (the author is more at
+        ease in French).
   - type: input
     id: version
     attributes:

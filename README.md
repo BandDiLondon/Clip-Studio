@@ -17,8 +17,9 @@ anglais**.
 ![Une image d'un clip réalisé avec Clip Studio : la scène illustre le vers chanté, les paroles s'affichent en karaoké mot à mot](docs/images/clip-karaoke.jpg)
 <sub>Une image du clip « Henry » (KPR) : la scène illustre le vers chanté, le mot en cours est surligné.</sub>
 
-> **Projet personnel**, partagé tel quel : l'aide est apportée au mieux, sans délai garanti. Pour signaler un
-> problème, ouvre une [issue](../../issues) en indiquant ton système, la version de Clip Studio et le message d'erreur.
+> **Projet personnel**, partagé tel quel : l'aide est apportée au mieux, sans délai garanti. Le français est la langue
+> d'origine de Clip Studio; la version anglaise en est une traduction. Pour signaler un problème, ouvre une
+> [issue](../../issues) en indiquant ton système, la version de Clip Studio et le message d'erreur.
 
 - Chaque vers unique a son image. Les images sont générées par **planches** (6 cases par image générée) pour limiter les générations IA.
 - Les paroles s'affichent en **karaoké mot à mot**, grâce à un alignement automatique (Whisper / stable-ts), pour des
