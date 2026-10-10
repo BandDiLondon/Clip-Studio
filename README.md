@@ -8,6 +8,10 @@ sous **Windows** ou **Linux**.
 ![Une image d'un clip réalisé avec Clip Studio : la scène illustre le vers chanté, les paroles s'affichent en karaoké mot à mot](docs/images/clip-karaoke.jpg)
 <sub>Une image du clip « Henry » (KPR) : la scène illustre le vers chanté, le mot en cours est surligné.</sub>
 
+> **Projet personnel**, partagé tel quel : l'interface et la documentation sont en français, et l'aide est apportée au
+> mieux, sans délai garanti. Pour signaler un problème, ouvre une [issue](../../issues) en indiquant ton système, la
+> version de Clip Studio et le message d'erreur.
+
 - Chaque vers unique a son image. Les images sont générées par **planches** (6 cases par image générée) pour limiter les générations IA.
 - Les paroles s'affichent en **karaoké mot à mot**, grâce à un alignement automatique (Whisper / stable-ts).
 - Le montage est calé sur les **beats** détectés.
@@ -15,6 +19,12 @@ sous **Windows** ou **Linux**.
 - Des **vidéos** de ~10 s (Flow, Veo…) peuvent remplacer n'importe quelle image.
 - Une centaine de réglages sont disponibles : caméra, looks, particules, fumée, feu, éclairs, transitions, parallaxe 3D, formats 16:9 / 4K / 9:16 / 1:1…
 - Claude (Claude Code, avec un abonnement Claude Pro/Max) peut rédiger, **uniquement quand tu cliques sur un bouton** : descriptions de scènes, évaluation du storyboard, prompts de solos et de vidéos, titre et description YouTube.
+  Ces appels sont conçus pour **ménager ta limite d'utilisation** :
+  - appel « nu » : sans outils, connecteurs ni réglages de Claude Code, depuis un dossier vide. Environ **700 tokens**
+    de contexte par appel au lieu de ~34 500 (mesuré), pour la même réponse ;
+  - une seule demande pour toutes les images à décrire, et seulement celles qui n'ont pas encore de description (ou
+    celles que tu choisis de refaire) ;
+  - des demandes courtes en texte seul, avec des réponses en JSON directement utilisées par Clip Studio.
 
 ## Installation
 
@@ -26,8 +36,10 @@ seulement les fichiers utiles (`…-Windows.zip` ou `…-Linux.zip`). Puis déco
 Double-cliquer sur **`Installer.bat`**. Il installe, si besoin, sans droits administrateur ni redémarrage :
 - Python 3.12 (python.org) ;
 - l'environnement `.venv` et les bibliothèques, aux versions testées ;
-- ffmpeg (dans `tools\ffmpeg`) ;
+- ffmpeg 8.0.1 (dans `tools\ffmpeg`) ;
 - Real-ESRGAN (dans `tools\realesrgan`).
+
+Chaque fichier téléchargé est vérifié par son empreinte SHA256 avant d'être utilisé.
 
 ### Linux (Ubuntu 24.04, Debian et dérivés ; WSL compris)
 ```

@@ -46,6 +46,7 @@ if [ ! -x tools/realesrgan/realesrgan-ncnn-vulkan ]; then
   mkdir -p tools/realesrgan
   z=$(mktemp --suffix=.zip)
   curl -fL -o "$z" https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesrgan-ncnn-vulkan-20220424-ubuntu.zip
+  echo "e5aa6eb131234b87c0c51f82b89390f5e3e642b7b70f2b9bbe95b6a285a40c96  $z" | sha256sum -c --quiet     || { rm -f "$z"; echo "Fichier téléchargé corrompu ou modifié (empreinte SHA256 incorrecte)"; exit 1; }
   "$PY" -m zipfile -e "$z" tools/realesrgan
   rm -f "$z"
   chmod +x tools/realesrgan/realesrgan-ncnn-vulkan

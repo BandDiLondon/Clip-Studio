@@ -29,7 +29,7 @@ Clip Studio.bat / clip-studio.sh ──► python -m clip web ──► clip/web
 | Module | Rôle |
 |---|---|
 | `clip/cli.py` | commandes, modèle de `projet.json` (`PROJET_TEMPLATE`), empreintes (périmé ?), historique |
-| `clip/web.py` | serveur local : état d'un projet (`status`), liste blanche de commandes et d'arguments, dépôts de fichiers |
+| `clip/web.py` | serveur local : état d'un projet (`status`), liste blanche de commandes et d'arguments, dépôts de fichiers ; refuse les requêtes dont `Host` ou `Origin` n'est pas 127.0.0.1 / localhost (`_etranger`) |
 | `clip/web/app.js` | interface : une fonction de rendu par étape (`V.<étape>`), préréglages (`PRESETS`), options |
 | `clip/audio.py` | tempo et beats |
 | `clip/lyrics.py` | lecture des paroles, alignement mot à mot (stable-ts), réparation |

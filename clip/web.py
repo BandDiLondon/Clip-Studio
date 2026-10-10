@@ -275,12 +275,25 @@ class Handler(BaseHTTPRequestHandler):
         except (ConnectionResetError, BrokenPipeError, ConnectionAbortedError):
             pass
 
+    def _etranger(self):
+        """Refuse une requête venue d'un autre site : Host autre que 127.0.0.1 / localhost (rebinding DNS)
+        ou Origin étranger (page web qui viserait le serveur local)."""
+        port = self.server.server_address[1]
+        hotes = {f"127.0.0.1:{port}", f"localhost:{port}"}
+        origine = self.headers.get("Origin")
+        if (self.headers.get("Host") or "").lower() not in hotes or                 (origine is not None and origine.lower() not in {f"http://{h}" for h in hotes}):
+            self._err("Requête refusée : elle ne vient pas de Clip Studio", 403)
+            return True
+        return False
+
     def _parts(self):
         u = urlparse(self.path)
         return [unquote(x) for x in u.path.strip("/").split("/") if x], \
             {k: v[0] for k, v in parse_qs(u.query).items()}
 
     def do_GET(self):
+        if self._etranger():
+            return
         parts, _ = self._parts()
         try:
             if not parts:
@@ -314,6 +327,8 @@ class Handler(BaseHTTPRequestHandler):
             self._err(e, 404)
 
     def do_POST(self):
+        if self._etranger():
+            return
         parts, q = self._parts()
         try:
             if parts == ["api", "projets"]:

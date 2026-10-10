@@ -244,6 +244,31 @@ class Web(unittest.TestCase):
         self.assertFalse(ARG_VALUES["--out"].match("..\\x.mp4"))
         self.assertTrue(ARG_VALUES["--out"].match("aveuglement_v2.mp4"))
 
+    def test_requetes_etrangeres_refusees(self):
+        # une page web d'un autre site ne doit pas piloter le serveur local (Origin, rebinding DNS)
+        import http.client
+        import threading
+        from clip.web import Handler, Server
+        srv = Server(("127.0.0.1", 0), Handler)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        port = srv.server_address[1]
+
+        def statut(methode, entetes):
+            c = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+            c.request(methode, "/api/version", body=b"{}" if methode == "POST" else None, headers=entetes)
+            code = c.getresponse().status
+            c.close()
+            return code
+        try:
+            self.assertEqual(statut("GET", {}), 200)
+            self.assertEqual(statut("GET", {"Host": f"localhost:{port}"}), 200)
+            self.assertEqual(statut("GET", {"Host": f"pirate.example:{port}"}), 403)
+            self.assertEqual(statut("POST", {"Origin": "https://pirate.example"}), 403)
+            self.assertNotEqual(statut("POST", {"Origin": f"http://127.0.0.1:{port}"}), 403)
+        finally:
+            srv.shutdown()
+            srv.server_close()
+
 
 if __name__ == "__main__":
     unittest.main()

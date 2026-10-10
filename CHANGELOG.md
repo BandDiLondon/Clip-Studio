@@ -5,6 +5,16 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) ; numéros de 
 
 ## [Non publié]
 
+### Sécurité
+- Serveur local : les requêtes venues d'un autre site (en-tête `Host` ou `Origin` étranger) sont refusées. Une page
+  web ouverte en même temps ne peut plus piloter Clip Studio.
+- Installateurs : chaque fichier téléchargé (Python, ffmpeg, Real-ESRGAN) est vérifié par son empreinte SHA256.
+
+### Modifié
+- `Installer.bat` installe ffmpeg 8.0.1 (version testée) au lieu de la dernière version publiée.
+- README : les mesures qui limitent l'usage de tokens de Claude sont expliquées, ainsi que le cadre du projet (projet
+  personnel, aide apportée au mieux).
+
 ## [1.3.4] - 2026-10-10
 
 ### Corrigé
