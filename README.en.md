@@ -16,6 +16,9 @@ tools you choose to use go through the Internet: the image or video generator, a
 ![A frame from a video made with Clip Studio: the scene illustrates the sung line, the lyrics are shown as word-by-word karaoke](docs/images/clip-karaoke.jpg)
 <sub>A frame from the video "Henry" (KPR): the scene illustrates the sung line, the current word is highlighted.</sub>
 
+**▶ See examples**: [the "KPR -AI" playlist on YouTube](https://www.youtube.com/playlist?list=PLHgAJPY_7kjI), complete
+videos made with Clip Studio (original songs by KPR, reinterpreted as AI versions; lyrics in Quebec French).
+
 > **Personal project**, shared as is: help is given on a best-effort basis, with no guaranteed delay. The author is a
 > French speaker (Quebec): French is the original language of Clip Studio, the English texts are translations. To
 > report a problem, open an [issue](../../issues) with your system, the Clip Studio version and the error message.
