@@ -160,9 +160,12 @@ to the next; all effects are off by default.
 - **Beats** (`audio.py`): tempo estimated by tempogram, "octave family" brought between 72 and 144 BPM, then tracked by
   dynamic programming with a local period.
 - **Alignment** (`lyrics.py`): stable-ts forced alignment (Whisper medium, CPU, ~4.7 GB of memory at most; small:
-  ~1.7 GB) on the known lyrics, in the project language, never a free transcription. Repair: isolated words re-attached
-  to their line, a line lost in the intro realigned before the next one of the same section (rhythm of the same line
-  sung elsewhere), `force_start` for `debut_chant`.
+  ~1.7 GB) on the known lyrics, in the project language. **Section alignment** when lines are missed (`bad_lines`:
+  half of the words or more last under 0.06 s, or are not placed): free transcription of the song (used only to locate
+  the sections), matching of the lyrics words to the heard ones (`match_windows`, sequence alignment, close words
+  accepted), then forced alignment of each section alone in its window; kept only if it misses fewer lines (about
+  1.5 min more with medium). Repair: isolated words re-attached to their line, a line lost in the intro realigned
+  before the next one of the same section (rhythm of the same line sung elsewhere), `force_start` for `debut_chant`.
 - **Cutting** (`panels.py`): gutters detected at the 90th percentile (strict threshold 12, then 30), 1.5% margin,
   Real-ESRGAN ×4 capped at 2560 px. Without Vulkan or without the binary: Lanczos upscaling with a warning (never
   blocking). Retouches ≥ 1400 px are not upscaled.

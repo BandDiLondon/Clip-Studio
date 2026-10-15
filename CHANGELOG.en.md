@@ -7,6 +7,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version number
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-10-14
+
+### Fixed
+- Lyrics alignment: when the global alignment misses lines (several lines squeezed into an instant after a long intro
+  or a solo), Clip Studio listens to the song, locates each section and aligns it separately.
+- The alignment repair was applied twice (while printing its message).
+
 ## [1.4.0] - 2026-10-10
 
 ### Added

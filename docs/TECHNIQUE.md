@@ -157,8 +157,13 @@ Conservés d'un rendu à l'autre; tous les effets sont désactivés par défaut.
 - **Beats** (`audio.py`) : tempo estimé par tempogramme, « famille d'octaves » ramenée entre 72 et 144 BPM, puis suivi
   par programmation dynamique à période locale.
 - **Alignement** (`lyrics.py`) : alignement forcé stable-ts (Whisper medium, CPU, ~4,7 Go de mémoire au maximum; small :
-  ~1,7 Go) sur les paroles connues, dans la langue du projet, jamais une transcription libre. Réparation : mots isolés recollés au vers, vers perdu dans l'intro
-  recalé avant le suivant de la même section (rythme du même vers chanté ailleurs), `force_start` pour `debut_chant`.
+  ~1,7 Go) sur les paroles connues, dans la langue du projet. **Calage par sections** si des vers sont ratés
+  (`bad_lines` : la moitié des mots ou plus durent moins de 0,06 s, ou non placés) : transcription libre de la chanson
+  (servant seulement à situer les sections), appariement des mots des paroles à ceux entendus (`match_windows`,
+  alignement de séquences, mots proches acceptés), puis alignement forcé de chaque section seule dans sa fenêtre; gardé
+  seulement s'il rate moins de vers (environ 1,5 min de plus en medium). Réparation : mots isolés recollés au vers, vers
+  perdu dans l'intro recalé avant le suivant de la même section (rythme du même vers chanté ailleurs), `force_start`
+  pour `debut_chant`.
 - **Découpe** (`panels.py`) : gouttières détectées au 90e percentile (seuil strict 12, puis 30), marge de 1,5 %,
   Real-ESRGAN ×4 plafonné à 2560 px. Sans Vulkan ou sans binaire : agrandissement Lanczos avec avertissement
   (jamais bloquant). Retouches ≥ 1400 px non agrandies.

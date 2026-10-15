@@ -225,6 +225,127 @@ def force_start(segments, t0):
     return moved
 
 
+SHORT = 0.06        # mot plus court que ça : écrasé par l'alignement
+SQUASHED = 0.5      # part de mots écrasés au-delà de laquelle un vers est raté
+
+
+def bad_lines(segments):
+    """Indices des vers ratés par l'alignement global : non placés, ou dont la majorité des mots sont écrasés
+    (durée quasi nulle, typiquement plusieurs vers tassés au même instant)."""
+    bad = []
+    for i, seg in enumerate(segments):
+        ws = [w for w in seg["words"] if _norm(w["w"])]
+        if not ws:
+            continue
+        if any(w["s"] is None for w in ws) or \
+                sum(w["e"] - w["s"] < SHORT for w in ws) >= SQUASHED * len(ws):
+            bad.append(i)
+    return bad
+
+
+def _norm(w):
+    """Mot comparable : minuscules, sans accents ni ponctuation (« Ayoye, » → « ayoye »)."""
+    import unicodedata
+    w = unicodedata.normalize("NFKD", w.lower())
+    return "".join(c for c in w if c.isalnum())
+
+
+def blocks(lines):
+    """Sections consécutives : [[indices des vers]]. Une étiquette répétée plus loin (refrain) ouvre un
+    nouveau bloc; sans étiquette, chaque vers est son propre bloc."""
+    out, prev = [], object()
+    for i, (sec, _) in enumerate(lines):
+        if sec is None or sec != prev:
+            out.append([])
+        out[-1].append(i)
+        prev = sec
+    return out
+
+
+def match_windows(lines, heard, duration, debut_chant=0, margin=1.5):
+    """Fenêtre (début, fin) de chaque bloc de vers, d'après une transcription libre `heard` [(mot, début, fin)].
+    Les mots des paroles et ceux entendus sont appariés dans l'ordre (alignement de séquences, mots proches
+    acceptés); un bloc sans mot reconnu prend l'espace libre entre ses voisins. Retourne [(début, fin)] par bloc."""
+    from difflib import SequenceMatcher
+    lw = [(li, _norm(tok)) for li, (_, text) in enumerate(lines) for tok in text.split() if _norm(tok)]
+    hw = [(_norm(w), s, e) for w, s, e in heard if _norm(w)]
+    n, m = len(lw), len(hw)
+    gap = 0.4
+
+    def sim(a, b):
+        return 1.0 if a == b else SequenceMatcher(None, a, b).ratio()
+
+    # programmation dynamique (Needleman-Wunsch) : +sim pour un appariement, −gap pour un mot sauté
+    score = [[0.0] * (m + 1) for _ in range(n + 1)]
+    for i in range(1, n + 1):
+        score[i][0] = -gap * i
+    for j in range(1, m + 1):
+        score[0][j] = -gap * j
+    for i in range(1, n + 1):
+        a = lw[i - 1][1]
+        row, prev = score[i], score[i - 1]
+        for j in range(1, m + 1):
+            row[j] = max(prev[j - 1] + 2 * sim(a, hw[j - 1][0]) - 1, prev[j] - gap, row[j - 1] - gap)
+    times = {}                                   # vers → [instants des mots reconnus]
+    i, j = n, m
+    while i > 0 and j > 0:
+        s = sim(lw[i - 1][1], hw[j - 1][0])
+        if score[i][j] == score[i - 1][j - 1] + 2 * s - 1:
+            if s >= 0.6:
+                times.setdefault(lw[i - 1][0], []).extend(hw[j - 1][1:])
+            i, j = i - 1, j - 1
+        elif score[i][j] == score[i - 1][j] - gap:
+            i -= 1
+        else:
+            j -= 1
+    found = []
+    for b in blocks(lines):
+        ts = [t for li in b for t in times.get(li, [])]
+        found.append((min(ts), max(ts)) if ts else None)
+    start0 = max(0.0, debut_chant - 0.5) if debut_chant > 0 else 0.0
+    wins = []
+    for k, f in enumerate(found):
+        prev_end = next((x[1] for x in reversed(found[:k]) if x), start0)
+        next_start = next((x[0] for x in found[k + 1:] if x), duration)
+        if f:
+            a, b = max(prev_end + 0.05, f[0] - margin, start0), min(next_start - 0.05, f[1] + margin, duration)
+        else:
+            a, b = prev_end + 0.05, next_start - 0.05
+        wins.append((round(a, 3), round(max(b, a + 0.5), 3)))
+    return wins
+
+
+def _segments(lines, times):
+    segments = []
+    for li, (section, text) in enumerate(lines):
+        words = []
+        for ti, tok in enumerate(text.split()):
+            s, e = times.get((li, ti), (None, None))
+            words.append({"w": tok, "s": round(s, 3) if s is not None else None,
+                          "e": round(e, 3) if e is not None else None})
+        ts = [w["s"] for w in words if w["s"] is not None]
+        te = [w["e"] for w in words if w["e"] is not None]
+        segments.append({"section": section, "text": text,
+                         "start": min(ts) if ts else None, "end": max(te) if te else None,
+                         "words": words})
+    return segments
+
+
+def _align_by_blocks(model, audio, lines, windows, language):
+    """Aligne chaque bloc de vers seul, dans sa fenêtre de l'audio (16 kHz). → [(mot, début, fin, probabilité)]
+    et le dictionnaire des temps par (vers, token)."""
+    times, aligned = {}, []
+    for b, (a, e) in zip(blocks(lines), windows):
+        sub = [lines[i] for i in b]
+        r = model.align(audio[int(a * 16000):int(e * 16000)], "\n".join(t for _, t in sub), language=language)
+        al = [(w.word, float(w.start) + a, float(w.end) + a, float(getattr(w, "probability", 1.0) or 0))
+              for seg in r.segments for w in seg.words]
+        aligned += al
+        for (li, ti), t in _map_words(sub, [(w, s, en) for w, s, en, _ in al]).items():
+            times[(b[li], ti)] = t
+    return aligned, times
+
+
 def align(audio_path, lyrics_path, out_path, model_name="medium", language="fr", debut_chant=0):
     import stable_whisper
     lines = read_lyrics(lyrics_path)
@@ -239,24 +360,31 @@ def align(audio_path, lyrics_path, out_path, model_name="medium", language="fr",
     result = model.align(str(audio_path), text, language=language)
     aligned = [(w.word, float(w.start), float(w.end), float(getattr(w, "probability", 1.0) or 0))
                for seg in result.segments for w in seg.words]
-    times = _map_words(lines, [(w, s, e) for w, s, e, _ in aligned])
+    segments = _segments(lines, _map_words(lines, [(w, s, e) for w, s, e, _ in aligned]))
 
-    segments = []
-    for li, (section, text) in enumerate(lines):
-        words = []
-        for ti, tok in enumerate(text.split()):
-            s, e = times.get((li, ti), (None, None))
-            words.append({"w": tok, "s": round(s, 3) if s is not None else None,
-                          "e": round(e, 3) if e is not None else None})
-        ts = [w["s"] for w in words if w["s"] is not None]
-        te = [w["e"] for w in words if w["e"] is not None]
-        segments.append({"section": section, "text": text,
-                         "start": min(ts) if ts else None, "end": max(te) if te else None,
-                         "words": words})
+    bad = bad_lines(segments)
+    if bad and len(blocks(lines)) > 1:
+        # alignement global raté (longue intro, pauses instrumentales) : on écoute la chanson, on repère
+        # chaque section, puis on l'aligne seule dans sa fenêtre
+        print(tr(f"  {len(bad)} vers mal calés : écoute de la chanson pour caler section par section…",
+                 f"  {len(bad)} badly aligned lines: listening to the song to align section by section…"))
+        audio = stable_whisper.audio.load_audio(str(audio_path))
+        heard = [(w.word, float(w.start), float(w.end))
+                 for seg in model.transcribe(audio, language=language, verbose=None).segments for w in seg.words]
+        windows = match_windows(lines, heard, len(audio) / 16000, debut_chant)
+        aligned2, times2 = _align_by_blocks(model, audio, lines, windows, language)
+        seg2 = _segments(lines, times2)
+        if len(bad_lines(seg2)) < len(bad):
+            segments, aligned = seg2, aligned2
+            print(tr(f"  calage par sections : {len(bad_lines(seg2))} vers mal calé(s) au lieu de {len(bad)}",
+                     f"  section alignment: {len(bad_lines(seg2))} badly aligned line(s) instead of {len(bad)}"))
+        else:
+            print(tr("  calage par sections pas meilleur : calage d'origine conservé",
+                     "  section alignment not better: original alignment kept"))
     if debut_chant > 0:                          # avant la réparation automatique
         force_start(segments, debut_chant)
-    print(tr(f"  réparation : {repair(segments, debut_chant)} mot(s) recollé(s)",
-             f"  repair: {repair(segments, debut_chant)} word(s) re-attached"))
+    n = repair(segments, debut_chant)
+    print(tr(f"  réparation : {n} mot(s) recollé(s)", f"  repair: {n} word(s) re-attached"))
     ecrire(out_path, json.dumps({"segments": segments}, indent=1, ensure_ascii=False))
 
     doubtful = [(w, s, p) for w, s, e, p in aligned if p < 0.3 or e - s < 0.05]

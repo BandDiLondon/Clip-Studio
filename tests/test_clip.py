@@ -82,6 +82,35 @@ class Paroles(unittest.TestCase):
         lyrics.repair(segs, 20.0)
         self.assertEqual((segs[0]["start"], segs[1]["start"]), (20.0, 22.0))
 
+    def test_vers_ecrases_detectes(self):
+        ok = seg("un deux trois", 10.0)
+        tasse = seg("quatre cinq six", 12.0, dur=0.05)                # 3 mots dans 0,05 s
+        absent = seg("sept huit", 14.0)
+        absent["words"][1]["s"] = absent["words"][1]["e"] = None
+        self.assertEqual(lyrics.bad_lines([ok, tasse, absent]), [1, 2])
+
+    def test_blocs_de_sections(self):
+        lines = [("V1", "a"), ("V1", "b"), ("Chorus", "c"), ("V2", "d"), ("Chorus", "c"), (None, "e"), (None, "f")]
+        self.assertEqual(lyrics.blocks(lines), [[0, 1], [2], [3], [4], [5], [6]])
+
+    def test_fenetres_par_section(self):
+        # couplet chanté vers 30 s, refrain vers 60 s; la transcription a des fautes et du bruit (« générique »)
+        lines = [("V1", "J'arrive pus a penser"), ("V1", "dans le cadre"), ("Chorus", "Ayoye ça fait mal")]
+        heard = [("Générique", 0.0, 20.0), ("J'arrive", 30.0, 30.5), ("plus", 30.6, 31.0), ("à", 31.0, 31.2),
+                 ("penser", 31.3, 32.0), ("dans", 33.0, 33.3), ("le", 33.3, 33.5), ("cadre", 33.6, 34.4),
+                 ("Aïe", 60.0, 60.5), ("ça", 60.6, 61.0), ("fait", 61.0, 61.4), ("mal", 61.5, 62.0)]
+        (a1, b1), (a2, b2) = lyrics.match_windows(lines, heard, 100.0)
+        self.assertTrue(28.0 <= a1 <= 30.0 and 34.4 <= b1 < 60.0)
+        self.assertTrue(34.4 < a2 <= 60.0 and 62.0 <= b2 <= 64.0)
+
+    def test_fenetre_bloc_non_entendu(self):
+        # refrain absent de la transcription : il prend l'espace entre les mots entendus de ses voisins
+        lines = [("V1", "un deux"), ("Chorus", "rien entendu"), ("V2", "trois quatre")]
+        heard = [("un", 10.0, 10.5), ("deux", 10.6, 11.0), ("trois", 40.0, 40.5), ("quatre", 40.6, 41.0)]
+        w = lyrics.match_windows(lines, heard, 60.0)
+        self.assertTrue(11.0 <= w[1][0] < w[1][1] <= 40.0)
+        self.assertTrue(w[0][0] <= 10.0 and w[2][1] >= 41.0)
+
     def test_force_start_pas_d_etirement(self):
         segs = [seg("premier vers ici", 5.0), seg("deuxieme vers", 7.0), seg("refrain", 43.0, section="V2")]
         lyrics.force_start(segs, 20.0)

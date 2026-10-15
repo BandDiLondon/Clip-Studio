@@ -7,6 +7,13 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/); numéros de v
 
 ## [Non publié]
 
+## [1.4.1] - 2026-10-14
+
+### Corrigé
+- Calage des paroles : quand l'alignement global rate des vers (plusieurs vers tassés en un instant après une longue
+  intro ou un solo), Clip Studio écoute la chanson, repère chaque section et la cale séparément.
+- La réparation du calage était appliquée deux fois (affichage du message).
+
 ## [1.4.0] - 2026-10-10
 
 ### Ajouté

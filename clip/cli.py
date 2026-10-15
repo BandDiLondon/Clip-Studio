@@ -378,8 +378,8 @@ def cmd_align(args):
         data = json.loads(f.read_text(encoding="utf-8"))
         if t0 > 0:                                # début du chant : avant la réparation automatique
             force_start(data["segments"], t0)
-        print(tr(f"  réparation : {repair(data['segments'], t0)} mot(s) recollé(s)",
-                 f"  repair: {repair(data['segments'], t0)} word(s) re-attached"))
+        n = repair(data["segments"], t0)
+        print(tr(f"  réparation : {n} mot(s) recollé(s)", f"  repair: {n} word(s) re-attached"))
         ecrire(f, json.dumps(data, indent=1, ensure_ascii=False))
         new = _sig(p, cfg, "paroles")             # même mp3 et mêmes paroles : seul le début du chant a bougé
         if (cfg.get("paroles_sig") or "").rsplit("|", 1)[0] == new.rsplit("|", 1)[0]:

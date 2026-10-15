@@ -184,6 +184,7 @@ Measured on a **3 min 14** song (18 images, 3 panels), on two machines:
 | Problem | Solution |
 |---|---|
 | **The karaoke starts too early** (1st line during the intro) | Step 2 → **Singing start**: enter when the voice starts. |
+| **Lines flash by** or are sung elsewhere (after a long intro or a solo) | Normally fixed on its own: “Prepare” then listens to the song and aligns each section separately (about 1.5 min more, “section alignment” message in the log). If it persists, check that the .txt follows the sung order, with its [Section] headers. |
 | **The karaoke is off everywhere** by the same amount | Step 6 → Karaoke → **Offset** (in seconds, + = later). |
 | **The lyrics are badly aligned on a song in English** | Step 1 → check the **song language**, then run **Prepare** again. |
 | **The images no longer follow the lyrics** after changing the mp3 | Run **Prepare** again (the alignment is redone automatically), then a render. |

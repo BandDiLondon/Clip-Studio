@@ -188,6 +188,7 @@ Mesurés sur une chanson de **3 min 14** (18 images, 3 planches), sur deux machi
 | Problème | Solution |
 |---|---|
 | **Le karaoké démarre trop tôt** (1er vers pendant l'intro) | Étape 2 → **Début du chant** : indique le moment où la voix commence. |
+| **Des vers défilent en un éclair** ou sont chantés ailleurs (après une longue intro ou un solo) | Normalement corrigé tout seul : « Préparer » écoute alors la chanson et cale chaque section séparément (environ 1,5 min de plus, message « calage par sections » dans le journal). Si ça persiste, vérifie que le .txt suit l'ordre chanté, avec ses en-têtes [Section]. |
 | **Le karaoké est décalé partout** de la même valeur | Étape 6 → Karaoké → **Décalage** (en secondes, + = plus tard). |
 | **Les paroles sont mal calées sur une chanson en anglais** | Étape 1 → vérifie la **langue de la chanson**, puis relance **Préparer**. |
 | **Les images ne suivent plus les paroles** après un changement de mp3 | Relance **Préparer** (le calage est refait automatiquement), puis un rendu. |
