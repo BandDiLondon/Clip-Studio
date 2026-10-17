@@ -7,6 +7,8 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/); numéros de v
 
 ## [Non publié]
 
+## [1.5.1] - 2026-10-16
+
 ### Ajouté
 - Étape 2, carte **Vérifier le calage** : sections avec leurs temps, vers mal calés signalés (⚠), alerte quand les
   paroles finissent bien avant la fin de l'audio (« C'est normal » pour une outro instrumentale). Outils de correction

@@ -7,6 +7,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version number
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-10-16
+
 ### Added
 - Step 2, **Check the alignment** card: sections with their times, badly aligned lines flagged (⚠), alert when the
   lyrics end well before the end of the audio (“It's normal” for an instrumental outro). Fix tools per section:
