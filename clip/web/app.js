@@ -318,11 +318,71 @@ V.preparer = () => {
     <p class="small muted" style="margin-top:6px">${tr("Ensuite, fais un rendu complet (étape 7) : le montage des images suit les nouveaux temps.", "Then make a full render (step 7): the image edit follows the new times.")}</p></div>` : ""}
   ${S.words ? evalCard() : ""}
   ${S.words ? solosCard() : ""}
-  ${S.words ? `<div class="card"><h3>${tr("Vérifier le calage", "Check the alignment")}</h3><p class="small muted">${tr("Si le karaoké se décale sur un vers, écoute l'aperçu et signale-le à Claude (seconde exacte).", "If the karaoke drifts on a line, listen to the preview and report it to Claude (exact second).")}</p>
-    <button onclick="go('rendu')">${tr("Faire un aperçu rapide", "Make a quick preview")}</button></div>` : ""}
+  ${S.words ? calageCard() : ""}
   ${n ? nextHint("descriptions", next(tr("Descriptions", "Descriptions"))) : ""}`;
 };
-const passageType = t => ({intro: "Intro", outro: "Outro", instrumental: tr("Instrumental", "Instrumental")}[t] || t);
+// vérification du calage : sections, alertes, et outils de correction (écouter, recaler, décaler)
+function calageCard() {
+  const C = S.calage;
+  const titre = `<h3>🎤 ${tr("Vérifier le calage", "Check the alignment")}</h3>`;
+  const apercu = `<button onclick="go('rendu')">${tr("Faire un aperçu rapide", "Make a quick preview")}</button>`;
+  if (!C) return `<div class="card">${titre}${apercu}</div>`;
+  const nbad = C.sections.reduce((a, x) => a + x.mal_cales, 0);
+  const fin = C.fin_trop_tot && S.cfg.calage_fin_ok !== C.derniere_fin;
+  const prevEnd = i => { for (let j = i - 1; j >= 0; j--) if (C.sections[j].fin != null) return C.sections[j].fin; return 0; };
+  const t = v => v == null ? "—" : fmtT(v);
+  return `<div class="card">${titre}
+    ${nbad ? `<p class="small"><span class="pill warn">⚠ ${tr(`${nbad} vers mal calé(s)`, `${nbad} badly aligned line(s)`)}</span>
+      ${tr("Écoute la section (▶), indique la seconde où elle commence vraiment, puis « Recaler » : Whisper la réaligne seule (~20 s).",
+        "Listen to the section (▶), enter the second where it really starts, then “Realign”: Whisper realigns it alone (~20 s).")}</p>`
+      : `<p class="small muted">✅ ${tr("Aucun vers tassé détecté. Si le karaoké se décale quand même sur une section, corrige-la ci-dessous.",
+        "No squashed line detected. If the karaoke still drifts on a section, fix it below.")}</p>`}
+    ${fin ? `<p class="small"><span class="pill warn">⚠ ${tr("Fin de chanson", "End of song")}</span>
+      ${tr(`Les paroles finissent ${C.fin_trop_tot} s avant la fin de l'audio (dernier vers à ${fmtT(C.derniere_fin)}). Si un refrain est chanté après, recale la dernière section.`,
+        `The lyrics end ${C.fin_trop_tot} s before the end of the audio (last line at ${fmtT(C.derniere_fin)}). If a chorus is sung after, realign the last section.`)}
+      <button id="cal-finok">${tr("C'est normal (outro instrumentale)", "It's normal (instrumental outro)")}</button></p>` : ""}
+    <audio id="cal-audio" preload="none" src="${S.audio ? file(encodeURIComponent(S.audio)) : ""}"></audio>
+    <table class="small" style="margin-top:8px"><tr><th>${tr("Section", "Section")}</th><th>${tr("Temps", "Time")}</th><th>${tr("Vers", "Lines")}</th><th></th>
+      <th>${tr("Commence à", "Starts at")}</th><th>${tr("Décaler (s)", "Shift (s)")}</th></tr>
+    ${C.sections.map((x, i) => `<tr>
+      <td title="${esc(x.texte)}"><b>${esc(x.section || "—")}</b><br><span class="muted">${esc(x.texte.slice(0, 32))}${x.texte.length > 32 ? "…" : ""}</span></td>
+      <td>${t(x.debut)} → ${t(x.fin)}</td>
+      <td>${x.mal_cales ? `<span class="pill warn">${x.mal_cales}/${x.vers}</span>` : x.vers}</td>
+      <td><button data-cal-play="${x.debut ?? prevEnd(i)}" title="${tr("Écouter à partir d'ici", "Listen from here")}">▶</button></td>
+      <td><input type="text" id="cal-t${i}" value="${fmtT(x.mal_cales ? prevEnd(i) : (x.debut ?? prevEnd(i)))}" style="width:64px">
+        <button data-cal-go="${i}">${tr("Recaler", "Realign")}</button></td>
+      <td><input type="number" id="cal-d${i}" value="0" step="0.1" style="width:64px"> <button data-cal-dec="${i}">${tr("Décaler", "Shift")}</button></td></tr>`).join("")}
+    </table>
+    <div class="row" style="margin-top:10px"><button id="cal-stop">⏹ ${tr("Arrêter l'écoute", "Stop listening")}</button>${apercu}
+      <span class="small muted">${tr("Après une correction, refais un rendu (étape 7) : le montage des images suit les nouveaux temps.", "After a fix, render again (step 7): the image edit follows the new times.")}</span></div></div>`;
+}
+function calageBind() {
+  const au = $("#cal-audio"); if (!au) return;
+  document.querySelectorAll("[data-cal-play]").forEach(b => b.onclick = () => {
+    const t0 = Math.max(0, +b.dataset.calPlay - 1);
+    const go = () => { au.currentTime = t0; au.play(); };
+    au.readyState >= 1 ? go() : (au.addEventListener("loadedmetadata", go, {once: true}), au.load());
+  });
+  $("#cal-stop").onclick = () => au.pause();
+  document.querySelectorAll("[data-cal-go]").forEach(b => b.onclick = () => {
+    const i = +b.dataset.calGo, s = parseT($("#cal-t" + i).value);
+    if (!(s >= 0)) return toast(tr("Temps invalide (ex. 2:26 ou 146)", "Invalid time (e.g. 2:26 or 146)"));
+    au.pause();
+    run("section", ["--index", String(i), "--debut", s.toFixed(2)], tr(`Recalage de la section ${i + 1} à ${fmtT(s)}`, `Realigning section ${i + 1} at ${fmtT(s)}`));
+  });
+  document.querySelectorAll("[data-cal-dec]").forEach(b => b.onclick = () => {
+    const i = +b.dataset.calDec, d = Math.round(+$("#cal-d" + i).value * 100) / 100;
+    if (!d || Math.abs(d) >= 1000) return toast(tr("Indique un décalage en secondes (ex. -0.5 ou 1.2)", "Enter a shift in seconds (e.g. -0.5 or 1.2)"));
+    run("section", ["--index", String(i), "--decaler", d.toFixed(2)], tr(`Décalage de la section ${i + 1} : ${d > 0 ? "+" : ""}${d} s`, `Shifting section ${i + 1}: ${d > 0 ? "+" : ""}${d} s`));
+  });
+  $("#cal-finok") && ($("#cal-finok").onclick = async () => {
+    S.cfg.calage_fin_ok = S.calage.derniere_fin;
+    await post(`/api/projet/${encodeURIComponent(nom())}/config`, {calage_fin_ok: S.calage.derniere_fin}); renderStep();
+  });
+}
+const parseT = v => { const p = String(v).trim().split(":").map(Number);
+  return !p.length || p.some(isNaN) ? NaN : p.reduce((a, x) => a * 60 + x, 0); };
+const passageType = t =>({intro: "Intro", outro: "Outro", instrumental: tr("Instrumental", "Instrumental")}[t] || t);
 function solosCard() {
   const passages = S.evaluation ? S.evaluation.faits.passages_sans_paroles.length : 3;
   const n = S.solos_prompts.length || Math.max(1, Math.min(8, passages || 3));
@@ -394,6 +454,7 @@ function evalCard() {
 }
 const fmtT = s => `${Math.floor(s / 60)}:${String(Math.round((s % 60) * 10) / 10).padStart(2, "0")}`;
 V.preparer_bind = () => {
+  calageBind();
   $("#dc-go") && ($("#dc-go").onclick = async () => {
     const v = $("#dc").value.trim(), p = v.split(":").map(Number);
     const s = p.some(isNaN) ? NaN : p.reduce((a, x) => a * 60 + x, 0);

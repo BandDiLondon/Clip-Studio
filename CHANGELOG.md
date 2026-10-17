@@ -7,6 +7,15 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/); numéros de v
 
 ## [Non publié]
 
+### Ajouté
+- Étape 2, carte **Vérifier le calage** : sections avec leurs temps, vers mal calés signalés (⚠), alerte quand les
+  paroles finissent bien avant la fin de l'audio (« C'est normal » pour une outro instrumentale). Outils de correction
+  par section : **▶ écouter**, **Recaler** à partir d'une seconde (Whisper réaligne la section seule) et **Décaler**.
+  Commande `section`. « Préparer » liste dans son journal les vers encore mal calés.
+
+### Corrigé
+- Rendu : les temps impossibles du calage (fin avant début) sont corrigés avant d'écrire le karaoké.
+
 ## [1.5.0] - 2026-10-16
 
 ### Ajouté

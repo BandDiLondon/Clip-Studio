@@ -197,7 +197,9 @@ Measured on a **3 min 14** song (18 images, 3 panels), on two machines:
 | Problem | Solution |
 |---|---|
 | **The karaoke starts too early** (1st line during the intro) | Step 2 → **Singing start**: enter when the voice starts. |
-| **Lines flash by** or are sung elsewhere (after a long intro or a solo) | Normally fixed on its own: “Prepare” then listens to the song and aligns each section separately (about 1.5 min more, “section alignment” message in the log). If it persists, check that the .txt follows the sung order, with its [Section] headers. |
+| **Lines flash by** or are sung elsewhere (after a long intro or a solo) | Normally fixed on its own: “Prepare” then listens to the song and aligns each section separately (about 1.5 min more, “section alignment” message in the log). If some remain, step 2 → **Check the alignment** card: the section is marked ⚠; listen to it (▶), enter the second where it really starts, then **Realign** (Whisper realigns it alone, about 20 s). Also check that the .txt follows the sung order. |
+| **A single section is a bit early or late** | Step 2 → **Check the alignment** → **Shift** this section (in seconds, negative = earlier). |
+| **“End of song” alert**: the lyrics end well before the end of the audio | If a chorus is sung after a solo, realign the last section at its real start; if the end is instrumental, click **It's normal**. |
 | **The karaoke is off everywhere** by the same amount | Step 6 → Karaoke → **Offset** (in seconds, + = later). |
 | **The lyrics are badly aligned on a song in English** | Step 1 → check the **song language**, then run **Prepare** again. |
 | **The images no longer follow the lyrics** after changing the mp3 | Run **Prepare** again (the alignment is redone automatically), then a render. |

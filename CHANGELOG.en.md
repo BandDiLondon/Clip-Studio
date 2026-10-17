@@ -7,6 +7,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version number
 
 ## [Unreleased]
 
+### Added
+- Step 2, **Check the alignment** card: sections with their times, badly aligned lines flagged (⚠), alert when the
+  lyrics end well before the end of the audio (“It's normal” for an instrumental outro). Fix tools per section:
+  **▶ listen**, **Realign** from a given second (Whisper realigns the section alone) and **Shift**. `section` command.
+  “Prepare” lists the lines still badly aligned in its log.
+
+### Fixed
+- Render: impossible alignment times (end before start) are fixed before writing the karaoke.
+
 ## [1.5.0] - 2026-10-16
 
 ### Added

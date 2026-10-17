@@ -370,6 +370,105 @@ def local_windows(lines, segments, duration):
     return wins
 
 
+FIN_TROP_TOT = 30.0     # paroles finies plus tôt que ça avant la fin de l'audio : dernier refrain peut-être raté
+
+
+def _lines(segments):
+    return [(s["section"], s["text"]) for s in segments]
+
+
+def sections(segments):
+    """Sections de words.json pour la vérification du calage :
+    [{index, section, debut, fin, vers, mal_cales, texte (1er vers)}], dans l'ordre des blocs d'alignement."""
+    bad = set(bad_lines(segments))
+    out = []
+    for k, b in enumerate(blocks(_lines(segments))):
+        st = [segments[i]["start"] for i in b if segments[i]["start"] is not None]
+        en = [segments[i]["end"] for i in b if segments[i]["end"] is not None]
+        out.append({"index": k, "section": segments[b[0]]["section"] or "", "texte": segments[b[0]]["text"],
+                    "debut": min(st) if st else None, "fin": max(en) if en else None,
+                    "vers": len(b), "mal_cales": sum(i in bad for i in b)})
+    return out
+
+
+def fin_trop_tot(segments, duree):
+    """Secondes entre le dernier vers et la fin de l'audio quand c'est suspect (≥ FIN_TROP_TOT), sinon 0."""
+    ends = [s["end"] for s in segments if s["end"] is not None]
+    gap = duree - max(ends) if ends else 0
+    return round(gap, 1) if gap >= FIN_TROP_TOT else 0
+
+
+def _bloc(segments, k):
+    bl = blocks(_lines(segments))
+    if not 0 <= k < len(bl):
+        raise ValueError(tr(f"Section inconnue : {k} (0 à {len(bl) - 1})", f"Unknown section: {k} (0 to {len(bl) - 1})"))
+    return bl
+
+
+def shift_section(segments, k, delta):
+    """Avance (delta < 0) ou retarde toute la section k, sans réaligner."""
+    for i in _bloc(segments, k)[k]:
+        s = segments[i]
+        for w in s["words"]:
+            if w["s"] is not None:
+                w["s"], w["e"] = round(max(0.0, w["s"] + delta), 3), round(max(0.0, w["e"] + delta), 3)
+        if s["start"] is not None:
+            s["start"], s["end"] = s["words"][0]["s"], s["words"][-1]["e"]
+
+
+def section_window(segments, k, t0, duree):
+    """Fenêtre de réalignement de la section k qui commence à t0 : jusqu'au premier vers bien calé d'une section
+    suivante placé après t0 (les vers ratés ne bornent rien), sinon jusqu'à la fin de l'audio."""
+    bl, bad = _bloc(segments, k), set(bad_lines(segments))
+    nxt = [segments[i]["start"] for b in bl[k + 1:] for i in b
+           if i not in bad and segments[i]["start"] is not None and segments[i]["start"] > t0 + 1.0]
+    e = min(nxt) if nxt else duree
+    if e - t0 < 0.5 * len(bl[k]):
+        raise ValueError(tr(f"Pas assez de place entre {t0:.1f} s et {e:.1f} s pour {len(bl[k])} vers",
+                            f"Not enough room between {t0:.1f} s and {e:.1f} s for {len(bl[k])} lines"))
+    return t0, e
+
+
+def realign_section(audio_path, segments, k, t0, model_name="medium", language="fr"):
+    """« Cette section commence à t0 » : Whisper réaligne la section k seule dans sa fenêtre; les autres sections ne
+    bougent pas. Retourne la fenêtre utilisée et le nombre de vers de la section encore mal calés."""
+    import stable_whisper
+    audio = stable_whisper.audio.load_audio(str(audio_path))
+    lines, bl = _lines(segments), _bloc(segments, k)
+    win = section_window(segments, k, t0, len(audio) / 16000)
+    model = stable_whisper.load_model(model_name, device="cpu")
+    windows = [None] * len(bl)
+    windows[k] = win
+    _, times = _align_by_blocks(model, audio, lines, windows, language)
+    seg2 = _segments(lines, times)
+    for i in bl[k]:
+        segments[i] = seg2[i]
+    repair(segments)
+    bad = set(bad_lines(segments))
+    return win, sum(i in bad for i in bl[k])
+
+
+def sanitize(segments):
+    """Temps impossibles pour le karaoké (mot qui finit avant de commencer, ou qui commence avant le mot précédent) :
+    corrigés sur place. Retourne le nombre de mots corrigés."""
+    n = 0
+    for seg in segments:
+        prev = None
+        for w in seg["words"]:
+            if w["s"] is None or w["e"] is None:
+                continue
+            s, e = (max(w["s"], prev) if prev is not None else w["s"]), w["e"]
+            e = max(e, s)
+            if (s, e) != (w["s"], w["e"]):
+                w["s"], w["e"] = s, e
+                n += 1
+            prev = s
+        ts = [w["s"] for w in seg["words"] if w["s"] is not None]
+        if ts:
+            seg["start"], seg["end"] = min(ts), max(w["e"] for w in seg["words"] if w["e"] is not None)
+    return n
+
+
 def align(audio_path, lyrics_path, out_path, model_name="medium", language="fr", debut_chant=0):
     import stable_whisper
     lines = read_lyrics(lyrics_path)
@@ -429,4 +528,10 @@ def align(audio_path, lyrics_path, out_path, model_name="medium", language="fr",
              f"  → {out_path.name}: {len(segments)} lines, {len(aligned)} words, {len(doubtful)} doubtful"))
     for w, s, p in doubtful[:20]:
         print(f"     {s:7.2f}s  {w.strip():20s} p={p:.2f}")
+    rates = [x for x in sections(segments) if x["mal_cales"]]
+    if rates:
+        print(tr("  ⚠ Vers encore mal calés (corriger dans « Préparer », carte « Vérifier le calage ») :",
+                 "  ⚠ Lines still badly aligned (fix them in “Prepare”, “Check the alignment” card):"))
+        for x in rates:
+            print(f"     {x['section']} ({x['debut'] or 0:.1f} s) : {x['mal_cales']}/{x['vers']}")
     return segments

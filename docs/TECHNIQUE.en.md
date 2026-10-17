@@ -66,6 +66,7 @@ macOS). Messages in English with `CLIP_LANG=en`.
 | `prepare [--force]` | beats + alignment + evaluation + prompts | `build/` |
 | `beats` | beats and tempo | `build/beats.npy` |
 | `align [--repair-only]` | stable-ts alignment + repair | `build/words.json` |
+| `section --index N (--debut T \| --decaler D)` | fixes one section of the alignment: realigned alone from T, or shifted | `build/words.json` |
 | `evaluate [--appliquer]` | storyboard evaluation (Claude) | `build/evaluation.json` |
 | `prompts` | shotlist + panel prompts | `build/shotlist.json`, `prompts_planches.md` |
 | `describe [--ids --consigne --tout]` | descriptions (Claude) | `build/descriptions.json` |
@@ -152,7 +153,8 @@ to the next; all effects are off by default.
   (`GET` / `POST /api/profils`).
 - **Lyrics**: `langue` (`fr` | `en`: Whisper alignment, texts written by Claude, prompts, publishing),
   `debut_chant` (s), `whisper` (`medium` | `small`, alignment model; `--model` of `prepare` / `align` wins and is
-  saved), `intention`, `style`, `personnages`.
+  saved), `intention`, `style`, `personnages`, `calage_fin_ok` (end of the last line for which the "End of song"
+  alert was dismissed).
 - **Format and sound**: `format` (16:9 | 4k | 9:16 | 1:1), `volume_normalise` (-14 LUFS), `debut` / `fin`, `fade_out`,
   `fps`, `encoder` (auto | amf | x264).
 - **Managed by the code** (do not edit): `timeline`, `timeline_sig`, `beats_sig`, `paroles_sig`, `bpm_detecte`,
@@ -170,6 +172,9 @@ to the next; all effects are off by default.
   accepted), then forced alignment of each section alone in its window; kept only if it misses fewer lines (about
   1.5 min more with medium). Repair: isolated words re-attached to their line, a line lost in the intro realigned
   before the next one of the same section (rhythm of the same line sung elsewhere), `force_start` for `debut_chant`.
+  Check (`sections`, `fin_trop_tot` ≥ 30 s, shown in step 2) and fix of one section (`section_window` bounded by the
+  next well-aligned lines, `realign_section`, `shift_section`). At render time, `sanitize` fixes impossible times (end
+  before start) before writing the karaoke.
 - **Cutting** (`panels.py`): gutters detected at the 90th percentile (strict threshold 12, then 30), 1.5% margin,
   Real-ESRGAN ×4 capped at 2560 px. Without Vulkan or without the binary: Lanczos upscaling with a warning (never
   blocking). Retouches ≥ 1400 px are not upscaled.

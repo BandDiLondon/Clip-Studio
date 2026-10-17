@@ -66,6 +66,28 @@ class Paroles(unittest.TestCase):
             self.assertEqual([s for s, _ in lines][1:], ["Chorus", "Chorus (bis)"])
             self.assertEqual(len(lyrics.blocks(lines)), 3)
 
+    def test_verification_du_calage(self):
+        # dernier refrain tassé à 14 s : section signalée, fin suspecte, fenêtre de recalage, décalage, temps impossibles
+        segs = [seg("a b", 10.0, 2.0, "Chorus"), seg("c d", 12.0, 2.0, "Chorus"),
+                seg("a b", 14.0, 0.02, "Chorus (bis)"), seg("c d", 14.0, 0.02, "Chorus (bis)")]
+        secs = lyrics.sections(segs)
+        self.assertEqual([(x["section"], x["vers"], x["mal_cales"]) for x in secs], [("Chorus", 2, 0), ("Chorus (bis)", 2, 2)])
+        self.assertEqual(lyrics.fin_trop_tot(segs, 60.0), 46.0)
+        self.assertEqual(lyrics.fin_trop_tot(segs, 30.0), 0)
+        self.assertEqual(lyrics.section_window(segs, 1, 40.0, 60.0), (40.0, 60.0))
+        self.assertEqual(lyrics.section_window(segs, 0, 9.0, 60.0), (9.0, 60.0))      # vers tassés avant : ignorés
+        with self.assertRaises(ValueError):
+            lyrics.section_window(segs, 1, 59.8, 60.0)                                   # pas la place
+        with self.assertRaises(ValueError):
+            lyrics.shift_section(segs, 5, 1.0)
+        lyrics.shift_section(segs, 0, -1.5)
+        self.assertEqual((segs[0]["start"], segs[1]["end"]), (8.5, 12.5))
+        segs[2]["words"][1].update(s=13.0, e=12.0)                   # commence avant le précédent, finit avant de commencer
+        self.assertEqual(lyrics.sanitize(segs), 1)
+        w0, w1 = segs[2]["words"]
+        self.assertTrue(w1["s"] >= w0["s"] and w1["e"] >= w1["s"])
+        self.assertEqual(lyrics.sanitize(segs), 0)
+
     def test_fenetres_locales_apres_solo(self):
         # dernier refrain tassé à la fin du solo : seul son bloc est recalé, entre le dernier vers bien calé et la fin
         lines = [("Chorus", "a b"), ("Chorus", "c d"), ("Chorus (bis)", "a b"), ("Chorus (bis)", "c d")]

@@ -27,6 +27,7 @@ COMMANDS = {
     "prepare": {"--force"}, "prompts": set(), "verify": set(), "cut": set(),
     "plan": {"--force"}, "build-preview": {"--force"}, "build": {"--force"},
     "render": {"--out"}, "preview": {"--start", "--duration"}, "align": {"--repair-only"},
+    "section": {"--index", "--debut", "--decaler"},
     "describe": {"--ids", "--consigne", "--tout"},
     "publish": {"--consigne"},
     "evaluate": {"--appliquer"},
@@ -41,6 +42,9 @@ ARG_VALUES = {
     "--nombre": re.compile(r"^[1-8]$"),
     "--start": re.compile(r"^\d{1,4}(\.\d{1,2})?$"),
     "--duration": re.compile(r"^\d{1,4}(\.\d{1,2})?$"),
+    "--index": re.compile(r"^\d{1,3}$"),
+    "--debut": re.compile(r"^\d{1,4}(\.\d{1,2})?$"),
+    "--decaler": re.compile(r"^-?\d{1,3}(\.\d{1,2})?$"),
 }
 NOISE = ("Warning", "warn(", "symlinks", "developer mode", "Loading weights", "docs.microsoft",
          "order to activate", "UserWarning", "FutureWarning")
@@ -189,6 +193,36 @@ def _read(f, default=""):
     return f.read_text(encoding="utf-8-sig") if f.exists() else default
 
 
+_DUREES = {}
+
+
+def _duree(f):
+    """Durée de l'audio (ffprobe), mémorisée tant que le fichier ne change pas."""
+    cle = (str(f), f.stat().st_mtime)
+    if cle not in _DUREES:
+        from .cli import _duration
+        try:
+            _DUREES[cle] = _duration(f)
+        except (ValueError, OSError):
+            return 0.0
+    return _DUREES[cle]
+
+
+def calage(p, cfg):
+    """Vérification du calage : sections, vers mal calés, paroles finies trop tôt."""
+    from . import lyrics
+    try:
+        segs = json.loads(_read(p / "build" / "words.json", "null") or "null")["segments"]
+    except (TypeError, KeyError, json.JSONDecodeError):
+        return None
+    secs = lyrics.sections(segs)
+    fins = [x["fin"] for x in secs if x["fin"] is not None]
+    audio = p / cfg["audio"] if cfg.get("audio") else None
+    duree = _duree(audio) if audio and audio.exists() else 0.0
+    return {"sections": secs, "derniere_fin": round(max(fins), 1) if fins else None,
+            "fin_trop_tot": lyrics.fin_trop_tot(segs, duree) if duree else 0}
+
+
 def status(nom):
     from .cli import _projet, perimes             # complète audio / paroles / solos automatiquement
     p, cfg = _projet(nom)
@@ -224,7 +258,7 @@ def status(nom):
         "audio": cfg.get("audio") if audio_ok else None,
         "paroles": cfg.get("paroles") if paroles_ok else None,
         "paroles_texte": _read(p / cfg["paroles"]) if paroles_ok else "",
-        "beats": (b / "beats.npy").exists(), "words": (b / "words.json").exists(),
+        "beats": (b / "beats.npy").exists(), "words": (b / "words.json").exists(), "calage": calage(p, cfg),
         "shots": shots, "planches": planches,
         "a_decrire": _read(b / "a_decrire.md"), "prompts": _read(b / "prompts_planches.md"),
         "desc_erreur": desc_err, "contact": (b / "planche_contact.jpg").exists(),

@@ -994,6 +994,11 @@ def render(projet_dir, cfg, preview=False, start=None, duration=None, workers=No
 
     shots = load_timeline(cfg, total, _descriptions(projet_dir, cfg))
     segments = json.loads((build / "words.json").read_text(encoding="utf-8"))["segments"]
+    from .lyrics import sanitize
+    n = sanitize(segments)                            # fin avant début, mot avant le précédent
+    if n:
+        print(tr(f"  karaoké : {n} temps impossible(s) corrigé(s) (vérifie le calage, étape 2)",
+                 f"  karaoke: {n} impossible time(s) fixed (check the alignment, step 2)"))
     secs = section_at(segments)
     sec_t = [a for a, _ in secs]
 

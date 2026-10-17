@@ -397,6 +397,41 @@ def cmd_align(args):
     return 0
 
 
+def cmd_section(args):
+    """Corrige une section du calage : --debut T (Whisper la réaligne à partir de T) ou --decaler D (secondes)."""
+    from . import lyrics
+    p, cfg = _projet(args.nom)
+    f = p / "build" / "words.json"
+    if not f.exists():
+        raise Stop(tr("Paroles pas encore calées : lance d'abord « Préparer »", "Lyrics not aligned yet: run “Prepare” first"))
+    if (args.debut is None) == (args.decaler is None):
+        raise Stop(tr("Indique --debut ou --decaler", "Give --debut or --decaler"))
+    data = json.loads(f.read_text(encoding="utf-8"))
+    segs = data["segments"]
+    try:
+        if args.decaler is not None:
+            lyrics.shift_section(segs, args.index, args.decaler)
+            print(tr(f"  section {args.index} décalée de {args.decaler:+.2f} s",
+                     f"  section {args.index} shifted by {args.decaler:+.2f} s"))
+        else:
+            _need(p, cfg, "audio")
+            (a, e), n = lyrics.realign_section(p / cfg["audio"], segs, args.index, args.debut,
+                                               cfg.get("whisper") or "medium", langue_projet(cfg))
+            print(tr(f"  section {args.index} recalée entre {a:.1f} s et {e:.1f} s",
+                     f"  section {args.index} realigned between {a:.1f} s and {e:.1f} s"))
+            if n:
+                print(tr(f"  ⚠ {n} vers encore mal calé(s) : essaie un autre début, ou « Décaler »",
+                         f"  ⚠ {n} line(s) still badly aligned: try another start, or “Shift”"))
+    except ValueError as e:
+        raise Stop(str(e))
+    for x in lyrics.sections(segs)[args.index:args.index + 1]:
+        print(f"    {x['section']} : {x['debut']:.2f} → {x['fin']:.2f} s")
+    ecrire(f, json.dumps(data, indent=1, ensure_ascii=False))
+    print(tr("  Refais un rendu (étape 7) : le montage des images suit les nouveaux temps.",
+             "  Render again (step 7): the image edit follows the new times."))
+    return 0
+
+
 def cmd_prompts(args):
     from .prompts import skeleton
     from .shots import save
@@ -955,6 +990,13 @@ def main():
                    help=tr("Modèle Whisper (défaut : réglage du projet)", "Whisper model (default: project setting)"))
     s.add_argument("--repair-only", action="store_true",
                    help=tr("Répare words.json sans réaligner", "Repairs words.json without realigning"))
+    s = add("section", cmd_section, tr("Corrige une section du calage (réalignement à partir d'un temps, ou décalage)",
+                                       "Fixes one section of the alignment (realign from a time, or shift)"))
+    s.add_argument("--index", type=int, required=True, help=tr("Numéro de la section (0 = la 1re)", "Section number (0 = the 1st)"))
+    s.add_argument("--debut", type=float, default=None, help=tr("Début de la section (s) : réalignement Whisper",
+                                                                "Section start (s): Whisper realignment"))
+    s.add_argument("--decaler", type=float, default=None, help=tr("Décalage de la section (s, négatif = plus tôt)",
+                                                                  "Section shift (s, negative = earlier)"))
     add("prompts", cmd_prompts, tr("Shotlist + prompts (ou liste à décrire) → build/",
                                    "Shotlist + prompts (or list to describe) → build/"))
     s = add("plan", cmd_plan, tr("Génère la timeline dans projet.json", "Generates the timeline in projet.json"))

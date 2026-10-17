@@ -201,7 +201,9 @@ Mesurés sur une chanson de **3 min 14** (18 images, 3 planches), sur deux machi
 | Problème | Solution |
 |---|---|
 | **Le karaoké démarre trop tôt** (1er vers pendant l'intro) | Étape 2 → **Début du chant** : indique le moment où la voix commence. |
-| **Des vers défilent en un éclair** ou sont chantés ailleurs (après une longue intro ou un solo) | Normalement corrigé tout seul : « Préparer » écoute alors la chanson et cale chaque section séparément (environ 1,5 min de plus, message « calage par sections » dans le journal). Si ça persiste, vérifie que le .txt suit l'ordre chanté, avec ses en-têtes [Section]. |
+| **Des vers défilent en un éclair** ou sont chantés ailleurs (après une longue intro ou un solo) | Normalement corrigé tout seul : « Préparer » écoute alors la chanson et cale chaque section séparément (environ 1,5 min de plus, message « calage par sections » dans le journal). S'il en reste, étape 2 → carte **Vérifier le calage** : la section est marquée ⚠; écoute-la (▶), indique la seconde où elle commence vraiment, puis **Recaler** (Whisper la réaligne seule, environ 20 s). Vérifie aussi que le .txt suit l'ordre chanté. |
+| **Une seule section est un peu en avance ou en retard** | Étape 2 → **Vérifier le calage** → **Décaler** cette section (en secondes, négatif = plus tôt). |
+| **Alerte « Fin de chanson »** : les paroles finissent bien avant la fin de l'audio | Si un refrain est chanté après un solo, recale la dernière section à son vrai début; si la fin est instrumentale, clique **C'est normal**. |
 | **Le karaoké est décalé partout** de la même valeur | Étape 6 → Karaoké → **Décalage** (en secondes, + = plus tard). |
 | **Les paroles sont mal calées sur une chanson en anglais** | Étape 1 → vérifie la **langue de la chanson**, puis relance **Préparer**. |
 | **Les images ne suivent plus les paroles** après un changement de mp3 | Relance **Préparer** (le calage est refait automatiquement), puis un rendu. |

@@ -63,6 +63,7 @@ macOS). Messages en anglais avec `CLIP_LANG=en`.
 | `prepare [--force]` | beats + alignement + évaluation + prompts | `build/` |
 | `beats` | beats et tempo | `build/beats.npy` |
 | `align [--repair-only]` | alignement stable-ts + réparation | `build/words.json` |
+| `section --index N (--debut T \| --decaler D)` | corrige une section du calage : réalignement seul à partir de T, ou décalage | `build/words.json` |
 | `evaluate [--appliquer]` | évaluation du storyboard (Claude) | `build/evaluation.json` |
 | `prompts` | shotlist + prompts de planches | `build/shotlist.json`, `prompts_planches.md` |
 | `describe [--ids --consigne --tout]` | descriptions (Claude) | `build/descriptions.json` |
@@ -149,7 +150,8 @@ Conservés d'un rendu à l'autre; tous les effets sont désactivés par défaut.
   (`GET` / `POST /api/profils`).
 - **Paroles** : `langue` (`fr` | `en` : calage Whisper, textes rédigés par Claude, prompts, publication),
   `debut_chant` (s), `whisper` (`medium` | `small`, modèle du calage; `--model` de `prepare` / `align`
-  l'emporte et est enregistré), `intention`, `style`, `personnages`.
+  l'emporte et est enregistré), `intention`, `style`, `personnages`, `calage_fin_ok` (fin du dernier vers pour
+  laquelle l'alerte « Fin de chanson » a été écartée).
 - **Format et son** : `format` (16:9 | 4k | 9:16 | 1:1), `volume_normalise` (-14 LUFS), `debut` / `fin`, `fade_out`,
   `fps`, `encoder` (auto | amf | x264).
 - **Gérés par le code** (ne pas éditer) : `timeline`, `timeline_sig`, `beats_sig`, `paroles_sig`, `bpm_detecte`,
@@ -167,7 +169,9 @@ Conservés d'un rendu à l'autre; tous les effets sont désactivés par défaut.
   alignement de séquences, mots proches acceptés), puis alignement forcé de chaque section seule dans sa fenêtre; gardé
   seulement s'il rate moins de vers (environ 1,5 min de plus en medium). Réparation : mots isolés recollés au vers, vers
   perdu dans l'intro recalé avant le suivant de la même section (rythme du même vers chanté ailleurs), `force_start`
-  pour `debut_chant`.
+  pour `debut_chant`. Vérification (`sections`, `fin_trop_tot` ≥ 30 s, affichées à l'étape 2) et correction d'une
+  section (`section_window` bornée par les vers bien calés suivants, `realign_section`, `shift_section`). Au rendu,
+  `sanitize` corrige les temps impossibles (fin avant début) avant d'écrire le karaoké.
 - **Découpe** (`panels.py`) : gouttières détectées au 90e percentile (seuil strict 12, puis 30), marge de 1,5 %,
   Real-ESRGAN ×4 plafonné à 2560 px. Sans Vulkan ou sans binaire : agrandissement Lanczos avec avertissement
   (jamais bloquant). Retouches ≥ 1400 px non agrandies.
