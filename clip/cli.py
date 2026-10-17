@@ -57,7 +57,7 @@ PROJET_TEMPLATE = {
     "pulse_mesure": False,    # effet beat seulement sur le 1er temps de chaque mesure
     "titre": None,            # titre d'ouverture (fondu sur l'intro)
     "artiste": None,
-    "origine": "suno",        # suno | images | complete : mention IA de la publication
+    "origine": "suno",        # suno | images | complete | fan | fan_ia : mention de la publication
     "generique": True,        # titre — artiste sur les dernières secondes
     "format": "16:9",         # 16:9 | 4k | 9:16 (Shorts/TikTok/Reels) | 1:1
     "volume_normalise": False,  # volume YouTube (-14 LUFS)
@@ -552,16 +552,26 @@ def cmd_publish(args):
              f"  {len(chaps)} chapter(s) computed from the lyrics alignment") if chaps
           else tr("  Chapitres omis (calage des paroles absent ou chanson trop courte)",
                   "  Chapters skipped (no lyrics alignment or song too short)"))
-    print(tr("  Claude rédige le titre, l'accroche, les hashtags et la miniature…",
-             "  Claude is writing the title, the hook, the hashtags and the thumbnail…"))
+    print(tr("  Claude rédige le titre, l'accroche, les hashtags et 3 idées de miniature…",
+             "  Claude is writing the title, the hook, the hashtags and 3 thumbnail ideas…"))
+    # vignette choisie comme base de la 1re miniature : sa description (personnages tels que dans le clip)
+    ref = ""
+    vig = pub_mod.reglages(cfg)["vignette"]
+    if vig:
+        df = p / "build" / "descriptions.json"
+        desc = {**(json.loads(df.read_text(encoding="utf-8-sig")) if df.exists() else {}),
+                **(cfg.get("descriptions") or {})}
+        ref = desc.get(vig, "")
     try:
-        ia = ask_json(pub_mod.demande(cfg, paroles, (getattr(args, "consigne", None) or "").strip()))
+        ia = ask_json(pub_mod.demande(cfg, paroles, (getattr(args, "consigne", None) or "").strip(), ref))
     except ClaudeError as e:
         raise Stop(str(e))
+    idees = pub_mod.miniatures(ia)
     pub = {"titre": (ia.get("titre") or "").strip()[:100],
            "description": pub_mod.description(cfg, ia, chaps, paroles),
-           "miniature": (ia.get("miniature") or "").strip(),
-           "miniature_sans_texte": (ia.get("miniature_sans_texte") or "").strip(),
+           "miniatures": idees,
+           "miniature": idees[0]["avec_texte"] if idees else "",
+           "miniature_sans_texte": idees[0].get("sans_texte", "") if idees else "",
            "chapitres": chaps}
     (p / "build").mkdir(exist_ok=True)
     pub_mod.save(p / "build", pub, langue_projet(cfg))

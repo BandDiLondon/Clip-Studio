@@ -7,6 +7,24 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/); numéros de v
 
 ## [Non publié]
 
+## [1.5.0] - 2026-10-16
+
+### Ajouté
+- Publication : options de l'étape 8, enregistrées dans le projet. **Crédits et liens** (paroles, musique,
+  interprétation, clip, mention Clip Studio, liens, lien officiel en fan-made) ajoutés tels quels; **rédaction** (ton,
+  accroche courte ou normale, emojis, blocs de la description à garder); **miniature** : 3 idées rédigées d'un coup,
+  vignette de référence (personnages tels que dans le clip), texte et couleur du bandeau, formats carré et vertical.
+  **Profils** réutilisables d'un projet à l'autre (ex. « KPR », « Fan-made »).
+- Publication : deux origines **Fan-made** (chanson officielle d'un autre artiste, ou reprise IA de sa chanson) :
+  mention « Fan-made » dans le titre et la miniature, description qui déclare n'avoir aucun droit sur la chanson (fan
+  qui travaille avec Clip Studio, sans but lucratif, retrait sur demande), droits laissés à l'artiste et rappel du
+  Content ID de YouTube.
+
+### Corrigé
+- Calage des paroles : un refrain chanté deux fois de suite (souvent avec un solo entre les deux) n'est plus traité
+  comme un seul bloc (le second devient « Chorus (bis) »), et une section ratée est d'abord recalée seule entre les
+  vers bien calés qui l'entourent. Avant, le dernier refrain après un solo était tassé en une fraction de seconde.
+
 ## [1.4.1] - 2026-10-14
 
 ### Corrigé

@@ -132,9 +132,22 @@ de scènes, en français ou en anglais : « orage » amène la pluie et les écl
 - Les vidéos se trouvent dans `projets/<nom>/build/`. Les boutons permettent de les lire, de les ouvrir ou de les supprimer.
 
 ### 8. Publication
-Claude rédige un titre, une description YouTube et deux prompts de miniature, dans la langue de la chanson. Clip Studio ajoute les **chapitres**
+Claude rédige un titre, une description YouTube et **3 idées de miniature** (avec et sans texte), dans la langue de la chanson. Clip Studio ajoute les **chapitres**
 (calculés sur les paroles), les paroles et la **mention IA** adaptée : chanson originale réinterprétée par IA, images
-IA seulement, ou clip entièrement IA.
+IA seulement, ou clip entièrement IA. Pour la chanson d'un autre artiste, choisis une origine **Fan-made** (chanson
+officielle ou reprise IA) : la description déclare que tu ne possèdes aucun droit sur la chanson, que tu es simplement
+un fan qui fait un clip avec Clip Studio, sans but lucratif, et que tu retireras la vidéo si un ayant droit le demande.
+Ajoute alors le lien officiel de la chanson : il suit la déclaration.
+
+Options de l'étape (enregistrées dans le projet) :
+- **Crédits et liens** : paroles, musique, interprétation, clip, mention « Clip réalisé avec Clip Studio », et tes liens
+  (un par ligne). Ajoutés tels quels à la description.
+- **Rédaction** : ton (automatique, drôle, sérieux, promo, québécois familier), accroche normale ou courte, emojis, et
+  blocs de la description à garder (accroche, mention, chapitres, paroles, crédits, liens, hashtags).
+- **Miniature** : vignette de référence (la 1re idée reprend cette scène et ses personnages tels que dans le clip),
+  texte et couleur du bandeau, formats carré 1:1 et vertical 9:16 en plus du 16:9.
+- **Profils** : « Enregistrer comme profil… » garde l'origine, les crédits, les liens, la rédaction et la miniature
+  (ex. « KPR », « Fan-made ») ; « Charger » les applique à un autre projet.
 
 ---
 

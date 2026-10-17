@@ -7,6 +7,24 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version number
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-10-16
+
+### Added
+- Publishing: options of step 8, saved in the project. **Credits and links** (lyrics, music, performance, video, Clip
+  Studio mention, links, official link for fan-made) added as is; **writing** (tone, short or normal hook, emojis,
+  description blocks to keep); **thumbnail**: 3 ideas written at once, reference image (characters as they are in the
+  video), banner text and color, square and vertical formats. **Profiles** reusable from one project to another (e.g.
+  "KPR", "Fan-made").
+- Publishing: two **Fan-made** origins (another artist's official song, or an AI cover of their song): "Fan-made"
+  notice in the title and the thumbnail, description stating that you own no rights to the song (a fan working with
+  Clip Studio, no profit intended, removal on request), rights left to the artist, and a reminder about YouTube's
+  Content ID.
+
+### Fixed
+- Lyrics alignment: a chorus sung twice in a row (often with a solo in between) is no longer treated as a single
+  block (the second becomes “Chorus (bis)”), and a failed section is first realigned on its own between the
+  well-aligned lines around it. Before, the last chorus after a solo was squashed into a fraction of a second.
+
 ## [1.4.1] - 2026-10-14
 
 ### Fixed

@@ -904,43 +904,150 @@ const ORIGINES = {
   suno: tr("Chanson originale réinterprétée avec Suno (IA) + images IA", "Original song reinterpreted with Suno (AI) + AI images"),
   images: tr("Musique originale (sans IA), seules les images sont IA", "Original music (no AI), only the images are AI"),
   complete: tr("Chanson et images entièrement créées par IA", "Song and images fully created by AI"),
+  fan: tr("Fan-made : chanson d'un autre artiste (aucun droit) + images IA", "Fan-made: another artist's song (no rights) + AI images"),
+  fan_ia: tr("Fan-made : reprise IA (Suno) d'une chanson d'un autre artiste + images IA", "Fan-made: AI cover (Suno) of another artist's song + AI images"),
 };
+// mention par défaut du bandeau de miniature (dans la langue de la chanson, comme clip/publish.py)
+const MENTIONS = {fr: {suno: "Version IA", images: "Clip IA", complete: "Version IA", fan: "Fan-made", fan_ia: "Fan-made IA"},
+                  en: {suno: "AI Version", images: "AI Video", complete: "AI Version", fan: "Fan-made", fan_ia: "AI Fan-made"}};
+// options de publication et valeurs par défaut (REGLAGES dans clip/publish.py)
+const PUB_DEF = {credits: {paroles: "", musique: "", interpretation: "", clip: ""}, clip_studio: false, liens: "", lien_officiel: "",
+  ton: "auto", accroche: "normale", emojis: true,
+  blocs: {accroche: true, mention: true, chapitres: true, paroles: true, credits: true, liens: true, hashtags: true},
+  vignette: null, bandeau: "", bandeau_couleur: "rouge", formats: []};
+const pubReg = () => { const p = S.cfg.publication || {};
+  return {...PUB_DEF, ...p, credits: {...PUB_DEF.credits, ...(p.credits || {})}, blocs: {...PUB_DEF.blocs, ...(p.blocs || {})}}; };
+let PROFILS = {};
 V.publication = () => {
-  const P = S.publication, c = S.cfg;
-  const bloc = (id, titre, txt, rows) => `<div class="card"><div class="row"><h3 style="margin:0">${titre}</h3>
-    <div style="flex:1"></div><button class="primary" data-cpy="${id}">📋 ${tr("Copier", "Copy")}</button></div>
-    <textarea id="${id}" rows="${rows}" style="margin-top:10px">${esc(txt)}</textarea></div>`;
+  const P = S.publication, c = S.cfg, r = pubReg(), fan = (c.origine || "").startsWith("fan");
+  const opt = (id, val, libs) => `<select id="${id}">${Object.entries(libs).map(([k, t]) =>
+    `<option value="${k}" ${val === k ? "selected" : ""}>${t}</option>`).join("")}</select>`;
+  const coche = (id, on, lib) => `<label class="small" style="margin-right:14px"><input type="checkbox" id="${id}" ${on ? "checked" : ""}> ${lib}</label>`;
+  const champ = (id, titre, txt, rows) => `<div class="row" style="margin-top:12px"><b>${titre}</b><div style="flex:1"></div>
+    <button class="primary" data-cpy="${id}">📋 ${tr("Copier", "Copy")}</button></div>
+    <textarea id="${id}" rows="${rows}" style="margin-top:6px">${esc(txt)}</textarea>`;
+  const bloc = (id, titre, txt, rows) => `<div class="card">${champ(id, titre, txt, rows)}</div>`;
+  const ROLES = {paroles: tr("Paroles", "Lyrics"), musique: tr("Musique", "Music"), interpretation: tr("Interprétation", "Performance"), clip: tr("Clip", "Video")};
+  const BLOCS = {accroche: tr("Accroche", "Hook"), mention: tr("Mention / déclaration", "Notice / statement"), chapitres: tr("Chapitres", "Chapters"),
+    paroles: tr("Paroles", "Lyrics"), credits: tr("Crédits", "Credits"), liens: tr("Liens", "Links"), hashtags: "Hashtags"};
+  const cases = S.shots.filter(s => s.case);
+  const vig = cases.find(s => s.id === r.vignette);
+  const mention = (MENTIONS[c.langue] || MENTIONS.fr)[c.origine || "suno"] || "";
+  const idees = P ? (P.miniatures && P.miniatures.length ? P.miniatures : [{idee: "", avec_texte: P.miniature, sans_texte: P.miniature_sans_texte}]) : [];
   return `
-  <h2>8. ${tr("Publication YouTube", "YouTube publishing")}</h2><p class="lead">${tr("Claude rédige le titre, l'accroche et la miniature; les chapitres, les paroles et la mention IA sont ajoutés automatiquement, exacts.",
-    "Claude writes the title, the hook and the thumbnail; the chapters, the lyrics and the AI notice are added automatically, exactly.")}</p>
+  <h2>8. ${tr("Publication YouTube", "YouTube publishing")}</h2><p class="lead">${tr("Claude rédige le titre, l'accroche et 3 idées de miniature; les chapitres, les paroles, la mention, les crédits et les liens sont ajoutés automatiquement, exacts.",
+    "Claude writes the title, the hook and 3 thumbnail ideas; the chapters, the lyrics, the notice, the credits and the links are added automatically, exactly.")}</p>
   <div class="card"><h3>${tr("Informations", "Information")}</h3><div class="opts">
     <div class="opt"><label>${tr("Titre de la chanson", "Song title")}</label><input type="text" id="pub-titre" value="${esc(c.titre || "")}"></div>
     <div class="opt"><label>${tr("Artiste / groupe", "Artist / band")}</label><input type="text" id="pub-artiste" value="${esc(c.artiste || "")}"></div>
-    <div class="opt"><label>${tr("Origine (mention IA)", "Origin (AI notice)")}</label><select id="pub-origine">${Object.entries(ORIGINES).map(([k, t]) =>
-      `<option value="${k}" ${(c.origine || "suno") === k ? "selected" : ""}>${t}</option>`).join("")}</select></div>
+    <div class="opt"><label>${tr("Origine (mention)", "Origin (notice)")}</label>${opt("pub-origine", c.origine || "suno", ORIGINES)}</div>
+    ${fan ? `<div class="opt"><label>${tr("Lien officiel de la chanson / de l'artiste", "Official link of the song / artist")}</label><input type="text" id="pub-off" value="${esc(r.lien_officiel)}" placeholder="https://…"></div>` : ""}
   </div>
-  <p class="small muted" style="margin-top:8px">${tr(`Textes rédigés en ${(c.langue || "fr") === "en" ? "anglais" : "français"} (langue de la chanson, étape 1).`, `Texts written in ${(c.langue || "fr") === "en" ? "English" : "French"} (language of the song, step 1).`)}</p>
-  <div class="row" style="margin-top:12px"><input type="text" id="pub-consigne" placeholder="${tr("Consigne facultative : ex. ton plus sérieux, miniature avec le disque d'or…", "Optional instruction: e.g. more serious tone, thumbnail with the gold record…")}" style="flex:1;min-width:260px">
+  <div class="row" style="margin-top:12px"><label class="small">${tr("Profil", "Profile")}</label>
+    <select id="pub-profil"><option value="">${tr("— choisir —", "— choose —")}</option></select>
+    <button id="pub-charger">${tr("Charger", "Load")}</button>
+    <button id="pub-enreg">💾 ${tr("Enregistrer comme profil…", "Save as profile…")}</button>
+    <button id="pub-suppr">${tr("Supprimer", "Delete")}</button>
+    <span class="muted small">${tr("origine, crédits, liens, rédaction et miniature, réutilisables d'un projet à l'autre", "origin, credits, links, writing and thumbnail, reusable from one project to another")}</span></div></div>
+
+  <details class="card" open><summary><b>🎬 ${tr("Crédits et liens", "Credits and links")}</b> <span class="muted small">— ${tr("ajoutés tels quels à la description", "added as is to the description")}</span></summary><div class="opts" style="margin-top:10px">
+    ${Object.entries(ROLES).map(([k, t]) => `<div class="opt"><label>${t}</label><input type="text" id="pub-cr-${k}" value="${esc(r.credits[k])}"></div>`).join("")}
+  </div>
+  <div style="margin-top:10px">${coche("pub-cs", r.clip_studio, tr("Mentionner « Clip réalisé avec Clip Studio » (lien GitHub)", "Mention “Video made with Clip Studio” (GitHub link)"))}</div>
+  <label class="small" style="display:block;margin-top:10px">${tr("Liens (un par ligne, ex. « Spotify : https://… »)", "Links (one per line, e.g. “Spotify: https://…”)")}</label>
+  <textarea id="pub-liens" rows="3">${esc(r.liens)}</textarea></details>
+
+  <details class="card" open><summary><b>✍️ ${tr("Rédaction", "Writing")}</b></summary><div class="opts" style="margin-top:10px">
+    <div class="opt"><label>${tr("Ton", "Tone")}</label>${opt("pub-ton", r.ton, {auto: tr("automatique (celui de la chanson)", "automatic (the song's)"), drole: tr("drôle", "funny"),
+      serieux: tr("sérieux", "serious"), promo: "promo", quebecois: tr("québécois familier", "casual / colloquial")})}</div>
+    <div class="opt"><label>${tr("Accroche", "Hook")}</label>${opt("pub-acc", r.accroche, {normale: tr("normale (2 à 3 phrases)", "normal (2 to 3 sentences)"), courte: tr("courte (1 phrase)", "short (1 sentence)")})}</div>
+    <div class="opt"><label>Emojis</label>${coche("pub-emo", r.emojis, tr("dans l'accroche et les titres de blocs", "in the hook and the block headings"))}</div>
+  </div>
+  <label class="small" style="display:block;margin-top:10px">${tr("Blocs de la description", "Description blocks")}</label>
+  <div>${Object.entries(BLOCS).map(([k, t]) => coche("pub-b-" + k, r.blocs[k], t)).join("")}</div></details>
+
+  <details class="card" open><summary><b>🖼️ ${tr("Miniature", "Thumbnail")}</b> <span class="muted small">— ${tr("3 idées rédigées d'un coup", "3 ideas written at once")}</span></summary><div class="opts" style="margin-top:10px">
+    <div class="opt"><label>${tr("Vignette de référence (1re idée)", "Reference image (1st idea)")}</label><select id="pub-vig"><option value="">${tr("aucune : Claude choisit", "none: Claude chooses")}</option>
+      ${cases.map(s => `<option value="${s.id}" ${s.id === r.vignette ? "selected" : ""}>${s.id} — ${esc((s.texte || tr("ambiance", "ambiance")).slice(0, 50))}</option>`).join("")}</select>
+      <img id="pub-vig-img" src="${vig ? file("cases/" + vig.id + ".png") : ""}" style="max-width:100%;margin-top:8px;border-radius:6px;${vig ? "" : "display:none"}"></div>
+    <div class="opt"><label>${tr("Texte du bandeau", "Banner text")}</label><input type="text" id="pub-band" value="${esc(r.bandeau)}" placeholder="${esc(mention.toUpperCase())}"></div>
+    <div class="opt"><label>${tr("Couleur du bandeau", "Banner color")}</label>${opt("pub-coul", r.bandeau_couleur, {rouge: tr("rouge", "red"), jaune: tr("jaune", "yellow"),
+      noir: tr("noir", "black"), blanc: tr("blanc", "white"), bleu: tr("bleu", "blue")})}</div>
+    <div class="opt"><label>${tr("Formats en plus du 16:9", "Formats in addition to 16:9")}</label><div>${coche("pub-f-carre", r.formats.includes("carre"), tr("carré 1:1", "square 1:1"))}${coche("pub-f-vertical", r.formats.includes("vertical"), tr("vertical 9:16", "vertical 9:16"))}</div></div>
+  </div></details>
+
+  <div class="card"><p class="small muted" style="margin:0 0 10px">${tr(`Textes rédigés en ${(c.langue || "fr") === "en" ? "anglais" : "français"} (langue de la chanson, étape 1).`, `Texts written in ${(c.langue || "fr") === "en" ? "English" : "French"} (language of the song, step 1).`)}</p>
+  <div class="row"><input type="text" id="pub-consigne" placeholder="${tr("Consigne facultative : ex. miniature avec le disque d'or…", "Optional instruction: e.g. thumbnail with the gold record…")}" style="flex:1;min-width:260px">
+    <button id="pub-save">💾 ${tr("Enregistrer les réglages", "Save the settings")}</button>
     ${CLAUDE ? `<button class="primary" id="pub-go">✨ ${P ? tr("Refaire avec Claude", "Redo with Claude") : tr("Rédiger avec Claude", "Write with Claude")}</button>`
       : `<span class="muted small">${tr("Claude Code introuvable (voir étape 3)", "Claude Code not found (see step 3)")}</span>`}</div></div>
   ${P ? `
     ${bloc("pub-t", tr("Titre", "Title"), P.titre, 2)}
     ${bloc("pub-d", "Description", P.description, 18)}
-    ${bloc("pub-m", tr("Prompt de miniature (avec texte)", "Thumbnail prompt (with text)"), P.miniature, 8)}
-    ${bloc("pub-m2", tr("Prompt de miniature (sans texte)", "Thumbnail prompt (without text)"), P.miniature_sans_texte, 6)}
+    ${idees.map((x, i) => `<details class="card" ${i ? "" : "open"}><summary><b>🖼️ ${tr("Miniature", "Thumbnail")} ${i + 1}</b>${x.idee ? ` <span class="muted small">— ${esc(x.idee)}</span>` : ""}</summary>
+      ${champ(`pub-m${i}a`, tr("Avec texte (16:9)", "With text (16:9)"), x.avec_texte, 7)}
+      ${x.sans_texte ? champ(`pub-m${i}b`, tr("Sans texte (16:9)", "Without text (16:9)"), x.sans_texte, 5) : ""}
+      ${x.carre ? champ(`pub-m${i}c`, tr("Carrée 1:1", "Square 1:1"), x.carre, 5) : ""}
+      ${x.vertical ? champ(`pub-m${i}v`, tr("Verticale 9:16", "Vertical 9:16"), x.vertical, 5) : ""}</details>`).join("")}
     <p class="small muted">${tr("Tu peux retoucher les textes ici avant de les copier (les modifications ne sont pas enregistrées).", "You can touch up the texts here before copying them (the changes are not saved).")}</p>` : ""}
   <div class="card"><h3>${tr("Avant de publier", "Before publishing")}</h3><ul class="small">
     <li>${tr("Vérifie l'orthographe du texte sur la miniature générée (sinon, génère la version sans texte).", "Check the spelling of the text on the generated thumbnail (otherwise, generate the version without text).")}</li>
     <li>${tr("Dans YouTube Studio, coche <b>« Contenu modifié ou synthétique »</b> (voix et images générées).", "In YouTube Studio, check <b>“Altered or synthetic content”</b> (generated voice and images).")}</li>
+    ${fan ? `<li>${tr("Fan-made : YouTube peut revendiquer la vidéo (Content ID); les revenus éventuels vont alors aux ayants droit, et la vidéo peut être bloquée dans certains pays.", "Fan-made: YouTube may claim the video (Content ID); any revenue then goes to the rights holders, and the video may be blocked in some countries.")}</li>` : ""}
     <li>${tr("Suno : l'offre gratuite n'autorise pas l'usage commercial (monétisation); les offres payantes, oui.", "Suno: the free plan does not allow commercial use (monetization); paid plans do.")}</li>
     <li>${tr("Vérifie les chapitres à l'oreille : ils viennent du calage des paroles.", "Check the chapters by ear: they come from the lyrics alignment.")}</li></ul></div>`;
 };
+// réglages de l'étape 8 tels qu'affichés : {titre, artiste, origine, publication}
+function pubLire() {
+  const v = id => $("#" + id).value, ch = id => $("#" + id).checked;
+  return {titre: v("pub-titre").trim(), artiste: v("pub-artiste").trim(), origine: v("pub-origine"),
+    publication: {
+      credits: Object.fromEntries(Object.keys(PUB_DEF.credits).map(k => [k, v("pub-cr-" + k).trim()])),
+      clip_studio: ch("pub-cs"), liens: v("pub-liens"),
+      lien_officiel: ($("#pub-off") ? v("pub-off") : pubReg().lien_officiel).trim(),
+      ton: v("pub-ton"), accroche: v("pub-acc"), emojis: ch("pub-emo"),
+      blocs: Object.fromEntries(Object.keys(PUB_DEF.blocs).map(k => [k, ch("pub-b-" + k)])),
+      vignette: v("pub-vig") || null, bandeau: v("pub-band").trim(), bandeau_couleur: v("pub-coul"),
+      formats: ["carre", "vertical"].filter(f => ch("pub-f-" + f))}};
+}
+async function pubSauver() {
+  const d = pubLire(); Object.assign(S.cfg, d);
+  await post(`/api/projet/${encodeURIComponent(nom())}/config`, d);
+}
+function pubProfils(choisi) {
+  $("#pub-profil").innerHTML = `<option value="">${tr("— choisir —", "— choose —")}</option>` + Object.keys(PROFILS).sort()
+    .map(n => `<option value="${esc(n)}" ${n === choisi ? "selected" : ""}>${esc(n)}</option>`).join("");
+}
 V.publication_bind = () => {
   document.querySelectorAll("[data-cpy]").forEach(b => b.onclick = () => copy($("#" + b.dataset.cpy).value));
+  api("/api/profils").then(p => { PROFILS = p; pubProfils(); }).catch(() => {});
+  // l'origine change le lien officiel, le bandeau par défaut et l'aide : réaffichage (sans perdre la saisie)
+  $("#pub-origine").onchange = async () => { await pubSauver().catch(() => {}); renderStep(); };
+  $("#pub-vig").onchange = e => { const img = $("#pub-vig-img");
+    img.style.display = e.target.value ? "" : "none"; if (e.target.value) img.src = file("cases/" + e.target.value + ".png"); };
+  $("#pub-save").onclick = async () => { await pubSauver(); toast(tr("Réglages enregistrés ✅", "Settings saved ✅")); };
+  $("#pub-enreg").onclick = async () => {
+    const n = prompt(tr("Nom du profil (ex. KPR, Fan-made) :", "Profile name (e.g. KPR, Fan-made):"), $("#pub-profil").value || ""); if (!n || !n.trim()) return;
+    const d = pubLire(), {vignette, ...prof} = d.publication;            // la vignette est propre au projet
+    try { PROFILS = await post("/api/profils", {nom: n.trim(), profil: {origine: d.origine, ...prof}}); pubProfils(n.trim());
+      toast(tr("Profil enregistré ✅", "Profile saved ✅")); } catch (e) { toast(e.message, 5000); }
+  };
+  $("#pub-charger").onclick = async () => {
+    const n = $("#pub-profil").value, prof = PROFILS[n]; if (!prof) return toast(tr("Choisis un profil", "Choose a profile"));
+    const {origine, ...reste} = prof, d = pubLire();
+    d.publication = {...PUB_DEF, ...reste, vignette: d.publication.vignette};
+    if (origine) d.origine = origine;
+    Object.assign(S.cfg, d); await post(`/api/projet/${encodeURIComponent(nom())}/config`, d);
+    renderStep(); toast(tr(`Profil « ${n} » chargé`, `Profile “${n}” loaded`));
+  };
+  $("#pub-suppr").onclick = async () => {
+    const n = $("#pub-profil").value; if (!n || !confirm(tr(`Supprimer le profil « ${n} » ?`, `Delete the profile “${n}”?`))) return;
+    PROFILS = await post("/api/profils", {nom: n, profil: null}); pubProfils();
+  };
   $("#pub-go") && ($("#pub-go").onclick = async () => {
-    const titre = $("#pub-titre").value.trim(), artiste = $("#pub-artiste").value.trim();
-    if (!titre || !artiste) return toast(tr("Indique le titre et l'artiste", "Enter the title and the artist"));
-    await post(`/api/projet/${encodeURIComponent(nom())}/config`, {titre, artiste, origine: $("#pub-origine").value});
+    const d = pubLire();
+    if (!d.titre || !d.artiste) return toast(tr("Indique le titre et l'artiste", "Enter the title and the artist"));
+    await pubSauver();
     const cns = $("#pub-consigne").value.trim();
     run("publish", cns ? ["--consigne", cns.slice(0, 300)] : [], tr("Rédaction de la publication", "Writing the publishing texts"));
   });

@@ -129,9 +129,22 @@ or in English: "storm" brings rain and lightning, "fire" embers and smoke, "wide
 - The videos are in `projets/<name>/build/`. The buttons let you play, open or delete them.
 
 ### 8. Publishing
-Claude writes a title, a YouTube description and two thumbnail prompts, in the song language. Clip Studio adds the
+Claude writes a title, a YouTube description and **3 thumbnail ideas** (with and without text), in the song language. Clip Studio adds the
 **chapters** (computed from the lyrics), the lyrics and the matching **AI notice**: original song reinterpreted by AI,
-AI images only, or fully AI video.
+AI images only, or fully AI video. For another artist's song, choose a **Fan-made** origin (official song or AI
+cover): the description states that you do not own any rights to the song, that you are just a fan making a video with
+Clip Studio, with no profit intended, and that you will remove the video if a rights holder asks. Then add the
+song's official link: it follows the statement.
+
+Options of the step (saved in the project):
+- **Credits and links**: lyrics, music, performance, video, "Video made with Clip Studio" mention, and your links (one
+  per line). Added as is to the description.
+- **Writing**: tone (automatic, funny, serious, promo, casual), normal or short hook, emojis, and description blocks to
+  keep (hook, notice, chapters, lyrics, credits, links, hashtags).
+- **Thumbnail**: reference image (the 1st idea reuses this scene and its characters as they are in the video), banner
+  text and color, square 1:1 and vertical 9:16 formats in addition to 16:9.
+- **Profiles**: "Save as profile…" keeps the origin, the credits, the links, the writing and the thumbnail (e.g. "KPR",
+  "Fan-made"); "Load" applies them to another project.
 
 ---
 

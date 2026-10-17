@@ -54,6 +54,25 @@ class Paroles(unittest.TestCase):
             secs = [s for s, _ in lyrics.read_lyrics(f)]
         self.assertEqual(secs, ["Verse 1", "Verse 1", "Chorus", "Chorus", "Verse 2", "Chorus", "Chorus"])
 
+    def test_refrains_consecutifs_separes(self):
+        # deux refrains qui se suivent (solo entre les deux) : deux blocs d'alignement, pas un seul
+        with tempfile.TemporaryDirectory() as d:
+            f = Path(d) / "p.txt"
+            f.write_text("a\n\nrefrain\n\nrefrain\n", encoding="utf-8")
+            sans = lyrics.read_lyrics(f)
+            f.write_text("[Verse]\na\n[Chorus]\nrefrain\n[Chorus]\nrefrain\n", encoding="utf-8")
+            avec = lyrics.read_lyrics(f)
+        for lines in (sans, avec):
+            self.assertEqual([s for s, _ in lines][1:], ["Chorus", "Chorus (bis)"])
+            self.assertEqual(len(lyrics.blocks(lines)), 3)
+
+    def test_fenetres_locales_apres_solo(self):
+        # dernier refrain tassé à la fin du solo : seul son bloc est recalé, entre le dernier vers bien calé et la fin
+        lines = [("Chorus", "a b"), ("Chorus", "c d"), ("Chorus (bis)", "a b"), ("Chorus (bis)", "c d")]
+        segs = [seg("a b", 10.0, 2.0, "Chorus"), seg("c d", 12.0, 2.0, "Chorus"),
+                seg("a b", 14.0, 0.02, "Chorus (bis)"), seg("c d", 14.0, 0.02, "Chorus (bis)")]
+        self.assertEqual(lyrics.local_windows(lines, segs, 60.0), [None, (14.0, 60.0)])
+
     def test_repair_mot_isole(self):
         s = seg("un deux trois quatre", 50.0)
         s["words"][0]["s"], s["words"][0]["e"] = 20.0, 20.3          # 1er mot aspiré 30 s plus tôt
@@ -315,6 +334,66 @@ class Langues(unittest.TestCase):
         ch = publish.chapitres(segs, 70, langue="en")
         self.assertTrue(any("Verse 1" in c for c in ch) and any("Chorus" in c for c in ch), ch)
         self.assertTrue(any("Couplet 1" in c for c in publish.chapitres(segs, 70)))
+
+    def test_publication_fan_made(self):
+        # fan-made : mention, déclaration « aucun droit » et droits laissés à l'artiste, dans les deux langues
+        from clip import publish
+        for lg, droits in (("fr", "aucun droit"), ("en", "do not own any rights")):
+            for o in ("fan", "fan_ia"):
+                cfg = {"langue": lg, "titre": "Chanson", "artiste": "Artiste", "origine": o}
+                d = publish.description(cfg, {"accroche": "x"}, [], "paroles")
+                self.assertIn("Fan-made", d)
+                self.assertIn(droits, d)
+                self.assertIn(publish.MOTS[lg]["droits_fan"], d)
+                self.assertIn("Fan-made", publish.demande(cfg, "paroles"))
+
+    def test_options_de_publication(self):
+        from clip import publish
+        cfg = {"langue": "fr", "titre": "T", "artiste": "A", "origine": "fan", "publication": {
+            "credits": {"paroles": "Moi"}, "clip_studio": True, "liens": "Spotify : s\n\n", "lien_officiel": "https://o",
+            "emojis": False, "blocs": {"paroles": False, "hashtags": False}, "ton": "drole", "accroche": "courte",
+            "bandeau": "nouveau", "bandeau_couleur": "jaune", "formats": ["vertical", "inconnu"]}}
+        r = publish.reglages(cfg)
+        self.assertTrue(r["blocs"]["chapitres"])                         # blocs absents : par défaut
+        self.assertEqual(r["formats"], ["vertical"])
+        d = publish.description(cfg, {"accroche": "Wow", "hashtags": ["#x"]}, ["0:00 Intro"], "la la")
+        for attendu in ("Paroles : Moi", publish.CLIP_STUDIO_URL, "Spotify : s", "Chanson officielle : https://o", "Wow"):
+            self.assertIn(attendu, d)
+        self.assertNotIn("la la", d)                                     # bloc paroles décoché
+        self.assertNotIn("#x", d)
+        self.assertNotIn("🎬", d)                                        # sans emojis
+        q = publish.demande(cfg, "p", reference="Plan : large ; Sujet : Maxime chauve")
+        for attendu in ("drôle", "1 phrase", "Aucun emoji", "« NOUVEAU »", "jaune vif", '"vertical"', "Maxime chauve"):
+            self.assertIn(attendu, q)
+        self.assertNotIn('"carre"', q)
+        en = publish.demande({**cfg, "langue": "en"}, "p")
+        self.assertIn("funny", en)
+        self.assertIn("bright yellow", en)
+
+    def test_miniatures(self):
+        from clip import publish
+        ia = {"miniatures": [{"idee": "a", "avec_texte": "A", "sans_texte": "a", "carre": "C"}, {"idee": "vide"}] * 3}
+        self.assertEqual(len(publish.miniatures(ia)), 3)
+        self.assertEqual(publish.miniatures(ia)[0]["carre"], "C")
+        self.assertEqual(publish.miniatures({"miniature": "M", "miniature_sans_texte": "m"}),   # ancien format
+                         [{"idee": "", "avec_texte": "M", "sans_texte": "m"}])
+        md = publish.markdown({"titre": "t", "description": "d\n", "miniatures": publish.miniatures(ia)})
+        self.assertIn("Miniature 3 — a (carrée 1:1)", md)
+
+    def test_profils_de_publication(self):
+        from clip import web
+        with tempfile.TemporaryDirectory() as d:
+            old = web.PROJETS, web.PROFILS
+            web.PROJETS, web.PROFILS = Path(d), Path(d) / "_profils_publication.json"
+            try:
+                web.enregistrer_profil("KPR", {"origine": "suno"})
+                self.assertEqual(web.profils(), {"KPR": {"origine": "suno"}})
+                web.enregistrer_profil("KPR", None)
+                self.assertEqual(web.profils(), {})
+                with self.assertRaises(ValueError):
+                    web.enregistrer_profil(" ", {})
+            finally:
+                web.PROJETS, web.PROFILS = old
 
     def test_langue_dans_l_empreinte(self):
         # langue absente de l'empreinte en français (pas de recalage des anciens projets), présente en anglais

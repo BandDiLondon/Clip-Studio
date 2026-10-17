@@ -141,8 +141,12 @@ Conservés d'un rendu à l'autre; tous les effets sont désactivés par défaut.
 - **Karaoké** : `karaoke_mode` (mot | ligne | aucun), `font`, `karaoke_taille`, `karaoke_couleur`, `karaoke_texte`,
   `karaoke_position`, `karaoke_animation`, `karaoke_suivante`, `karaoke_majuscules`, `karaoke_decalage`, `bar_alpha`.
 - **Textes** : `titre`, `artiste`, `generique`, `logo` + `logo_position`, `mention_ia_ecran` / `_texte` (vide =
-  « Version IA » ou « AI Version » selon la langue du projet) / `_position`, `origine` (`suno` | `images` | `complete`,
-  pour la mention IA de la publication).
+  « Version IA » ou « AI Version » selon la langue du projet) / `_position`, `origine` (`suno` | `images` | `complete` | `fan` |
+  `fan_ia`, pour la mention de la publication; `fan*` : déclaration « aucun droit », droits laissés à l'artiste),
+  `publication` (options de l'étape 8 : `credits` {`paroles`, `musique`, `interpretation`, `clip`}, `clip_studio`,
+  `liens`, `lien_officiel`, `ton`, `accroche`, `emojis`, `blocs`, `vignette`, `bandeau`, `bandeau_couleur`, `formats`;
+  défauts : `REGLAGES` de `clip/publish.py`). Profils communs à tous les projets : `projets/_profils_publication.json`
+  (`GET` / `POST /api/profils`).
 - **Paroles** : `langue` (`fr` | `en` : calage Whisper, textes rédigés par Claude, prompts, publication),
   `debut_chant` (s), `whisper` (`medium` | `small`, modèle du calage; `--model` de `prepare` / `align`
   l'emporte et est enregistré), `intention`, `style`, `personnages`.

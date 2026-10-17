@@ -144,8 +144,12 @@ to the next; all effects are off by default.
 - **Karaoke**: `karaoke_mode` (mot | ligne | aucun), `font`, `karaoke_taille`, `karaoke_couleur`, `karaoke_texte`,
   `karaoke_position`, `karaoke_animation`, `karaoke_suivante`, `karaoke_majuscules`, `karaoke_decalage`, `bar_alpha`.
 - **Texts**: `titre`, `artiste`, `generique`, `logo` + `logo_position`, `mention_ia_ecran` / `_texte` (empty = "Version
-  IA" or "AI Version" depending on the project language) / `_position`, `origine` (`suno` | `images` | `complete`, for
-  the AI notice of the publishing).
+  IA" or "AI Version" depending on the project language) / `_position`, `origine` (`suno` | `images` | `complete` | `fan` |
+  `fan_ia`, for the notice of the publishing; `fan*`: "no rights" statement, rights left to the artist),
+  `publication` (options of step 8: `credits` {`paroles`, `musique`, `interpretation`, `clip`}, `clip_studio`, `liens`,
+  `lien_officiel`, `ton`, `accroche`, `emojis`, `blocs`, `vignette`, `bandeau`, `bandeau_couleur`, `formats`; defaults:
+  `REGLAGES` in `clip/publish.py`). Profiles shared by all projects: `projets/_profils_publication.json`
+  (`GET` / `POST /api/profils`).
 - **Lyrics**: `langue` (`fr` | `en`: Whisper alignment, texts written by Claude, prompts, publishing),
   `debut_chant` (s), `whisper` (`medium` | `small`, alignment model; `--model` of `prepare` / `align` wins and is
   saved), `intention`, `style`, `personnages`.

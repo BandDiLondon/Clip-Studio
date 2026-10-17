@@ -8,17 +8,24 @@ from .i18n import tr
 SECTION_RE = re.compile(r"^\s*\[(.+?)\]\s*$")
 
 
+def _bis(name, lines):
+    """Nom de la section qui commence : « (bis) » si la précédente porte déjà ce nom."""
+    return f"{name} (bis)" if lines and lines[-1][0] == name else name
+
+
 def read_lyrics(path):
     """Retourne [(section, vers)] en ignorant les lignes vides.
     Sans aucun en-tête [Section] : chaque bloc séparé par une ligne vide devient une section ;
-    un bloc répété à l'identique est un refrain (« Chorus »), les autres des couplets."""
+    un bloc répété à l'identique est un refrain (« Chorus »), les autres des couplets.
+    Deux sections de même nom qui se suivent (refrain chanté deux fois, souvent séparé par un solo)
+    sont distinguées (« Chorus (bis) ») : sinon elles forment un seul bloc et l'alignement les tasse."""
     raw_lines = path.read_text(encoding="utf-8-sig").splitlines()
     if any(SECTION_RE.match(r) for r in raw_lines):
         section, lines = None, []
         for raw in raw_lines:
             m = SECTION_RE.match(raw)
             if m:
-                section = m.group(1)
+                section = _bis(m.group(1), lines)
             elif raw.strip():
                 lines.append((section, raw.strip()))
         return lines
@@ -37,7 +44,7 @@ def read_lyrics(path):
         else:
             verse += 1
             name = f"Verse {verse}"
-        lines += [(name, t) for t in b]
+        lines += [(_bis(name, lines), t) for t in b]
     return lines
 
 
@@ -332,10 +339,14 @@ def _segments(lines, times):
 
 
 def _align_by_blocks(model, audio, lines, windows, language):
-    """Aligne chaque bloc de vers seul, dans sa fenêtre de l'audio (16 kHz). → [(mot, début, fin, probabilité)]
+    """Aligne chaque bloc de vers seul, dans sa fenêtre de l'audio (16 kHz; None : bloc ignoré).
+    → [(mot, début, fin, probabilité)]
     et le dictionnaire des temps par (vers, token)."""
     times, aligned = {}, []
-    for b, (a, e) in zip(blocks(lines), windows):
+    for b, w in zip(blocks(lines), windows):
+        if w is None:                            # bloc laissé tel quel
+            continue
+        a, e = w
         sub = [lines[i] for i in b]
         r = model.align(audio[int(a * 16000):int(e * 16000)], "\n".join(t for _, t in sub), language=language)
         al = [(w.word, float(w.start) + a, float(w.end) + a, float(getattr(w, "probability", 1.0) or 0))
@@ -344,6 +355,19 @@ def _align_by_blocks(model, audio, lines, windows, language):
         for (li, ti), t in _map_words(sub, [(w, s, en) for w, s, en, _ in al]).items():
             times[(b[li], ti)] = t
     return aligned, times
+
+
+def local_windows(lines, segments, duration):
+    """Fenêtre des blocs qui contiennent des vers ratés, bornée par les vers bien calés voisins (None pour
+    les autres blocs) : le calage global est souvent bon jusqu'à un solo, puis tasse tout ce qui suit."""
+    bad = set(bad_lines(segments))
+    good = [i for i, s in enumerate(segments) if i not in bad and s["start"] is not None]
+    wins = []
+    for b in blocks(lines):
+        a = max((segments[i]["end"] for i in good if i < b[0]), default=0.0)
+        e = min((segments[i]["start"] for i in good if i > b[-1]), default=duration)
+        wins.append((round(a, 3), round(e, 3)) if bad & set(b) and e - a > 0.5 * len(b) else None)
+    return wins
 
 
 def align(audio_path, lyrics_path, out_path, model_name="medium", language="fr", debut_chant=0):
@@ -363,12 +387,25 @@ def align(audio_path, lyrics_path, out_path, model_name="medium", language="fr",
     segments = _segments(lines, _map_words(lines, [(w, s, e) for w, s, e, _ in aligned]))
 
     bad = bad_lines(segments)
-    if bad and len(blocks(lines)) > 1:
+    audio = stable_whisper.audio.load_audio(str(audio_path)) if bad and len(blocks(lines)) > 1 else None
+    windows = local_windows(lines, segments, len(audio) / 16000) if audio is not None else []
+    if any(windows):
+        # sections ratées recalées seules entre les vers bien calés voisins (ex. dernier refrain après un solo)
+        aligned2, times2 = _align_by_blocks(model, audio, lines, windows, language)
+        seg2 = _segments(lines, times2)
+        for b, w in zip(blocks(lines), windows):
+            if w is None:
+                for i in b:
+                    seg2[i] = segments[i]
+        if len(bad_lines(seg2)) < len(bad):
+            print(tr(f"  sections ratées recalées seules : {len(bad_lines(seg2))} vers mal calé(s) au lieu de {len(bad)}",
+                     f"  failed sections realigned alone: {len(bad_lines(seg2))} badly aligned line(s) instead of {len(bad)}"))
+            segments, aligned, bad = seg2, aligned + aligned2, bad_lines(seg2)
+    if bad and audio is not None:
         # alignement global raté (longue intro, pauses instrumentales) : on écoute la chanson, on repère
         # chaque section, puis on l'aligne seule dans sa fenêtre
         print(tr(f"  {len(bad)} vers mal calés : écoute de la chanson pour caler section par section…",
                  f"  {len(bad)} badly aligned lines: listening to the song to align section by section…"))
-        audio = stable_whisper.audio.load_audio(str(audio_path))
         heard = [(w.word, float(w.start), float(w.end))
                  for seg in model.transcribe(audio, language=language, verbose=None).segments for w in seg.words]
         windows = match_windows(lines, heard, len(audio) / 16000, debut_chant)

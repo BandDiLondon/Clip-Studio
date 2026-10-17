@@ -158,6 +158,33 @@ def _project(nom):
     return p
 
 
+PROFILS = PROJETS / "_profils_publication.json"     # profils de l'étape 8, communs à tous les projets
+
+
+def profils():
+    try:
+        return json.loads(_read(PROFILS, "{}"))
+    except json.JSONDecodeError:
+        return {}
+
+
+def enregistrer_profil(nom, profil):
+    """Crée, remplace (profil = dict) ou supprime (profil = None) un profil de publication."""
+    nom = (nom or "").strip()
+    if not nom or len(nom) > 40:
+        raise ValueError(tr("Nom de profil invalide (1 à 40 caractères)", "Invalid profile name (1 to 40 characters)"))
+    tous = profils()
+    if profil is None:
+        tous.pop(nom, None)
+    elif isinstance(profil, dict):
+        tous[nom] = profil
+    else:
+        raise ValueError(tr("Profil invalide", "Invalid profile"))
+    PROJETS.mkdir(exist_ok=True)
+    ecrire(PROFILS, json.dumps(tous, indent=1, ensure_ascii=False))
+    return tous
+
+
 def _read(f, default=""):
     return f.read_text(encoding="utf-8-sig") if f.exists() else default
 
@@ -318,6 +345,8 @@ class Handler(BaseHTTPRequestHandler):
                     return self._json(JOB.state())
                 if parts[1:] == ["version"]:
                     return self._json({"perime": code_perime()})
+                if parts[1:] == ["profils"]:
+                    return self._json(profils())
                 if parts[1:] == ["claude"]:
                     from .ai import find_claude
                     return self._json({"chemin": find_claude()})
@@ -352,6 +381,9 @@ class Handler(BaseHTTPRequestHandler):
                 if r.returncode:
                     raise ValueError(r.stdout + r.stderr)
                 return self._json({"ok": True})
+            if parts == ["api", "profils"]:
+                data = json.loads(self._body() or b"{}")
+                return self._json(enregistrer_profil(data.get("nom"), data.get("profil")))
             if len(parts) < 4 or parts[:2] != ["api", "projet"]:
                 return self._err(tr("Introuvable", "Not found"), 404)
             nom, action = parts[2], parts[3]
