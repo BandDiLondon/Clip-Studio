@@ -2,7 +2,7 @@
 # torch CPU d'abord (hors de ce fichier) :
 #   pip install torch==2.14.0 torchaudio==2.11.0 --index-url https://download.pytorch.org/whl/cpu
 numpy==2.5.3
-pillow==12.3.0
+pillow==13.0.0
 scipy==1.18.1
 numba==0.67.0
 librosa==1.0.0
