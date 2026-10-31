@@ -11,7 +11,7 @@ cloudpickle==3.1.2
 colorama==0.4.6
 colorlog==6.12.0
 decorator==5.3.1
-filelock==3.32.3
+filelock==4.2.1
 flatbuffers==25.12.19
 fsspec==2026.7.0
 h11==0.16.0
@@ -40,7 +40,7 @@ onnxruntime==1.30.0
 openai-whisper==20250625
 opencv-python-headless==5.0.0.93
 packaging==26.3
-pillow==12.3.0
+pillow==13.0.0
 pip==26.2.1
 platformdirs==4.11.12
 pooch==1.9.0
@@ -55,7 +55,7 @@ rich==15.0.0
 safetensors==0.8.0
 scikit-learn==1.9.1
 scipy==1.18.1
-setuptools==83.0.0
+setuptools==84.1.0
 shapely==2.1.2
 shellingham==1.5.4
 six==1.17.0
