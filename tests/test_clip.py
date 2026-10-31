@@ -601,6 +601,31 @@ class Langues(unittest.TestCase):
                                  200)
                 self.assertEqual(post("/api/projet/essai/ouvrir?chemin=outil.bat")[0], 400)
                 self.assertEqual(post("/api/projet/essai/ouvrir?chemin=../..")[0], 400)
+                self.assertEqual(post("/api/projet/essai/ouvrir?chemin=build/absente.mp4")[0], 400)
+                self.assertEqual(post("/api/projet/essai/reveler?nom=../projet.json")[0], 400)
+                self.assertEqual(post("/api/projet/essai/restaurer?f=../../projet.json")[0], 400)
+                self.assertEqual(post("/api/projet/ESSAI/config", b"{}")[0], 400)          # nom exact du dossier
+                # dépôt : le nom reçu est réduit au nom de fichier, écrit dans le projet
+                self.assertEqual(post("/api/projet/essai/upload?type=paroles&nom=..%2F..%2Fpiege.txt", b"la")[0], 200)
+                self.assertTrue((Path(d) / "essai" / "piege.txt").exists())
+                self.assertFalse((Path(d).parent / "piege.txt").exists())
+                self.assertEqual(post("/api/projet/essai/upload?type=planche&id=p1&nom=a.png", b"x")[0], 200)
+                self.assertEqual(post("/api/projet/essai/upload?type=planche&id=p1&nom=a.jpg", b"x")[0], 200)
+                self.assertEqual(sorted(f.name for f in (Path(d) / "essai" / "mes_planches").iterdir()), ["P1.jpg"])
+
+                def get(url):
+                    c = http.client.HTTPConnection("127.0.0.1", srv.server_address[1], timeout=5)
+                    c.request("GET", url)
+                    r = c.getresponse()
+                    out = r.status, r.getheader("Content-Type"), r.read()
+                    c.close()
+                    return out
+                st, ct, body = get("/fichier/essai/piege.txt")
+                self.assertEqual((st, ct, body), (200, "text/plain; charset=utf-8", b"la"))
+                self.assertEqual(get("/fichier/essai/mes_planches/P1.jpg")[1], "image/jpeg")
+                self.assertEqual(get("/fichier/essai/outil.bat")[1], "application/octet-stream")
+                self.assertIn(get("/fichier/essai/..%2F..%2Fx")[0], (403, 404))
+                self.assertEqual(get("/api/projet/ESSAI")[0], 404)                       # nom exact du dossier
             finally:
                 srv.shutdown()
                 srv.server_close()

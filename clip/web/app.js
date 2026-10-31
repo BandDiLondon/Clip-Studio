@@ -192,7 +192,13 @@ const replaceDrop = (has, what) => has ? tr(`Remplacer ${what}`, `Replace ${what
 
 // ------------------------------------------------------------------ étapes
 const V = {};
-function renderStep() { if (!S) return; HOVER = null; $("#main").innerHTML = V[step](); (V[step + "_bind"] || (() => {}))(); }
+function renderStep() {
+  if (!S) return;
+  if (!Object.prototype.hasOwnProperty.call(V, step) || typeof V[step] !== "function") step = "projet";  // #étape inconnue
+  HOVER = null; $("#main").innerHTML = V[step]();
+  const bind = step + "_bind";
+  if (Object.prototype.hasOwnProperty.call(V, bind) && typeof V[bind] === "function") V[bind]();
+}
 
 V.projet = () => `
   <h2>1. ${tr("Projet", "Project")}</h2><p class="lead">${INSTRU() ? tr("Dépose le morceau instrumental : le rythme guide tout le montage.", "Drop the instrumental track: the rhythm drives the whole edit.")
@@ -1141,7 +1147,7 @@ V.publication_bind = () => {
   // l'origine change le lien officiel, le bandeau par défaut et l'aide : réaffichage (sans perdre la saisie)
   $("#pub-origine").onchange = async () => { await pubSauver().catch(() => {}); renderStep(); };
   $("#pub-vig").onchange = e => { const img = $("#pub-vig-img");
-    img.style.display = e.target.value ? "" : "none"; if (e.target.value) img.src = file("cases/" + e.target.value + ".png"); };
+    img.style.display = e.target.value ? "" : "none"; if (e.target.value) img.src = file("cases/" + encodeURIComponent(e.target.value) + ".png"); };
   $("#pub-save").onclick = async () => { await pubSauver(); toast(tr("Réglages enregistrés ✅", "Settings saved ✅")); };
   $("#pub-enreg").onclick = async () => {
     const n = prompt(tr("Nom du profil (ex. KPR, Fan-made) :", "Profile name (e.g. KPR, Fan-made):"), $("#pub-profil").value || ""); if (!n || !n.trim()) return;

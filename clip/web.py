@@ -1,7 +1,6 @@
 """Clip Studio : interface web locale (127.0.0.1 uniquement) qui pilote le pipeline `python -m clip`.
 Aucune dépendance : http.server de la bibliothèque standard."""
 import json
-import mimetypes
 import os
 import re
 import subprocess
@@ -21,6 +20,13 @@ PORT = 8765
 NOM_RE = re.compile(r"^[\w\-]+$")
 IMG_EXT = (".jpg", ".jpeg", ".png", ".webp")
 AUDIO_EXT = (".mp3", ".wav", ".flac", ".m4a", ".ogg")
+TYPES = {".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8",
+         ".md": "text/plain; charset=utf-8", ".txt": "text/plain; charset=utf-8", ".json": "text/plain; charset=utf-8",
+         ".srt": "text/plain; charset=utf-8", ".ass": "text/plain; charset=utf-8",
+         ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".gif": "image/gif",
+         ".ico": "image/x-icon", ".mp4": "video/mp4", ".m4v": "video/mp4", ".mov": "video/quicktime",
+         ".webm": "video/webm", ".mp3": "audio/mpeg", ".wav": "audio/wav", ".flac": "audio/flac", ".m4a": "audio/mp4",
+         ".ogg": "audio/ogg"}                             # type MIME tiré d'une liste fixe (jamais du nom reçu)
 
 # commandes autorisées depuis l'interface → options acceptées
 COMMANDS = {
@@ -152,14 +158,40 @@ def _save_cfg(p, cfg):
     _save(p, cfg)
 
 
-def _project(nom):
+def _nom(nom):
+    """Nom de projet reçu → nom du dossier tel qu'il existe sur le disque : la suite n'utilise jamais la valeur reçue."""
     if not NOM_RE.match(nom or ""):
         raise ValueError(tr("Nom de projet invalide (lettres, chiffres, - et _ seulement)",
                             "Invalid project name (letters, digits, - and _ only)"))
-    p = PROJETS / nom
-    if not (p / "projet.json").exists():
-        raise FileNotFoundError(tr(f"Projet introuvable : {nom}", f"Project not found: {nom}"))
-    return p
+    for d in (PROJETS.iterdir() if PROJETS.is_dir() else []):
+        if d.name == nom and (d / "projet.json").exists():
+            return d.name
+    raise FileNotFoundError(tr(f"Projet introuvable : {nom}", f"Project not found: {nom}"))
+
+
+def _project(nom):
+    return PROJETS / _nom(nom)
+
+
+def _dans(base, nom):
+    """Chemin `nom` sous le dossier `base`, refusé s'il en sort (realpath puis startswith)."""
+    base = os.path.realpath(base)
+    f = os.path.realpath(os.path.join(base, nom))
+    if f != base and not f.startswith(base + os.sep):
+        raise ValueError(tr("Accès refusé", "Access denied"))
+    return Path(f)
+
+
+def _parmi(dossier, test):
+    """Premier fichier existant de `dossier` qui passe `test` (le chemin vient du disque, pas de la requête)."""
+    return next((f for f in (dossier.iterdir() if dossier.is_dir() else []) if f.is_file() and test(f)), None)
+
+
+def _retirer(dossier, stem):
+    """Supprime les fichiers « stem.* » de `dossier` (ex. P1.png avant de déposer P1.jpg)."""
+    for f in (dossier.iterdir() if dossier.is_dir() else []):
+        if f.is_file() and f.stem.lower() == stem.lower():
+            f.unlink()
 
 
 CHEMINS = ("audio", "paroles", "planches", "solos", "logo")   # réglages qui désignent un fichier / dossier du projet
@@ -333,10 +365,7 @@ class Handler(BaseHTTPRequestHandler):
         if not f.is_file():
             return self._err(tr("Fichier introuvable", "File not found"), 404)
         size = f.stat().st_size
-        ctype = mimetypes.guess_type(f.name)[0] or "application/octet-stream"
-        if f.suffix in (".md", ".txt", ".json") or ctype.startswith("text/"):
-            ctype = {".html": "text/html", ".css": "text/css", ".js": "text/javascript"}.get(f.suffix, "text/plain") \
-                + "; charset=utf-8"
+        ctype = TYPES.get(f.suffix.lower(), "application/octet-stream")
         start, end = 0, size - 1
         m = re.match(r"bytes=(\d*)-(\d*)", self.headers.get("Range") or "")
         if m and size:                                  # lecture vidéo avec avance rapide
@@ -411,12 +440,14 @@ class Handler(BaseHTTPRequestHandler):
                     from .ai import find_claude
                     return self._json({"chemin": find_claude()})
                 if len(parts) == 3 and parts[1] == "projet":
-                    _project(parts[2])
-                    return self._json(status(parts[2]))
+                    return self._json(status(_nom(parts[2])))
             if parts[0] == "fichier" and len(parts) >= 3:
-                p = _project(parts[1]).resolve()
-                f = (p / "/".join(parts[2:])).resolve()
-                if p not in f.parents:
+                p = _project(parts[1])
+                try:
+                    f = _dans(p, "/".join(parts[2:]))
+                except ValueError as e:
+                    return self._err(e, 403)
+                if f == Path(os.path.realpath(p)):
                     return self._err(tr("Accès refusé", "Access denied"), 403)
                 return self._file(f)
             self._err(tr("Introuvable", "Not found"), 404)
@@ -434,7 +465,7 @@ class Handler(BaseHTTPRequestHandler):
                 if not NOM_RE.match(nom):
                     raise ValueError(tr("Nom invalide : lettres, chiffres, - et _ seulement (pas d'espaces)",
                                         "Invalid name: letters, digits, - and _ only (no spaces)"))
-                if (PROJETS / nom).exists():
+                if _dans(PROJETS, nom).exists():
                     raise ValueError(tr("Ce projet existe déjà", "This project already exists"))
                 r = subprocess.run([sys.executable, "-m", "clip", "new", nom], cwd=ROOT, capture_output=True,
                                    text=True, env={**os.environ, "PYTHONUTF8": "1", "CLIP_LANG": langue()})
@@ -446,8 +477,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(enregistrer_profil(data.get("nom"), data.get("profil")))
             if len(parts) < 4 or parts[:2] != ["api", "projet"]:
                 return self._err(tr("Introuvable", "Not found"), 404)
-            nom, action = parts[2], parts[3]
-            p = _project(nom)
+            nom, action = _nom(parts[2]), parts[3]
+            p = PROJETS / nom
             if action == "run":
                 data = json.loads(self._body() or b"{}")
                 cmd, args = data.get("cmd"), data.get("args") or []
@@ -506,8 +537,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._upload(p, q)
             if action == "restaurer":
                 name = q.get("f", "")
-                f = p / "build" / "historique" / name
-                if not re.match(r"^projet_\d{8}_\d{6}\.json$", name) or not f.is_file():
+                f = _parmi(p / "build" / "historique", lambda x: x.name == name)
+                if not re.match(r"^projet_\d{8}_\d{6}\.json$", name) or f is None:
                     raise ValueError(tr("Version introuvable", "Version not found"))
                 from .cli import _save
                 _save(p, json.loads(f.read_text(encoding="utf-8-sig")), garder=True)
@@ -516,13 +547,12 @@ class Handler(BaseHTTPRequestHandler):
                 pid = q.get("id", "")
                 if not re.match(r"^(p\d+_c\d+|solo\d+)$", pid, re.I):
                     raise ValueError(tr("Identifiant invalide", "Invalid identifier"))
-                for f in (p / "videos").glob(f"{pid.lower()}.*"):
-                    f.unlink()
+                _retirer(p / "videos", pid)
                 return self._json({"ok": True})
             if action in ("reveler", "supprimer-video"):
-                name = Path(q.get("nom", "")).name              # nom seul : pas de chemin
-                f = (p / "build" / name).resolve()
-                if not re.match(r"^[\w\-. ]+\.mp4$", name) or f.parent != (p / "build").resolve() or not f.is_file():
+                name = q.get("nom", "")
+                f = _parmi(p / "build", lambda x: x.name == name and x.suffix.lower() == ".mp4")
+                if f is None:
                     raise ValueError(tr("Vidéo introuvable", "Video not found"))
                 if action == "reveler":                          # explorateur avec le fichier sélectionné
                     _ouvrir(f, montrer=True)
@@ -537,12 +567,12 @@ class Handler(BaseHTTPRequestHandler):
                                             "The video is still open (video player?): close it and try again"))
                 return self._json({"ok": True})
             if action == "ouvrir":
-                f = (p / q.get("chemin", "")).resolve()
-                if f != p.resolve() and p.resolve() not in f.parents:
-                    raise ValueError(tr("Accès refusé", "Access denied"))
-                if not f.is_dir() and f.suffix.lower() not in OUVRABLES:
-                    raise ValueError(tr("Seuls les dossiers et les vidéos s'ouvrent ici",
-                                        "Only folders and videos can be opened here"))
+                chemin = q.get("chemin", "")                   # « . » : dossier du projet; « build/x.mp4 » : vidéo
+                f = p if chemin in ("", ".") else _parmi(
+                    p / "build", lambda x: f"build/{x.name}" == chemin and x.suffix.lower() in OUVRABLES)
+                if f is None:
+                    raise ValueError(tr("Seuls le dossier du projet et ses vidéos s'ouvrent ici",
+                                        "Only the project folder and its videos can be opened here"))
                 _ouvrir(f)                                # explorateur / lecteur vidéo du système
                 return self._json({"ok": True})
             self._err(tr("Action inconnue", "Unknown action"), 404)
@@ -554,44 +584,39 @@ class Handler(BaseHTTPRequestHandler):
         data, ext, cfg = self._body(), Path(name).suffix.lower(), _cfg(p)
         pid = q.get("id", "")
         if kind == "audio" and ext in AUDIO_EXT:
-            (p / name).write_bytes(data)
+            _dans(p, name).write_bytes(data)
             cfg["audio"] = name
         elif kind == "paroles" and ext == ".txt":
-            (p / name).write_bytes(data)
+            _dans(p, name).write_bytes(data)
             cfg["paroles"] = name
         elif kind == "planche" and ext in IMG_EXT and re.match(r"^p\d+$", pid, re.I):
             d = p / cfg.get("planches", "planches")
             d.mkdir(exist_ok=True)
-            for old in d.glob(f"{pid.upper()}.*"):
-                old.unlink()
-            (d / f"{pid.upper()}{ext}").write_bytes(data)
+            _retirer(d, pid)
+            _dans(d, f"{pid.upper()}{ext}").write_bytes(data)
         elif kind == "solo" and ext in IMG_EXT:
             d = p / cfg.get("solos", "solos")
             d.mkdir(exist_ok=True)
             if re.match(r"^solo\d+$", pid, re.I):           # emplacement précis (solo1, solo2…) : remplace
-                for old in d.glob(f"{pid.lower()}.*"):
-                    old.unlink()
-                (d / f"{pid.lower()}{ext}").write_bytes(data)
+                _retirer(d, pid)
+                _dans(d, f"{pid.lower()}{ext}").write_bytes(data)
             else:
-                (d / (name if Path(name).stem.lower().startswith("solo") else f"solo_{name}")).write_bytes(data)
+                _dans(d, name if Path(name).stem.lower().startswith("solo") else f"solo_{name}").write_bytes(data)
             cfg["solos_list"] = []                         # re-détection automatique
         elif kind == "video" and ext in (".mp4", ".mov", ".webm", ".m4v") and re.match(r"^(p\d+_c\d+|solo\d+)$", pid, re.I):
             d = p / "videos"
             d.mkdir(exist_ok=True)
-            for old in d.glob(f"{pid.lower()}.*"):
-                old.unlink()
-            (d / f"{pid.lower()}{ext}").write_bytes(data)
+            _retirer(d, pid)
+            _dans(d, f"{pid.lower()}{ext}").write_bytes(data)
         elif kind == "logo" and ext in (".png", ".webp", ".jpg", ".jpeg"):
-            for old in p.glob("logo.*"):
-                old.unlink()
-            (p / f"logo{ext}").write_bytes(data)
+            _retirer(p, "logo")
+            _dans(p, f"logo{ext}").write_bytes(data)
             cfg["logo"] = f"logo{ext}"
         elif kind == "retouche" and ext in IMG_EXT and re.match(r"^p\d+_c\d+$", pid, re.I):
             d = p / "retouches"
             d.mkdir(exist_ok=True)
-            for old in d.glob(f"{pid.lower()}.*"):
-                old.unlink()
-            (d / f"{pid.lower()}{ext}").write_bytes(data)
+            _retirer(d, pid)
+            _dans(d, f"{pid.lower()}{ext}").write_bytes(data)
         else:
             raise ValueError(tr("Type de fichier non accepté ici", "File type not accepted here"))
         _save_cfg(p, cfg)
