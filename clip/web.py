@@ -177,7 +177,9 @@ def _dans(base, nom):
     """Chemin `nom` sous le dossier `base`, refusé s'il en sort (realpath puis startswith)."""
     base = os.path.realpath(base)
     f = os.path.realpath(os.path.join(base, nom))
-    if f != base and not f.startswith(base + os.sep):
+    if f == base:
+        return Path(base)
+    if not f.startswith(base + os.sep):
         raise ValueError(tr("Accès refusé", "Access denied"))
     return Path(f)
 
@@ -465,7 +467,7 @@ class Handler(BaseHTTPRequestHandler):
                 if not NOM_RE.match(nom):
                     raise ValueError(tr("Nom invalide : lettres, chiffres, - et _ seulement (pas d'espaces)",
                                         "Invalid name: letters, digits, - and _ only (no spaces)"))
-                if _dans(PROJETS, nom).exists():
+                if PROJETS.is_dir() and any(d.name.lower() == nom.lower() for d in PROJETS.iterdir()):
                     raise ValueError(tr("Ce projet existe déjà", "This project already exists"))
                 r = subprocess.run([sys.executable, "-m", "clip", "new", nom], cwd=ROOT, capture_output=True,
                                    text=True, env={**os.environ, "PYTHONUTF8": "1", "CLIP_LANG": langue()})

@@ -194,10 +194,11 @@ const replaceDrop = (has, what) => has ? tr(`Remplacer ${what}`, `Replace ${what
 const V = {};
 function renderStep() {
   if (!S) return;
-  if (!Object.prototype.hasOwnProperty.call(V, step) || typeof V[step] !== "function") step = "projet";  // #étape inconnue
-  HOVER = null; $("#main").innerHTML = V[step]();
-  const bind = step + "_bind";
-  if (Object.prototype.hasOwnProperty.call(V, bind) && typeof V[bind] === "function") V[bind]();
+  // l'étape vient de l'adresse (#étape) : on reprend la clé correspondante de V, jamais la valeur reçue
+  step = Object.keys(V).find(k => k === step && !k.endsWith("_bind")) || "projet";
+  const vue = V[step], bind = Object.keys(V).find(k => k === step + "_bind");
+  HOVER = null; $("#main").innerHTML = vue();
+  if (bind) V[bind]();
 }
 
 V.projet = () => `
