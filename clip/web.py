@@ -17,6 +17,7 @@ from .i18n import fixer, langue, tr
 
 HERE = Path(__file__).resolve().parent / "web"
 PORT = 8765
+WEB = {n: HERE / n for n in ("style.css", "app.js", "logo.png", "favicon.ico")}   # fichiers de l'interface
 NOM_RE = re.compile(r"^[\w\-]+$")
 IMG_EXT = (".jpg", ".jpeg", ".png", ".webp")
 AUDIO_EXT = (".mp3", ".wav", ".flac", ".m4a", ".ogg")
@@ -424,8 +425,8 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if not parts:
                 return self._file(HERE / "index.html")
-            if parts[0] == "web" and len(parts) == 2 and parts[1] in ("style.css", "app.js", "logo.png", "favicon.ico"):
-                return self._file(HERE / parts[1])
+            if parts[0] == "web" and len(parts) == 2 and parts[1] in WEB:
+                return self._file(WEB[parts[1]])
             if parts == ["favicon.ico"]:                          # demandé d'office par les navigateurs
                 return self._file(HERE / "favicon.ico")
             if parts[0] == "api":

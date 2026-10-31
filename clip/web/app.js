@@ -196,9 +196,9 @@ function renderStep() {
   if (!S) return;
   // l'étape vient de l'adresse (#étape) : on reprend la clé correspondante de V, jamais la valeur reçue
   step = Object.keys(V).find(k => k === step && !k.endsWith("_bind")) || "projet";
-  const vue = V[step], bind = Object.keys(V).find(k => k === step + "_bind");
+  const vue = V[step], lien = Object.entries(V).find(([k]) => k === step + "_bind");
   HOVER = null; $("#main").innerHTML = vue();
-  if (bind) V[bind]();
+  if (lien) lien[1]();
 }
 
 V.projet = () => `
