@@ -45,14 +45,18 @@ function header() {
   $("#lang").onchange = e => { store.set("lang", e.target.value); location.reload(); };
 }
 
+const NIVEAUX = [tr("calme", "calm"), tr("modéré", "moderate"), tr("intense", "intense")];
+const INSTRU = () => !!(S && S.cfg.instrumental);
+const sansVers = s => s.niveau != null ? tr(`abstraite — ${NIVEAUX[s.niveau]}`, `abstract — ${NIVEAUX[s.niveau]}`) : tr("ambiance", "ambiance");
+
 // ------------------------------------------------------------------ état des étapes
 function stepState(k) {
   if (!S) return "";
   const allDesc = S.shots.length && S.shots.every(s => s.description);
   const allPl = S.planches.length && S.planches.every(p => p.fichier);
   return {
-    projet: S.audio && S.paroles ? "done" : "todo",
-    preparer: S.beats && S.words && S.shots.length ? "done" : (S.audio && S.paroles ? "todo" : ""),
+    projet: S.audio && (S.paroles || INSTRU()) ? "done" : "todo",
+    preparer: S.beats && S.words && S.shots.length ? "done" : (S.audio && (S.paroles || INSTRU()) ? "todo" : ""),
     descriptions: allDesc ? "done" : (S.shots.length ? "todo" : ""),
     planches: allPl && S.planches.every(p => p.decoupees) ? "done" : (allDesc ? "todo" : ""),
     videos: S.clips.length ? "done" : "",
@@ -191,8 +195,13 @@ const V = {};
 function renderStep() { if (!S) return; HOVER = null; $("#main").innerHTML = V[step](); (V[step + "_bind"] || (() => {}))(); }
 
 V.projet = () => `
-  <h2>1. ${tr("Projet", "Project")}</h2><p class="lead">${tr("Dépose la chanson et ses paroles. Tout le reste en découle.", "Drop the song and its lyrics. Everything else follows from them.")}</p>
-  <div class="grid2">
+  <h2>1. ${tr("Projet", "Project")}</h2><p class="lead">${INSTRU() ? tr("Dépose le morceau instrumental : le rythme guide tout le montage.", "Drop the instrumental track: the rhythm drives the whole edit.")
+    : tr("Dépose la chanson et ses paroles. Tout le reste en découle.", "Drop the song and its lyrics. Everything else follows from them.")}</p>
+  <div class="card"><h3>🎼 ${tr("Type de chanson", "Type of song")}</h3>
+    <label><input type="checkbox" id="instru" ${INSTRU() ? "checked" : ""}> <b>${tr("Instrumentale (sans paroles)", "Instrumental (no lyrics)")}</b></label>
+    <p class="small muted" style="margin-top:6px">${tr("Images abstraites qui changent sur le beat (plus vite dans les passages intenses) et réagissent aux pics : pas de paroles, pas de karaoké, pas de calage Whisper.",
+      "Abstract images that change on the beat (faster in the intense parts) and react to the peaks: no lyrics, no karaoke, no Whisper alignment.")}</p></div>
+  <div class="${INSTRU() ? "" : "grid2"}">
     <div class="card"><h3>🎵 ${tr("Chanson", "Song")}</h3>
       ${S.audio ? `<p><span class="pill ok">OK</span> ${esc(S.audio)}</p><audio controls src="${file(encodeURIComponent(S.audio))}" style="width:100%"></audio>` : ""}
       <div class="drop" id="dz-audio"><b>${S.audio ? tr("Remplacer le fichier audio", "Replace the audio file") : tr("Déposer le fichier audio", "Drop the audio file")}</b><br>
@@ -200,18 +209,18 @@ V.projet = () => `
       ${S.audio && S.beats ? `<p class="small muted">${tr("Si tu changes l'audio, « Préparer » (ou le prochain rendu) refait automatiquement le rythme et le calage des paroles.",
         "If you change the audio, “Prepare” (or the next render) automatically redoes the rhythm and the lyrics alignment.")}</p>` : ""}
     </div>
-    <div class="card"><h3>📝 ${tr("Paroles", "Lyrics")}</h3>
+    ${INSTRU() ? "" : `<div class="card"><h3>📝 ${tr("Paroles", "Lyrics")}</h3>
       ${S.paroles ? `<p><span class="pill ok">OK</span> ${esc(S.paroles)}</p>` : ""}
       <div class="drop" id="dz-paroles"><b>${S.paroles ? tr("Remplacer les paroles (.txt)", "Replace the lyrics (.txt)") : tr("Déposer les paroles (.txt)", "Drop the lyrics (.txt)")}</b><br>
         <span class="small">${tr("Un vers par ligne, sections entre crochets : [Verse 1], [Chorus]…", "One line per lyric line, sections in brackets: [Verse 1], [Chorus]…")}</span></div>
-    </div>
+    </div>`}
   </div>
   <div class="card"><h3>🌐 ${tr("Langue de la chanson", "Language of the song")}</h3>
     <div class="row"><select id="langue">${[["fr", "Français"], ["en", "English"]].map(([v, t]) =>
       `<option value="${v}" ${(S.cfg.langue || "fr") === v ? "selected" : ""}>${t}</option>`).join("")}</select>
-      <span class="small muted">${tr("Sert au calage des paroles et à la langue des textes que Claude rédige (descriptions, publication) et des prompts d'images.",
+      <span class="small muted">${INSTRU() ? tr("Langue des textes que Claude rédige (descriptions, publication) et des prompts d'images.", "Language of the texts Claude writes (descriptions, publishing) and of the image prompts.") : tr("Sert au calage des paroles et à la langue des textes que Claude rédige (descriptions, publication) et des prompts d'images.",
         "Used for the lyrics alignment and for the language of the texts Claude writes (descriptions, publishing) and of the image prompts.")}</span></div></div>
-  <div class="card"><h3>✏️ ${S.paroles ? tr("Modifier les paroles", "Edit the lyrics") : tr("Ou coller les paroles ici", "Or paste the lyrics here")}</h3>
+  ${INSTRU() ? "" : `<div class="card"><h3>✏️ ${S.paroles ? tr("Modifier les paroles", "Edit the lyrics") : tr("Ou coller les paroles ici", "Or paste the lyrics here")}</h3>
     <p class="small muted">${tr("Un vers par ligne, une ligne vide entre les parties. En-têtes facultatifs : [Verse 1], [Chorus], [Bridge]… (sans en-têtes, les blocs répétés sont reconnus comme refrains).",
       "One lyric line per line, an empty line between parts. Optional headers: [Verse 1], [Chorus], [Bridge]… (without headers, repeated blocks are recognized as choruses).")}</p>
     <textarea id="lyr" rows="16" placeholder="${tr("[Verse 1]&#10;Premier vers&#10;Deuxième vers&#10;&#10;[Chorus]&#10;…", "[Verse 1]&#10;First line&#10;Second line&#10;&#10;[Chorus]&#10;…")}">${esc(S.paroles_texte)}</textarea>
@@ -219,16 +228,27 @@ V.projet = () => `
       <span class="small muted" id="lyr-info"></span></div>
     ${S.words ? `<p class="small muted" style="margin-top:8px">${tr("Les paroles sont déjà calées sur la chanson : après une modification, relance « Préparer » (le calage est refait automatiquement; si des vers ont changé, leurs images aussi).",
       "The lyrics are already aligned with the song: after a change, run “Prepare” again (the alignment is redone automatically; if lines changed, their images too).")}</p>` : ""}
-  </div>
+  </div>`}
   ${perimeHint()}
   ${(S.historique || []).length ? `<details class="card"><summary><b>🕘 ${tr("Historique des réglages", "Settings history")}</b> <span class="muted small">— ${tr("revenir à une version précédente de projet.json", "go back to a previous version of projet.json")}</span></summary>
     <p class="small muted">${tr(`Une copie est gardée avant chaque modification (au plus une par minute, ${S.historique.length} version(s)). Restaurer garde aussi la version actuelle dans l'historique.`,
       `A copy is kept before each change (at most one per minute, ${S.historique.length} version(s)). Restoring also keeps the current version in the history.`)}</p>
     <div class="row"><select id="hi-f">${S.historique.map(x => `<option value="${x.nom}">${esc(x.date)}</option>`).join("")}</select>
       <button id="hi-go">${tr("Restaurer cette version", "Restore this version")}</button></div></details>` : ""}
-  ${S.audio && S.paroles ? nextHint("preparer", next(tr("Préparer", "Prepare"))) : ""}`;
+  ${S.audio && (S.paroles || INSTRU()) ? nextHint("preparer", next(tr("Préparer", "Prepare"))) : ""}`;
+// styles par défaut des nouveaux projets : remplacés par « Claude choisit » en instrumental
+const STYLES_DEFAUT = ["photoréaliste rock brut satirique, grain cinéma, contraste élevé, éclairage dramatique, palette sombre",
+  "gritty satirical photorealistic rock, cinematic film grain, high contrast, dramatic lighting, dark palette"];
 V.projet_bind = () => {
   dropzone($("#dz-audio"), "audio", "audio/*,.mp3,.wav,.m4a,.flac,.ogg");
+  $("#instru").onchange = async e => {
+    const on = e.target.checked, d = {instrumental: on};
+    if (on) { if (!S.cfg.punch) d.punch = 0.6; d.beat_energie = true; if (STYLES_DEFAUT.includes(S.cfg.style || "")) d.style = ""; }
+    try { await post(`/api/projet/${encodeURIComponent(nom())}/config`, d);
+      toast(S.beats ? tr("Enregistré : relance « Préparer »", "Saved: run “Prepare” again") : tr("Enregistré ✅", "Saved ✅")); await refresh(); }
+    catch (err) { toast(err.message); }
+  };
+  if (INSTRU()) return;
   dropzone($("#dz-paroles"), "paroles", ".txt,text/plain");
   const lyr = $("#lyr"), info = () => {
     const n = lyr.value.split(/\r?\n/).filter(l => l.trim() && !/^\s*\[.+\]\s*$/.test(l)).length;
@@ -269,9 +289,11 @@ function perimeHint() {
       "The karaoke and the edit are no longer in sync: run <b>Prepare</b> again (done automatically at the next render, about 1 more minute).")}</div>`;
 }
 V.preparer = () => {
-  const n = S.shots.length, amb = S.shots.filter(s => s.ambiance).length;
+  const n = S.shots.length, amb = S.shots.filter(s => s.ambiance).length, I = INSTRU();
   return `
-  <h2>2. ${tr("Préparer", "Prepare")}</h2><p class="lead">${tr("Détecte le rythme, cale chaque mot des paroles sur la voix, et calcule le nombre d'images à générer.",
+  <h2>2. ${tr("Préparer", "Prepare")}</h2><p class="lead">${I ? tr("Détecte le rythme, les passages calmes ou intenses et les pics, puis calcule les coupes et le nombre d'images à générer.",
+    "Detects the rhythm, the calm or intense parts and the peaks, then computes the cuts and the number of images to generate.")
+    : tr("Détecte le rythme, cale chaque mot des paroles sur la voix, et calcule le nombre d'images à générer.",
     "Detects the rhythm, aligns each word of the lyrics with the voice, and computes the number of images to generate.")}</p>
   ${perimeHint()}
   <div class="card"><h3>🎯 ${tr("Intention de la chanson", "Intent of the song")} <span class="muted small">(${tr("recommandé", "recommended")})</span></h3>
@@ -280,47 +302,69 @@ V.preparer = () => {
     <textarea id="intention" rows="5" maxlength="1500" placeholder="${tr("De quoi parle vraiment la chanson? Premier ou second degré (ironie, hommage, colère, nostalgie)?&#10;Histoire vraie, contexte, époque, lieu? Genre et énergie (punk, ballade, folk…)?&#10;Références visuelles souhaitées? Ce qu'il faut éviter (personne réelle, violence, clichés…)?",
       "What is the song really about? Literal or tongue-in-cheek (irony, tribute, anger, nostalgia)?&#10;True story, context, era, place? Genre and energy (punk, ballad, folk…)?&#10;Wanted visual references? What to avoid (real person, violence, clichés…)?")}">${esc(S.cfg.intention || "")}</textarea>
     <p class="small muted" style="margin:10px 0 4px">${tr("Style visuel des images (envoyé aussi au générateur d'images) :", "Visual style of the images (also sent to the image generator):")}</p>
-    <input type="text" id="style" value="${esc(S.cfg.style || "")}" style="width:100%">
+    <input type="text" id="style" value="${esc(S.cfg.style || "")}" style="width:100%" placeholder="${I ? tr("vide : Claude choisit le style d'après la musique", "empty: Claude chooses the style from the music") : ""}">
     <div class="row" style="margin-top:10px"><button class="primary" id="int-save">💾 ${tr("Enregistrer", "Save")}</button>
       <span class="small muted" id="int-info"></span></div>
     ${S.shots.some(s => s.description) ? `<p class="small muted" style="margin-top:8px">${tr("Descriptions déjà rédigées : pour qu'elles tiennent compte d'une nouvelle intention, relance la rédaction (étape 3) avec « tout réécrire ».",
       "Descriptions already written: for them to take a new intent into account, run the writing again (step 3) with “rewrite all”.")}</p>` : ""}
   </div>
   <div class="card">
-    <div class="row"><button class="primary" id="go-prep" ${S.audio && S.paroles ? "" : "disabled"}>▶ ${tr("Préparer", "Prepare")}</button>
+    <div class="row"><button class="primary" id="go-prep" ${S.audio && (S.paroles || I) ? "" : "disabled"}>▶ ${tr("Préparer", "Prepare")}</button>
       <label class="small"><input type="checkbox" id="prep-force"> ${tr("tout refaire (après changement d'audio ou de paroles)", "redo everything (after changing the audio or the lyrics)")}</label></div>
-    <div class="row" style="margin-top:10px"><label class="small">${tr("Calage des paroles :", "Lyrics alignment:")}
+    ${I ? `<p class="small muted" style="margin-top:10px">${tr("Durée : quelques secondes (pas de calage de paroles).", "Duration: a few seconds (no lyrics alignment).")}</p>` : `<div class="row" style="margin-top:10px"><label class="small">${tr("Calage des paroles :", "Lyrics alignment:")}
       <select id="whisper">${[["medium", tr("Précis : modèle medium (environ 5 Go de mémoire libre)", "Accurate: medium model (about 5 GB of free memory)")],
         ["small", tr("Mémoire limitée : modèle small (environ 2 Go), karaoké moins précis", "Limited memory: small model (about 2 GB), less accurate karaoke")]].map(([v, t]) =>
         `<option value="${v}" ${(S.cfg.whisper || "medium") === v ? "selected" : ""}>${t}</option>`).join("")}</select></label></div>
     ${S.cfg.whisper === "small" ? `<p class="small muted" style="margin-top:6px">${tr("Avec « small », des vers peuvent être décalés d'une demi-seconde ou plus. Utilise-le seulement si le calage plante faute de mémoire.",
       "With “small”, lines can be off by half a second or more. Use it only if the alignment crashes for lack of memory.")}</p>` : ""}
     <p class="small muted" style="margin-top:10px">${tr("Durée : environ 1 minute pour une chanson de 3 min (le calage des paroles est le plus long), plus un téléchargement unique de 1,5 Go la toute première fois.",
-      "Duration: about 1 minute for a 3-minute song (the lyrics alignment takes the longest), plus a one-time 1.5 GB download the very first time.")}</p>
+      "Duration: about 1 minute for a 3-minute song (the lyrics alignment takes the longest), plus a one-time 1.5 GB download the very first time.")}</p>`}
   </div>
   <div class="card"><h3>${tr("État", "Status")}</h3><table>
     <tr><td>${tr("Rythme (beats)", "Rhythm (beats)")}</td><td>${S.beats ? `<span class="pill ok">${ok}</span>` : `<span class="pill">${todoPill}</span>`}
       ${S.cfg.bpm_detecte ? ` <b>${S.cfg.bpm_detecte} BPM</b> <span class="muted small">${S.cfg.bpm_hint === "auto" || !S.cfg.bpm_hint ? tr("(détecté automatiquement)", "(detected automatically)") : tr(`(tempo imposé : ${S.cfg.bpm_hint})`, `(forced tempo: ${S.cfg.bpm_hint})`)}</span>` : ""}</td></tr>
-    <tr><td>${tr("Paroles calées mot à mot", "Lyrics aligned word by word")}</td><td>${S.words ? `<span class="pill ok">${ok}</span>` : `<span class="pill">${todoPill}</span>`}</td></tr>
+    ${I ? `<tr><td>${tr("Coupes", "Cuts")}</td><td>${S.rythme ? tr(`<b>${S.rythme.coupes}</b> coupes, <b>${S.rythme.pics}</b> pics (dont ${S.rythme.pics_coupe} qui imposent une coupe)`,
+        `<b>${S.rythme.coupes}</b> cuts, <b>${S.rythme.pics}</b> peaks (${S.rythme.pics_coupe} of which force a cut)`) : "—"}</td></tr>
+      <tr><td>${tr("Images abstraites", "Abstract images")}</td><td>${n ? tr(`<b>${n}</b> → <b>${S.planches.length}</b> planche(s); chacune revient avec des variantes (miroir, rotation, teinte)`,
+        `<b>${n}</b> → <b>${S.planches.length}</b> panel(s); each one comes back with variants (mirror, rotation, hue)`) : "—"}</td></tr>`
+    : `<tr><td>${tr("Paroles calées mot à mot", "Lyrics aligned word by word")}</td><td>${S.words ? `<span class="pill ok">${ok}</span>` : `<span class="pill">${todoPill}</span>`}</td></tr>
     <tr><td>${tr("Images nécessaires", "Images needed")}</td><td>${n ? tr(`<b>${n}</b> (${n - amb} vers + ${amb} ambiance) → <b>${S.planches.length}</b> planche(s)`,
-      `<b>${n}</b> (${n - amb} lines + ${amb} ambiance) → <b>${S.planches.length}</b> panel(s)`) : "—"}</td></tr>
+      `<b>${n}</b> (${n - amb} lines + ${amb} ambiance) → <b>${S.planches.length}</b> panel(s)`) : "—"}</td></tr>`}
   </table>
-  <div class="row" style="margin-top:12px">
+  ${I ? `<div class="row" style="margin-top:12px">
+    <label class="small">${tr("Images abstraites :", "Abstract images:")} <input type="number" id="ins-n" min="12" max="60" value="${S.cfg.images_instrumental || 30}" style="width:70px"></label>
+    <label class="small">${tr("Passages intenses : une coupe", "Intense parts: one cut")} <select id="ins-d">${[[1, tr("à chaque beat", "on every beat")], [2, tr("tous les 2 beats", "every 2 beats")], [4, tr("à chaque mesure", "on every bar")]].map(([v, t]) =>
+      `<option value="${v}" ${(S.cfg.densite_coupes || 2) === v ? "selected" : ""}>${t}</option>`).join("")}</select></label>
+    <button id="ins-save">${tr("Appliquer", "Apply")}</button></div>
+    <p class="small muted">${tr("Calme : une image toutes les 2 mesures; modéré : à chaque mesure; chaque pic marqué impose une coupe. 24 à 36 images suffisent : les variantes évitent les répétitions visibles.",
+      "Calm: one image every 2 bars; moderate: on every bar; each marked peak forces a cut. 24 to 36 images are enough: the variants avoid visible repeats.")}</p>` : `<div class="row" style="margin-top:12px">
     <label class="small">${tr("Images d'ambiance en plus (passages instrumentaux) :", "Extra ambiance images (instrumental parts):")}
       <input type="number" id="amb" min="0" max="24" value="${S.cfg.ambiance || 0}" style="width:70px"></label>
-    <button id="amb-save">${tr("Appliquer", "Apply")}</button></div>
+    <button id="amb-save">${tr("Appliquer", "Apply")}</button></div>`}
   </div>
-  ${S.words ? `<div class="card"><h3>🎤 ${tr("Début du chant", "Singing start")}</h3>
+  ${I && S.rythme ? rythmeCard() : ""}
+  ${S.words && !I ? `<div class="card"><h3>🎤 ${tr("Début du chant", "Singing start")}</h3>
     <p class="small muted">${tr("Si le karaoké commence trop tôt (des vers affichés pendant l'intro), indique la seconde où le chant commence vraiment : les vers placés avant sont recalés à partir de ce moment. 0 = automatique.",
       "If the karaoke starts too early (lines shown during the intro), enter the second where the singing really starts: the lines placed before are realigned from that moment. 0 = automatic.")}</p>
     <div class="row"><label class="small">${tr("Le chant commence à", "The singing starts at")} <input type="text" id="dc" value="${S.cfg.debut_chant ? fmtT(S.cfg.debut_chant) : "0"}" style="width:70px"> ${tr("(m:ss ou secondes)", "(m:ss or seconds)")}</label>
       <button class="primary" id="dc-go">${tr("Recaler les paroles", "Realign the lyrics")}</button></div>
     <p class="small muted" style="margin-top:6px">${tr("Ensuite, fais un rendu complet (étape 7) : le montage des images suit les nouveaux temps.", "Then make a full render (step 7): the image edit follows the new times.")}</p></div>` : ""}
-  ${S.words ? evalCard() : ""}
-  ${S.words ? solosCard() : ""}
-  ${S.words ? calageCard() : ""}
+  ${S.words && !I ? evalCard() : ""}
+  ${S.words && !I ? solosCard() : ""}
+  ${S.words && !I ? calageCard() : ""}
   ${n ? nextHint("descriptions", next(tr("Descriptions", "Descriptions"))) : ""}`;
 };
+// mode instrumental : passages d'énergie détectés (frise) et rythme des coupes
+function rythmeCard() {
+  const R = S.rythme, fin = R.passages.length ? R.passages[R.passages.length - 1].fin : 1;
+  const coul = ["#4a7bd0", "#d0a24a", "#d04a4a"];
+  return `<div class="card"><h3>🥁 ${tr("Rythme", "Rhythm")}${R.bpm ? ` <span class="muted small">— ${R.bpm} BPM</span>` : ""}</h3>
+    <div style="display:flex;height:22px;border-radius:6px;overflow:hidden;margin:6px 0 8px">${R.passages.map(x =>
+      `<div title="${NIVEAUX[x.niveau]} ${fmtT(x.debut)} → ${fmtT(x.fin)}" style="flex:${Math.max(0.001, x.fin - x.debut)};background:${coul[x.niveau]}"></div>`).join("")}</div>
+    <p class="small">${R.passages.map(x => `<span style="color:${coul[x.niveau]}">■</span> ${fmtT(x.debut)}–${fmtT(x.fin)} ${NIVEAUX[x.niveau]}`).join(" · ")}</p>
+    <p class="small muted">${tr("Les niveaux sont relatifs au morceau (ses passages les plus calmes et les plus intenses). Dans Options, « Effets sur les pics » règle le zoom, l'éclair et le décalage RVB sur chaque pic.",
+      "The levels are relative to the track (its calmest and most intense parts). In Options, “Effects on peaks” sets the zoom, the flash and the RGB split on each peak.")}</p></div>`;
+}
 // vérification du calage : sections, alertes, et outils de correction (écouter, recaler, décaler)
 function calageCard() {
   const C = S.calage;
@@ -466,17 +510,18 @@ V.preparer_bind = () => {
   it.oninput = cnt; cnt();
   $("#int-save").onclick = async () => {
     try { await post(`/api/projet/${encodeURIComponent(nom())}/config`,
-        {intention: it.value.trim(), style: $("#style").value.trim() || S.cfg.style});
+        {intention: it.value.trim(), style: $("#style").value.trim() || (INSTRU() ? "" : S.cfg.style)});
       toast(tr("Intention et style enregistrés ✅", "Intent and style saved ✅")); await refresh(); }
     catch (e) { toast(e.message); }
   };
-  $("#whisper").onchange = async e => {
+  $("#whisper") && ($("#whisper").onchange = async e => {
     try { await post(`/api/projet/${encodeURIComponent(nom())}/config`, {whisper: e.target.value});
       toast(S.words ? tr("Modèle enregistré : relance « Préparer » pour recaler les paroles", "Model saved: run “Prepare” again to realign the lyrics")
                     : tr("Modèle enregistré ✅", "Model saved ✅"));
       await refresh(); }
     catch (err) { toast(err.message); }
-  };
+  });
+
   $("#go-prep").onclick = () => run("prepare", $("#prep-force").checked ? ["--force"] : [], tr("Préparer", "Prepare"));
   $("#ev-go") && ($("#ev-go").onclick = () => run("evaluate", [], tr("Évaluation du storyboard", "Storyboard evaluation")));
   $("#so-go") && ($("#so-go").onclick = () => {
@@ -492,8 +537,12 @@ V.preparer_bind = () => {
     await post(`/api/projet/${encodeURIComponent(nom())}/config`, p.cfg);
     toast(tr("Préréglage appliqué ✅ (modifiable à l'étape 6)", "Preset applied ✅ (can be changed at step 6)")); refresh();
   });
-  $("#amb-save").onclick = async () => { await post(`/api/projet/${encodeURIComponent(nom())}/config`, {ambiance: +$("#amb").value});
-    run("prompts", [], tr("Recalcul des images", "Recomputing the images")); };
+  $("#ins-save") && ($("#ins-save").onclick = async () => {
+    const n = Math.min(60, Math.max(12, +$("#ins-n").value || 30));
+    await post(`/api/projet/${encodeURIComponent(nom())}/config`, {images_instrumental: n, densite_coupes: +$("#ins-d").value});
+    run("prompts", [], tr("Recalcul des images", "Recomputing the images")); });
+  $("#amb-save") && ($("#amb-save").onclick = async () => { await post(`/api/projet/${encodeURIComponent(nom())}/config`, {ambiance: +$("#amb").value});
+    run("prompts", [], tr("Recalcul des images", "Recomputing the images")); });
 };
 
 let CLAUDE = null;   // chemin de Claude Code, ou null
@@ -518,7 +567,7 @@ V.descriptions = () => {
   ${Object.keys(S.cfg.personnages || {}).length ? `<div class="card"><h3>${tr("Personnages récurrents", "Recurring characters")}</h3><table>
     ${Object.entries(S.cfg.personnages).map(([k, v]) => `<tr><td><b>${esc(k)}</b></td><td>${esc(v)}</td></tr>`).join("")}</table></div>` : ""}
   <div class="card"><h3>${tr("Images", "Images")}</h3><table><tr><th>Image</th><th>${tr("Vers", "Line")}</th><th>Description</th><th></th></tr>
-    ${S.shots.map(s => `<tr><td>${s.id}</td><td>${s.ambiance ? `<i class="muted">${tr("ambiance", "ambiance")}</i>` : esc(s.texte)}</td>
+    ${S.shots.map(s => `<tr><td>${s.id}</td><td>${s.ambiance ? `<i class="muted">${sansVers(s)}</i>` : esc(s.texte)}</td>
       <td class="small">${s.description ? esc(s.description) : `<span class="pill warn">${tr("à décrire", "to describe")}</span>`}</td>
       <td>${CLAUDE && s.description ? `<button title="${tr("Faire réécrire cette image par Claude", "Have Claude rewrite this image")}" data-redo="${s.id}">↻</button>` : ""}</td></tr>`).join("")}</table></div>
   <details class="card" ${CLAUDE ? "" : "open"}><summary><b>${tr("Sans Claude Code : copier-coller", "Without Claude Code: copy-paste")}</b> <span class="muted small">— ${tr("avec n'importe quelle IA", "with any AI")}</span></summary>
@@ -557,7 +606,7 @@ let VSEL = new URLSearchParams(location.search).get("sel");     // ?sel=p1_c3 : 
 function vidItems() {
   const solos = S.solos.map(f => ({id: f.toLowerCase().replace(/\.[^.]+$/, ""), texte: tr("Solo (travelling)", "Solo (tracking shot)"),
     src: file(encodeURIComponent(S.solos_dir) + "/" + encodeURIComponent(f))}));
-  const cases = S.shots.filter(s => s.case).map(s => ({id: s.id, texte: s.texte || tr("ambiance", "ambiance"), src: file("cases/" + s.id + ".png")}));
+  const cases = S.shots.filter(s => s.case).map(s => ({id: s.id, texte: s.texte || sansVers(s), src: file("cases/" + s.id + ".png")}));
   return [...solos, ...cases];
 }
 const clipOf = id => S.clips.find(f => f.toLowerCase().replace(/\.[^.]+$/, "") === id);
@@ -663,7 +712,7 @@ V.planches = () => `
     ${S.contact ? `<img class="thumb" style="margin-top:12px" src="${file("build/planche_contact.jpg")}">` : ""}</div>
   <details class="card"><summary><b>${tr("Retoucher une seule case", "Retouch a single cell")}</b> <span class="muted small">— ${tr("sans refaire toute la planche", "without redoing the whole panel")}</span></summary>
     <p class="small muted">${tr("Génère une image 16:9 seule pour la case ratée et dépose-la : elle remplace la case au prochain rendu.", "Generate a single 16:9 image for the failed cell and drop it: it replaces the cell at the next render.")}</p>
-    <div class="row"><select id="rt-id">${S.shots.map(s => `<option value="${s.id}">${s.id} — ${esc(s.texte || tr("ambiance", "ambiance"))}${s.retouche ? tr(" (retouchée)", " (retouched)") : ""}</option>`).join("")}</select>
+    <div class="row"><select id="rt-id">${S.shots.map(s => `<option value="${s.id}">${s.id} — ${esc(s.texte || sansVers(s))}${s.retouche ? tr(" (retouchée)", " (retouched)") : ""}</option>`).join("")}</select>
       <button id="rt-up">${tr("Déposer l'image de retouche", "Drop the retouch image")}</button><button id="rt-paste">📋 ${tr("Coller", "Paste")}</button></div></details>
   ${S.planches.every(p => p.fichier) ? nextHint("videos", next(tr("Vidéos (optionnel)", "Videos (optional)"))) : ""}`}`;
 V.planches_bind = () => {
@@ -738,8 +787,10 @@ const OPTS = [
       "select:fondu=Crossfade|coupe=Hard cut|noir=Fade to black|flash=White flash|glissement=Side slide|zoom=Fading zoom"), tr("Transition entre images", "Transition between images"), ""],
     ["fondu", "range:0.1:3:0.05", tr("Durée de la transition (s)", "Transition duration (s)"), tr("0,15 = rapide (rock) · 1,2 = douce (ballade).", "0.15 = fast (rock) · 1.2 = soft (ballad).")],
     ["duree_max_image", "range:0:20:1", tr("Durée max d'une image (s)", "Max image duration (s)"), tr("0 = désactivé. Au-delà, le plan est redécoupé avec un autre mouvement de caméra.", "0 = off. Beyond it, the shot is split again with another camera move.")],
+    ["beat_energie", "bool", tr("Effets au beat selon l'énergie", "Beat effects follow the energy"), tr("Gonflement, tremblement, projecteurs, RVB et glitch plus doux dans les passages calmes, plus forts dans les intenses, avec un coup en plus sur chaque pic (activé pour une chanson instrumentale).", "Swell, shake, spotlights, RGB and glitch softer in calm parts, stronger in intense ones, with an extra hit on each peak (on for an instrumental song).")],
     ["tremblement", "range:0:1:0.05", tr("Tremblement de caméra au beat", "Camera shake on the beat"), tr("0 = aucun.", "0 = none.")],
     ["tremblement_zone", tr("select:partout=Toute la chanson|refrains=Seulement les refrains", "select:partout=The whole song|refrains=Choruses only"), tr("Tremblement : où", "Shake: where"), ""],
+    ["punch", "range:0:1:0.05", tr("Effets sur les pics", "Effects on peaks"), tr("Zoom bref, éclair et décalage RVB sur chaque pic détecté (accents forts : caisse claire, coups). Éclairs plafonnés et espacés (photosensibilité). 0 = aucun.", "Short zoom, flash and RGB split on each detected peak (strong accents: snare, hits). Flashes capped and spaced out (photosensitivity). 0 = none.")],
     ["rvb_beat", "range:0:1:0.05", tr("Décalage RVB au beat", "RGB split on the beat"), tr("Les couleurs se séparent un instant sur chaque temps. 0 = aucun.", "The colors split for an instant on each beat. 0 = none.")],
     ["glitch", tr("select:null=Aucun|beats=Sur certains beats|transitions=Aux changements d'image|les_deux=Les deux", "select:null=None|beats=On some beats|transitions=On image changes|les_deux=Both"), tr("Glitch numérique", "Digital glitch"), ""],
     ["glitch_intensite", "range:0.3:2:0.1", tr("Intensité du glitch", "Glitch intensity"), ""]]],
@@ -751,10 +802,15 @@ const OPTS = [
     ["rayons_intensite", "range:0.3:2:0.1", tr("Intensité des rayons", "Ray intensity"), ""]]],
   [tr("Pellicule et son", "Film and sound"), [
     ["vieux_film", "range:0:1:0.05", tr("Vieux film", "Old film"), tr("Rayures, poussières, sautillement et scintillement. Se marie bien avec Sépia ou Noir et blanc. 0 = aucun.", "Scratches, dust, jitter and flicker. Goes well with Sepia or Black and white. 0 = none.")],
-    ["visualiseur", tr("select:null=Aucun|barres=Barres de spectre|onde=Forme d'onde", "select:null=None|barres=Spectrum bars|onde=Waveform"), tr("Visualiseur audio", "Audio visualizer"), tr("Réagit à la musique, en bas de l'image.", "Reacts to the music, at the bottom of the image.")],
+    ["visualiseur", tr("select:null=Aucun|barres=Barres de spectre (en bas)|miroir=Barres miroir (haut et bas)|cercle=Anneau au centre|onde=Forme d'onde", "select:null=None|barres=Spectrum bars (bottom)|miroir=Mirrored bars (top and bottom)|cercle=Ring in the center|onde=Waveform"), tr("Visualiseur audio (égaliseur)", "Audio visualizer (equalizer)"), tr("Réagit à la musique, fréquence par fréquence.", "Reacts to the music, frequency by frequency.")],
     ["visualiseur_zone", tr("select:instrumentaux=Seulement sans paroles (instrumentaux)|partout=Toute la chanson", "select:instrumentaux=Only without lyrics (instrumentals)|partout=The whole song"), tr("Visualiseur : quand", "Visualizer: when"), ""],
     ["visualiseur_couleur", "color", tr("Couleur du visualiseur", "Visualizer color"), ""],
+    ["visualiseur_bandes", "bool", tr("Couleurs par fréquence", "Colors by frequency"), tr("Graves rouge orangé, médiums jaune vert, aigus cyan bleu (au lieu de la couleur ci-dessus).", "Bass red-orange, mids yellow-green, highs cyan-blue (instead of the color above).")],
     ["visualiseur_hauteur", "range:0.05:0.3:0.01", tr("Hauteur du visualiseur", "Visualizer height"), tr("Fraction de la hauteur de l'image.", "Fraction of the image height.")]]],
+  [tr("Égaliseur : effets qui réagissent au son", "Equalizer: effects that react to the sound"), [
+    ["eq_graves", "range:0:1:0.05", tr("Graves → zoom et tremblement", "Bass → zoom and shake"), tr("Grosse caisse et basse font zoomer et trembler l'image, à chaque coup (même hors temps). 0 = aucun.", "Kick drum and bass make the image zoom and shake, on each hit (even off the beat). 0 = none.")],
+    ["eq_mediums", "range:0:1:0.05", tr("Médiums → lumière et couleurs", "Mids → light and colors"), tr("Guitares, voix et synthés font respirer la lumière et la saturation. 0 = aucun.", "Guitars, vocals and synths make the light and the saturation breathe. 0 = none.")],
+    ["eq_aigus", "range:0:1:0.05", tr("Aigus → scintillement", "Highs → sparkle"), tr("Cymbales et charleston font pétiller le grain et scintiller des points lumineux. 0 = aucun.", "Cymbals and hi-hats make the grain fizz and light points sparkle. 0 = none.")]]],
   [tr("Profondeur", "Depth"), [
     ["flou_fond", "range:0:1:0.05", tr("Flou d'arrière-plan", "Background blur"), tr("Le fond devient flou, le sujet reste net (effet objectif photo). 0 = aucun.", "The background gets blurry, the subject stays sharp (camera lens effect). 0 = none.")],
     ["brume_profondeur", "range:0:1:0.05", tr("Brume en profondeur", "Depth haze"), tr("Le fond s'efface dans une brume claire. 0 = aucune. (Utilisent les cartes de profondeur, calculées une fois.)", "The background fades into a light haze. 0 = none. (Both use depth maps, computed once.)")]]],
@@ -1029,7 +1085,7 @@ V.publication = () => {
 
   <details class="card" open><summary><b>🖼️ ${tr("Miniature", "Thumbnail")}</b> <span class="muted small">— ${tr("3 idées rédigées d'un coup", "3 ideas written at once")}</span></summary><div class="opts" style="margin-top:10px">
     <div class="opt"><label>${tr("Vignette de référence (1re idée)", "Reference image (1st idea)")}</label><select id="pub-vig"><option value="">${tr("aucune : Claude choisit", "none: Claude chooses")}</option>
-      ${cases.map(s => `<option value="${s.id}" ${s.id === r.vignette ? "selected" : ""}>${s.id} — ${esc((s.texte || tr("ambiance", "ambiance")).slice(0, 50))}</option>`).join("")}</select>
+      ${cases.map(s => `<option value="${s.id}" ${s.id === r.vignette ? "selected" : ""}>${s.id} — ${esc((s.texte || sansVers(s)).slice(0, 50))}</option>`).join("")}</select>
       <img id="pub-vig-img" src="${vig ? file("cases/" + vig.id + ".png") : ""}" style="max-width:100%;margin-top:8px;border-radius:6px;${vig ? "" : "display:none"}"></div>
     <div class="opt"><label>${tr("Texte du bandeau", "Banner text")}</label><input type="text" id="pub-band" value="${esc(r.bandeau)}" placeholder="${esc(mention.toUpperCase())}"></div>
     <div class="opt"><label>${tr("Couleur du bandeau", "Banner color")}</label>${opt("pub-coul", r.bandeau_couleur, {rouge: tr("rouge", "red"), jaune: tr("jaune", "yellow"),

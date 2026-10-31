@@ -9,6 +9,7 @@ chose coince. Pour l'installation, voir le [README](../README.md). Pour le fonct
 - [Ce qu'il te faut](#ce-quil-te-faut)
 - [Premiers pas : ta première chanson](#premiers-pas--ta-première-chanson)
 - [Les 8 étapes en détail](#les-8-étapes-en-détail)
+- [Chanson instrumentale](#chanson-instrumentale)
 - [Conseils pour de bonnes planches](#conseils-pour-de-bonnes-planches)
 - [Temps de calcul](#temps-de-calcul)
 - [Sauvegarde et historique](#sauvegarde-et-historique)
@@ -123,6 +124,12 @@ Les effets **automatiques** (particules, fumée, éclairs, rayons de lumière, m
 de scènes, en français ou en anglais : « orage » amène la pluie et les éclairs, « feu » les braises et la fumée,
 « plan large » un travelling, et ainsi de suite.
 
+Le groupe **Égaliseur** fait réagir l'image au son, image par image, comme les curseurs d'un égaliseur : les
+**graves** (grosse caisse, basse) font zoomer et trembler l'image à chaque coup, même hors temps; les **médiums**
+(guitares, voix, synthés) font respirer la lumière et les couleurs; les **aigus** (cymbales) font scintiller l'image.
+Le **visualiseur** affiche l'égaliseur lui-même : barres en bas, barres miroir (haut et bas), anneau au centre ou
+onde, d'une couleur ou coloré par fréquence (graves rouge orangé → aigus cyan bleu).
+
 ### 7. Rendu
 - **Aperçu rapide** : vidéo 960×540 pour vérifier le montage, en environ 30 secondes pour une chanson de 3 minutes.
 - **Rendu final** : 1080p avec le son, en 1 à 1 min 30 pour une chanson de 3 minutes; 4 à 6 minutes avec beaucoup
@@ -148,6 +155,29 @@ Options de l'étape (enregistrées dans le projet) :
   texte et couleur du bandeau, formats carré 1:1 et vertical 9:16 en plus du 16:9.
 - **Profils** : « Enregistrer comme profil… » garde l'origine, les crédits, les liens, la rédaction et la miniature
   (ex. « KPR », « Fan-made ») ; « Charger » les applique à un autre projet.
+
+---
+
+## Chanson instrumentale
+Pour un morceau sans paroles : étape 1, coche **Instrumentale (sans paroles)**. Il n'y a ni paroles, ni karaoké, ni
+calage Whisper : le rythme guide tout le montage, avec des **images abstraites**.
+
+- **Préparer** détecte les beats, le 1er temps des mesures, les passages **calmes, modérés ou intenses** (relatifs au
+  morceau, affichés dans une frise) et les **pics** (accents forts : caisse claire, coups, attaques).
+- **Coupes** : une image toutes les 2 mesures au calme, à chaque mesure en modéré, tous les 2 beats en intense (réglable :
+  à chaque beat ou à chaque mesure). Chaque pic marqué impose une coupe.
+- **Images** : 30 par défaut (12 à 60), réparties par niveau d'énergie. Une image qui revient est transformée (miroir,
+  rotation, teinte) : 24 à 36 images suffisent pour une centaine de coupes.
+- **Style** : laisse le style vide à l'étape 2 : Claude choisit une direction visuelle d'après la musique (et
+  l'intention), puis décrit chaque image selon son énergie (formes lentes et couleurs sourdes au calme, éclatées et
+  saturées dans les passages intenses). Aucune personne ni objet reconnaissable.
+- **Effets sur les pics** (étape 6, réglé à 0,6 en cochant « Instrumentale ») : zoom bref, éclair et décalage RVB sur
+  chaque pic. Les éclairs sont plafonnés et jamais plus de 3 par seconde (photosensibilité).
+- **Effets au beat selon l'énergie** (étape 6, activé en cochant « Instrumentale », possible aussi avec paroles) :
+  gonflement, tremblement de caméra, projecteurs, RVB et glitch plus doux au calme, plus forts en intense, avec un
+  coup en plus sur chaque pic.
+- **Publication** : chapitres tirés des passages d'énergie, pas de bloc de paroles, miniature dans le style abstrait du
+  clip.
 
 ---
 

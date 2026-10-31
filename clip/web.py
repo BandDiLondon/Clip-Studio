@@ -223,6 +223,16 @@ def calage(p, cfg):
             "fin_trop_tot": lyrics.fin_trop_tot(segs, duree) if duree else 0}
 
 
+def rythme(p, cfg):
+    """Mode instrumental : tempo, passages d'énergie, pics et coupes (build/rythme.json)."""
+    from . import instrumental as ins
+    bf, r = p / "build" / "beats.npy", ins.charger(p)
+    if not bf.exists() or r is None:
+        return None
+    import numpy as np
+    return ins.resume(np.load(bf).tolist(), r, cfg)
+
+
 def status(nom):
     from .cli import _projet, perimes             # complète audio / paroles / solos automatiquement
     p, cfg = _projet(nom)
@@ -245,7 +255,7 @@ def status(nom):
     retouches = sorted(f.stem.lower() for f in (p / "retouches").glob("*")
                        if f.suffix.lower() in IMG_EXT) if (p / "retouches").is_dir() else []
     shots = [{"id": s["id"], "texte": s.get("text"), "ambiance": bool(s.get("ambiance")),
-              "sections": s.get("sections", []), "description": desc.get(s["id"], ""),
+              "sections": s.get("sections", []), "description": desc.get(s["id"], ""), "niveau": s.get("niveau"),
               "case": (p / "cases" / f"{s['id']}.png").exists(), "retouche": s["id"] in retouches}
              for s in (sl["shots"] if sl else [])]
     videos = sorted(({"nom": f.name, "taille": f.stat().st_size, "date": f.stat().st_mtime}
@@ -259,6 +269,7 @@ def status(nom):
         "paroles": cfg.get("paroles") if paroles_ok else None,
         "paroles_texte": _read(p / cfg["paroles"]) if paroles_ok else "",
         "beats": (b / "beats.npy").exists(), "words": (b / "words.json").exists(), "calage": calage(p, cfg),
+        "rythme": rythme(p, cfg) if cfg.get("instrumental") else None,
         "shots": shots, "planches": planches,
         "a_decrire": _read(b / "a_decrire.md"), "prompts": _read(b / "prompts_planches.md"),
         "desc_erreur": desc_err, "contact": (b / "planche_contact.jpg").exists(),

@@ -45,6 +45,7 @@ Clip Studio.bat / clip-studio.sh ──► python -m clip web ──► clip/web
 | `clip/depth.py` | cartes de profondeur (parallaxe, flou de fond) |
 | `clip/ai.py` + `clip/demandes.py` | appel de Claude Code; textes des demandes (descriptions, solos, vidéos) |
 | `clip/evaluate.py` / `clip/publish.py` | évaluation du storyboard / publication YouTube (demandes incluses) |
+| `clip/instrumental.py` | mode instrumental : énergie, pics, coupes, répartition des images abstraites, montage |
 | `clip/ocr.py` | texte lisible dans les cases (RapidOCR, tous les systèmes) |
 | `tests/test_clip.py` | tests rapides |
 | `scripts/captures.py` | captures d'écran du README |
@@ -61,7 +62,7 @@ macOS). Messages en anglais avec `CLIP_LANG=en`.
 | `check` | vérifie l'environnement | — |
 | `web` / `list` / `new` | Clip Studio / liste / nouveau projet | `projets/<nom>/` |
 | `prepare [--force]` | beats + alignement + évaluation + prompts | `build/` |
-| `beats` | beats et tempo | `build/beats.npy` |
+| `beats` | beats et tempo, énergie, mesures et pics | `build/beats.npy`, `build/rythme.json` |
 | `align [--repair-only]` | alignement stable-ts + réparation | `build/words.json` |
 | `section --index N (--debut T \| --decaler D)` | corrige une section du calage : réalignement seul à partir de T, ou décalage | `build/words.json` |
 | `evaluate [--appliquer]` | évaluation du storyboard (Claude) | `build/evaluation.json` |
@@ -89,7 +90,7 @@ projets/<nom>/
   retouches/p1_c2.png  remplace une case (prioritaire sur la découpe)
   solos/solo1.png…     panoramiques des passages instrumentaux
   videos/p1_c3.mp4…    remplace une image au montage
-  build/               words.json, beats.npy, shotlist.json, descriptions.json, prompts_*.md, evaluation.json,
+  build/               words.json, beats.npy, rythme.json, shotlist.json, descriptions.json, prompts_*.md, evaluation.json,
                        videos.json, publication.md, texte_detecte.json, karaoke.ass, historique/, rendus .mp4
 ```
 - `words.json` : `{"segments": [{"section", "text", "start", "end", "words": [{"w", "s", "e"}]}]}`.
@@ -129,7 +130,10 @@ Conservés d'un rendu à l'autre; tous les effets sont désactivés par défaut.
 - **Cadrage** : `fit` (`cover` | `contain` sur fond flou), `cy` (0 = haut, 1 = bas). Par image :
   `"ajustements": {"p1_c2": {"cy": 0.1, "fit": "contain", "camera": "…", "particules": "…", "fumee": "…", "parallaxe": false}}`.
 - **Rythme** : `pulse`, `pulse_mesure`, `fondu`, `transition` (fondu | coupe | noir | flash | glissement | zoom),
-  `duree_max_image`, `bpm_hint` (`"auto"` ou BPM imposé).
+  `duree_max_image`, `bpm_hint` (`"auto"` ou BPM imposé), `punch` (0-1 : zoom, éclair et RVB sur les pics), `beat_energie` (effets au beat pondérés par l'énergie du
+  passage, de 0,45 au plus calme à 1,45 au plus intense, plus un coup sur chaque pic : `instrumental.poids`).
+- **Instrumental** : `instrumental` (sans paroles), `images_instrumental` (12 à 60, défaut 30), `densite_coupes`
+  (passages intenses : une coupe tous les 1, 2 ou 4 beats).
 - **Caméra** : `camera` (`zoom` | `auto` selon le « Plan »), `camera_intensite`, `parallaxe`.
 - **Look** : `look` (aucun | cinema | nb | sepia | vhs | neon | froid), `grain`, `vignettage`, `luminosite`, `contraste`,
   `letterbox`, `harmonisation`, `variantes`, `look_sections`.
@@ -138,7 +142,11 @@ Conservés d'un rendu à l'autre; tous les effets sont désactivés par défaut.
   `flammes_intensite`, `eclairs`, `rayons` + `rayons_intensite`, `flou_fond`, `brume_profondeur`.
   « auto » = selon les mots de la description (mots-clés français et anglais, `render.py`).
 - **Lumière et beat** : `fuites_lumiere`, `projecteurs`, `tremblement` + `tremblement_zone`, `rvb_beat`, `glitch` +
-  `glitch_intensite`, `vieux_film`, `visualiseur` + `visualiseur_zone` / `_couleur` / `_hauteur`.
+  `glitch_intensite`, `vieux_film`, `visualiseur` (`barres` | `miroir` | `cercle` | `onde`) + `visualiseur_zone` /
+  `_couleur` / `_hauteur` / `_bandes` (couleurs par fréquence), `eq_graves` / `eq_mediums` / `eq_aigus` (0-1, égaliseur :
+  `effects.bands_frames`, 40-150 / 150-2000 / 2000-12000 Hz; graves et aigus = attaques au-dessus de la moyenne des
+  0,5 s précédentes, médiums = niveau; graves → zoom + tremblement, médiums → luminosité + saturation, aigus →
+  `sparkle`).
 - **Karaoké** : `karaoke_mode` (mot | ligne | aucun), `font`, `karaoke_taille`, `karaoke_couleur`, `karaoke_texte`,
   `karaoke_position`, `karaoke_animation`, `karaoke_suivante`, `karaoke_majuscules`, `karaoke_decalage`, `bar_alpha`.
 - **Textes** : `titre`, `artiste`, `generique`, `logo` + `logo_position`, `mention_ia_ecran` / `_texte` (vide =
@@ -161,7 +169,13 @@ Conservés d'un rendu à l'autre; tous les effets sont désactivés par défaut.
 
 ## Traitements
 - **Beats** (`audio.py`) : tempo estimé par tempogramme, « famille d'octaves » ramenée entre 72 et 144 BPM, puis suivi
-  par programmation dynamique à période locale.
+  par programmation dynamique à période locale. **Rythme** (`instrumental.analyse`, avec les beats) : énergie par beat
+  (volume RMS + densité d'attaques, lissée sur 8 beats), niveaux relatifs au morceau (30 % / 70 %, passages d'au moins
+  4 mesures), 1er temps (phase sur 4 aux attaques les plus fortes), pics (maximum local dans les 10 % les plus forts et
+  ≥ 3 × la médiane sur ±1 s, un toutes les 4 s en moyenne, jamais à moins de 0,34 s) → `build/rythme.json`.
+- **Instrumental** : coupes sur la grille des mesures (8 / 4 / `densite_coupes` beats selon le niveau) + pics de force
+  ≥ 0,5, plan ≥ 0,3 s; images réparties par niveau au prorata des coupes (au moins 3 par niveau), jamais deux fois de
+  suite la même; chaque retour porte une `variante` (miroir, rotation 180°, retournement, puis teinte ±20).
 - **Alignement** (`lyrics.py`) : alignement forcé stable-ts (Whisper medium, CPU, ~4,7 Go de mémoire au maximum; small :
   ~1,7 Go) sur les paroles connues, dans la langue du projet. **Calage par sections** si des vers sont ratés
   (`bad_lines` : la moitié des mots ou plus durent moins de 0,06 s, ou non placés) : transcription libre de la chanson
@@ -199,7 +213,8 @@ Conservés d'un rendu à l'autre; tous les effets sont désactivés par défaut.
   normalisé; tempo imposé; début du chant; modèle Whisper et langue du projet, seulement s'ils diffèrent de `medium` /
   `fr`, pour ne pas recaler les anciens projets). `perimes()` compare; `prepare`, `build` et `render` refont ce qui est périmé.
   Sans empreinte (ancien projet), comparaison des dates.
-- **Montage** : `timeline_sig` (mp3, `words.json`, `beats.npy`, shotlist, solos, images d'intro / d'outro). Recalculé
+- **Montage** : `timeline_sig` (mp3, `words.json`, `beats.npy`, `rythme.json`, shotlist, solos, images d'intro / d'outro;
+  en instrumental, aussi `densite_coupes`). Recalculé
   avant chaque rendu si différent.
 - **Historique** : `_save()` garde l'ancienne version de `projet.json` dans `build/historique/` (30 max, au plus une par
   minute; toujours lors d'une restauration). Écriture atomique (`clip.ecrire` : fichier temporaire puis remplacement).

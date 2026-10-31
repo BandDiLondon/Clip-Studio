@@ -3,8 +3,6 @@ Rédigés dans la langue du projet (« langue » : fr | en)."""
 import re
 
 from .i18n import langue_projet
-from .lyrics import read_lyrics
-from . import shots as shotlist
 
 COL_NAMES = {"fr": {1: ["centre"], 2: ["gauche", "droite"], 3: ["gauche", "centre", "droite"]},
              "en": {1: ["center"], 2: ["left", "right"], 3: ["left", "center", "right"]}}
@@ -37,6 +35,31 @@ HEADER = {
         "Each cell shows ONLY the scene described for it, nothing else; no cell repeats another.\n"
         "Style: {style}. Same style and same grain in every cell."),
 }
+# instrumental : compositions abstraites (pas de personnes, pas de zone de paroles)
+HEADER_ABSTRAIT = {
+    "fr": (
+        "Une seule image composée de EXACTEMENT {n} images abstraites distinctes (ni plus ni moins), disposées en "
+        "grille de {cols} colonne{cs} × {rows} rangée{rs}, séparées par une fine bordure noire uniforme. Image "
+        "complète au format {ratio}.\n"
+        "Chaque image occupe toute sa case, bord à bord : AUCUNE légende, AUCUN sous-titre, AUCUNE bande de texte. "
+        "Les descriptions ci-dessous sont des instructions visuelles, jamais du texte à écrire dans l'image.\n"
+        "Chaque vignette est une composition abstraite PAYSAGE 16:9 (plus large que haute), qui remplit tout le "
+        "cadre, sans personne, visage, animal ni objet reconnaissable.\n"
+        "Chaque vignette montre UNIQUEMENT la composition décrite pour elle; aucune vignette ne répète une autre.\n"
+        "Style : {style}. Même style, même matière et même qualité dans toutes les vignettes."),
+    "en": (
+        "One single image made of EXACTLY {n} distinct abstract images (no more, no less), arranged in a grid of "
+        "{cols} column{cs} × {rows} row{rs}, separated by a thin uniform black border. Full image in {ratio} "
+        "format.\n"
+        "Each image fills its whole cell, edge to edge: NO caption, NO subtitle, NO text band. The descriptions "
+        "below are visual instructions, never text to write in the image.\n"
+        "Each cell is a 16:9 LANDSCAPE abstract composition (wider than tall) that fills the whole frame, with no "
+        "person, face, animal or recognizable object.\n"
+        "Each cell shows ONLY the composition described for it; no cell repeats another.\n"
+        "Style: {style}. Same style, same material and same quality in every cell."),
+}
+DEFAULT_STYLE_ABSTRAIT = {"fr": "art abstrait numérique, haute définition, couleurs riches",
+                          "en": "digital abstract art, high definition, rich colors"}
 FOOTER = {
     "fr": ("Aucun texte, aucune lettre, aucun chiffre, aucun numéro de vignette, aucune légende, aucun "
            "logo, aucune enseigne ou affiche lisible, aucune célébrité, aucun filigrane, aucune bulle.\n"
@@ -113,28 +136,37 @@ def render_prompt(planche, cells, cfg):
     lg = langue_projet(cfg)
     cols, rows = planche["grid"]
     n = cols * rows
-    out = [HEADER[lg].format(n=n, cols=cols, rows=rows, cs="s" if cols > 1 else "",
-                             rs="s" if rows > 1 else "", ratio=planche["ratio"],
-                             style=cfg.get("style") or DEFAULT_STYLE[lg])]
-    cb = characters_block(cfg)
+    abstrait = bool(cfg.get("instrumental"))
+    out = [(HEADER_ABSTRAIT if abstrait else HEADER)[lg].format(
+        n=n, cols=cols, rows=rows, cs="s" if cols > 1 else "", rs="s" if rows > 1 else "", ratio=planche["ratio"],
+        style=cfg.get("style") or (DEFAULT_STYLE_ABSTRAIT if abstrait else DEFAULT_STYLE)[lg])]
+    cb = "" if abstrait else characters_block(cfg)
     if cb:
         out.append(cb)
     # les paroles ne sont PAS citées : un texte entre guillemets pousse le générateur à l'écrire
     # dans l'image ; la correspondance vignette ↔ vers est dans le tableau du fichier
     for i, (shot, desc) in enumerate(cells):
-        todo = FIELDS[lg] if shot.get("text") else ("ambiance shot, " if lg == "en" else "plan d'ambiance, ") + FIELDS[lg]
-        out.append(f"Photo {i + 1} ({position(i, cols, rows, lg)}){':' if lg == 'en' else ' :'} "
+        todo = FIELDS[lg] if shot.get("text") or abstrait else \
+            ("ambiance shot, " if lg == "en" else "plan d'ambiance, ") + FIELDS[lg]
+        mot = ("Image" if abstrait else "Photo")
+        out.append(f"{mot} {i + 1} ({position(i, cols, rows, lg)}){':' if lg == 'en' else ' :'} "
                    f"{prose(desc, lg) if desc else todo}")
     out.append(FOOTER[lg])
     return "\n".join(out)
 
 
-def skeleton(cfg, lyrics_path, descriptions=None):
-    """Retourne (shotlist, markdown). descriptions : {shot_id: texte} déjà rédigées."""
+def _sans_vers(s, lg):
+    if "niveau" in s:                                   # instrumental : niveau d'énergie
+        from .instrumental import NIVEAUX
+        return f"({'abstract, ' + NIVEAUX[lg][s['niveau']] + ' energy' if lg == 'en' else 'abstraite, énergie ' + NIVEAUX[lg][s['niveau']]})"
+    return "(instrumental ambiance)" if lg == "en" else "(ambiance instrumentale)"
+
+
+def skeleton(cfg, sl, descriptions=None):
+    """sl : shotlist (shots.build ou instrumental.shotlist) → (shotlist, markdown).
+    descriptions : {shot_id: texte} déjà rédigées."""
     lg = langue_projet(cfg)
     en = lg == "en"
-    sl = shotlist.build(read_lyrics(lyrics_path), dedupe=cfg.get("dedupe", True),
-                        ambiance=cfg.get("ambiance", 0))
     descriptions = descriptions or {}
     if en:
         md = [f"# Panel prompts — {len(sl['shots'])} images, {len(sl['planches'])} panel(s)\n",
@@ -148,7 +180,7 @@ def skeleton(cfg, lyrics_path, descriptions=None):
         pid, c = s["id"].split("_c")
         pl = next(p for p in sl["planches"] if p["id"] == pid)
         md.append(f"| {pid.upper()} | {c} ({position(int(c) - 1, *pl['grid'], lg)}) | {s['id']} | "
-                  f"{s['text'] or ('(instrumental ambiance)' if en else '(ambiance instrumentale)')} | "
+                  f"{s['text'] or _sans_vers(s, lg)} | "
                   f"{', '.join(x for x in s['sections'] if x) or '—'} |")
     for p in sl["planches"]:
         cells = [(s, descriptions.get(s["id"])) for s in sl["shots"] if s["id"].startswith(p["id"] + "_")]

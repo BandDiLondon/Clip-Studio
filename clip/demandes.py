@@ -28,6 +28,66 @@ Characters: {pers}
 }
 
 
+A_DECRIRE_INSTRU = {
+    "fr": """Rédige une description pour chaque image abstraite ci-dessous (clip d'une pièce instrumentale : les images
+changent sur le beat, plus vite dans les passages intenses).
+Format : Plan : … ; Sujet : … ; Action : … ; Décor : … ; Lumière : …
+(Plan = cadrage et échelle ; Sujet = formes et matières ; Action = mouvement figé ; Décor = fond et profondeur ;
+Lumière = couleurs et éclairage.)
+- Images ABSTRAITES seulement : aucune personne, aucun visage, aucun animal, aucun objet reconnaissable, aucun texte.
+- Une seule direction visuelle pour tout le clip (même famille de matières et de formes), qui varie avec l'énergie :
+  calme = formes lentes, beaucoup d'espace, couleurs sourdes ou froides ; modéré = formes en mouvement, contrastes
+  moyens ; intense = formes éclatées, contrastes forts, couleurs saturées, impression d'explosion ou de vitesse.
+- Toutes les images nettement différentes (formes, cadrage, couleur dominante) : les coupes doivent se voir.{style_todo}{consigne}
+Réponds UNIQUEMENT par un JSON {{"id": "description", …}} à enregistrer dans build/descriptions.json.
+
+Style : {style}
+
+{items}
+""",
+    "en": """Write a description for each abstract image below (video for an instrumental piece: the images change on
+the beat, faster in the intense parts).
+Format: Shot: … ; Subject: … ; Action: … ; Setting: … ; Lighting: …
+(Shot = framing and scale; Subject = shapes and materials; Action = frozen motion; Setting = background and depth;
+Lighting = colors and lighting.)
+- ABSTRACT images only: no person, no face, no animal, no recognizable object, no text.
+- One single visual direction for the whole video (same family of materials and shapes), varying with the energy:
+  calm = slow shapes, lots of space, muted or cold colors; moderate = moving shapes, medium contrast; intense =
+  bursting shapes, strong contrast, saturated colors, a sense of explosion or speed.
+- All images clearly different (shapes, framing, dominant color): the cuts must show.{style_todo}{consigne}
+Answer ONLY with a JSON {{"id": "description", …}} to be saved in build/descriptions.json.
+
+Style: {style}
+
+{items}
+""",
+}
+
+REFAIRE_INSTRU = {
+    "fr": """Réécris la description de certaines images abstraites d'un clip instrumental (les images changent sur le beat).
+Format : Plan : … ; Sujet : … ; Action : … ; Décor : … ; Lumière : …
+- Images ABSTRAITES seulement : aucune personne, aucun visage, aucun animal, aucun objet reconnaissable, aucun texte.
+- Garder la direction visuelle du clip et l'énergie indiquée; proposer une composition nettement différente de la
+  description actuelle.{consigne}
+Réponds UNIQUEMENT par un JSON {{"id": "description", …}}.
+
+Style : {style}
+
+{items}
+""",
+    "en": """Rewrite the description of some abstract images of an instrumental video (the images change on the beat).
+Format: Shot: … ; Subject: … ; Action: … ; Setting: … ; Lighting: …
+- ABSTRACT images only: no person, no face, no animal, no recognizable object, no text.
+- Keep the video's visual direction and the given energy; propose a composition clearly different from the current
+  description.{consigne}
+Answer ONLY with a JSON {{"id": "description", …}}.
+
+Style: {style}
+
+{items}
+""",
+}
+
 REFAIRE = {
     "fr": """Réécris la description de scène de certaines images d'un clip musical (1 image = 1 vers).
 Format : Plan : … ; Sujet : … ; Action : … ; Décor : … ; Lumière : …

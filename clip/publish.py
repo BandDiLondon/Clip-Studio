@@ -19,7 +19,7 @@ MOTS = {  # libellés produits par le code
     "fr": {"instrumental": "Instrumental", "partie": "Partie", "fin": "Fin", "sans_titre": "Sans titre",
            "artiste": "Artiste", "aucun": "(aucun)", "non_precisee": "(non précisée)",
            "a_propos": "⚠️ À PROPOS DE CETTE VERSION", "chapitres": "⏱️ Chapitres", "paroles": "📝 Paroles",
-           "droits": "paroles et musique originales.",
+           "droits": "paroles et musique originales.", "droits_instru": "musique originale.",
            "droits_fan": "tous droits réservés à l'artiste et à ses ayants droit.", "consigne": "Consigne de l'utilisateur",
            "credits": "🎬 Crédits", "liens": "🔗 Liens", "officiel": "Chanson officielle",
            "fait_avec": "Clip réalisé avec Clip Studio",
@@ -27,7 +27,7 @@ MOTS = {  # libellés produits par le code
     "en": {"instrumental": "Instrumental", "partie": "Part", "fin": "End", "sans_titre": "Untitled",
            "artiste": "Artist", "aucun": "(none)", "non_precisee": "(not specified)",
            "a_propos": "⚠️ ABOUT THIS VERSION", "chapitres": "⏱️ Chapters", "paroles": "📝 Lyrics",
-           "droits": "original lyrics and music.",
+           "droits": "original lyrics and music.", "droits_instru": "original music.",
            "droits_fan": "all rights reserved to the artist and their rights holders.", "consigne": "User instruction",
            "credits": "🎬 Credits", "liens": "🔗 Links", "officiel": "Official song",
            "fait_avec": "Video made with Clip Studio",
@@ -268,7 +268,7 @@ def demande(cfg, paroles, consigne="", reference=""):
                      f"personnages, qui prime sur la fiche ci-dessus) : {reference}" if fr else
                      "\nReference scene for the 1st thumbnail idea (reuse it, with the exact appearance of its "
                      f"characters, which takes precedence over the list above): {reference}")
-    return DEMANDE[lg].format(
+    q = DEMANDE[lg].format(
         titre=titre, artiste=artiste, mention=mention, origine=origine,
         style=cfg.get("style", ""), pers=pers, paroles=paroles, reference=reference, ton=ton, accroche=accroche,
         intention=(cfg.get("intention") or m["non_precisee"]).strip(),
@@ -280,6 +280,16 @@ def demande(cfg, paroles, consigne="", reference=""):
         formats="".join(f'\n  - "{f}" : {FORMATS[lg][f]}.' if fr else f'\n  - "{f}": {FORMATS[lg][f]}.'
                         for f in r["formats"]),
         consigne=f"\n{m['consigne']} : {consigne}" if consigne else "")
+    if cfg.get("instrumental"):                  # images abstraites : pas de photo ni de personnages
+        q = q.replace("miniature YouTube 16:9 photoréaliste : une scène marquante de\n    l'univers du clip, personnages "
+                      "décrits précisément (fictifs, aucune personne réelle, aucune célébrité)",
+                      "miniature YouTube 16:9 dans le style visuel du clip : une\n    composition abstraite marquante, "
+                      "sans personne ni visage")
+        q = q.replace("photorealistic 16:9 YouTube thumbnail: a striking scene of the\n    video's world, characters "
+                      "described precisely (fictional, no real person, no celebrity)",
+                      "16:9 YouTube thumbnail in the video's visual style: a striking\n    abstract composition, "
+                      "with no person or face")
+    return q
 
 
 def miniatures(ia):
@@ -313,7 +323,7 @@ def description(cfg, ia, chaps, paroles):
                          else f"{m['officiel']}: {r['lien_officiel'].strip()}")
     if b["chapitres"] and chaps:
         parts += ["", h(m["chapitres"]), *chaps]
-    if b["paroles"]:
+    if b["paroles"] and not cfg.get("instrumental"):
         parts += ["", h(f"{m['paroles']} ({artiste})"), paroles]
     sep = " : " if lg == "fr" else ": "
     credits = [f"{m['roles'][k]}{sep}{v.strip()}" for k, v in r["credits"].items() if v.strip()]
@@ -325,7 +335,8 @@ def description(cfg, ia, chaps, paroles):
     if b["liens"] and liens:
         parts += ["", h(m["liens"]), *liens]
     if o != "complete":                          # fan-made : les droits restent à l'artiste
-        parts += ["", f"© {artiste} — {m['droits_fan' if o.startswith('fan') else 'droits']}"]
+        d = "droits_fan" if o.startswith("fan") else "droits_instru" if cfg.get("instrumental") else "droits"
+        parts += ["", f"© {artiste} — {m[d]}"]
     tags = ia.get("hashtags") or []
     if b["hashtags"] and tags:
         parts += ["", " ".join(t if t.startswith("#") else f"#{t}" for t in tags)]

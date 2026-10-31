@@ -216,6 +216,9 @@ def load_timeline(cfg, duration, descriptions=None):
         opts["dir"] = 1 if (len(shots) + n) % 2 == 0 else -1        # sens alterné
         opts["mirror"] = bool(variantes and n % 2 == 1)
         opts["desat"] = bool(variantes and total[img] >= 3 and n == total[img] - 1)
+        if e.get("variante"):                          # instrumental : image qui revient, transformée
+            opts["variante"] = int(e["variante"])
+            opts["parallaxe"] = False                  # la carte de profondeur ne suit pas la transformation
         shots.append((e["t"], end, "case", img, opts))
     return shots
 
@@ -280,6 +283,44 @@ def _pulse(t):
             p = max(p, math.exp(d / -0.09))
         i += 1
     return p * S["pulse"]
+
+
+def _force(t):
+    """Effets au beat selon l'énergie (« beat_energie ») : poids du passage en cours (0,45 au calme → 1,45 en intense)
+    et enveloppe du pic le plus proche (0-1, sans le réglage « punch »). Sans l'option : (1, 0)."""
+    if not S.get("poids_v"):
+        return 1.0, 0.0
+    j = max(0, bisect.bisect_right(S["poids_t"], t) - 1)
+    w, k = S["poids_v"][min(j, len(S["poids_v"]) - 1)], 0.0
+    ts = S.get("pics_t") or []
+    i = bisect.bisect_left(ts, t - 0.40)
+    while i < len(ts) and ts[i] <= t + 0.02:
+        k = max(k, S["pics_f"][i] * math.exp(-max(0.0, t - ts[i]) / 0.12))
+        i += 1
+    return w, k
+
+
+def _eq(t):
+    """Égaliseur (graves, médiums, aigus) à l'instant t, chacun × son réglage (0-1). Sans réglage : (0, 0, 0)."""
+    eq = S.get("eq")
+    if eq is None:
+        return 0.0, 0.0, 0.0
+    v = eq[min(len(eq) - 1, max(0, int(round(t * S["fps"]))))]
+    return float(v[0]) * S["eq_g"], float(v[1]) * S["eq_m"], float(v[2]) * S["eq_a"]
+
+
+def _punch(t):
+    """Coup sur les pics (build/rythme.json) : 0-1, monte d'un coup sur le pic puis retombe en ~0,3 s."""
+    if not S.get("punch") or not S.get("pics_t"):
+        return 0.0
+    ts = S["pics_t"]
+    i = bisect.bisect_left(ts, t - 0.40)
+    k = 0.0
+    while i < len(ts) and ts[i] <= t + 0.02:
+        d = max(0.0, t - ts[i])
+        k = max(k, S["pics_f"][i] * math.exp(-d / 0.14))
+        i += 1
+    return min(1.0, k) * S["punch"]
 
 
 def _harmonize(im, target, strength=0.5):
@@ -370,9 +411,29 @@ def _particles(frame, kind, t, seed):
     return Image.alpha_composite(frame.convert("RGBA"), layer).convert("RGB")
 
 
-def _case_base(name, fit, mirror=False, desat=False, tone=None):
+VAR_TEINTES = (0, 20, -20)     # décalage de teinte des variantes (sur 255)
+
+
+def variante(im, v):
+    """Variante n° v d'une image qui revient (mode instrumental) : 1 miroir, 2 rotation 180°, 3 retournement
+    vertical, puis les mêmes avec la teinte décalée (v ≥ 4). v = 0 : image d'origine."""
+    g, h = v % 4, VAR_TEINTES[(v // 4) % len(VAR_TEINTES)]
+    if g == 1:
+        im = ImageOps.mirror(im)
+    elif g == 2:
+        im = im.rotate(180)
+    elif g == 3:
+        im = ImageOps.flip(im)
+    if h:
+        a = np.asarray(im.convert("HSV")).copy()
+        a[:, :, 0] = (a[:, :, 0].astype(np.int16) + h) % 256
+        im = Image.fromarray(a, "HSV").convert("RGB")
+    return im
+
+
+def _case_base(name, fit, mirror=False, desat=False, tone=None, var=0):
     """Image de case préparée à la taille de couverture × marge de zoom."""
-    key = ("case", name, fit, mirror, desat, tone)
+    key = ("case", name, fit, mirror, desat, tone, var)
     if key in S["cache"]:
         return S["cache"][key]
     W, H = S["size"]
@@ -382,6 +443,8 @@ def _case_base(name, fit, mirror=False, desat=False, tone=None):
         im = _harmonize(im, S["harmo"])
     if mirror:
         im = ImageOps.mirror(im)
+    if var:
+        im = variante(im, var)
     if desat:
         grey = ImageOps.grayscale(im).convert("RGB")
         im = Image.blend(im, grey, 0.85)
@@ -479,7 +542,10 @@ def _parallax(base, depth, cam, e, opts, extra_zoom):
 
 def _shot_frame(shot, t):
     start, end, kind, src, opts = shot
-    p = _pulse(t)
+    w, _ = _force(t)
+    p = min(1.0, _pulse(t) * w)                        # gonflement + flash : selon l'énergie (plafonné)
+    pk = _punch(t)
+    gr = _eq(t)[0]                                     # graves : coup de zoom
     if kind == "video":
         # vidéo (ex. générée avec Flow) : lue depuis le début à chaque apparition ; si le plan est plus
         # long que la vidéo, elle est légèrement ralentie pour le couvrir (jamais figée)
@@ -496,11 +562,11 @@ def _shot_frame(shot, t):
     elif kind == "travel":
         u = min(max((t - start) / max(end - start, 1e-6), 0.0), 1.0)   # borné : fondus hors plan
         ease = (1 - math.cos(u * math.pi)) / 2
-        frame = _crop_zoom(_pano(src, opts.get("tone")), (1.0 + 0.06 * ease) * (1.0 + 0.02 * p), cx=ease)
+        frame = _crop_zoom(_pano(src, opts.get("tone")), (1.0 + 0.06 * ease) * (1.0 + 0.02 * p + 0.06 * pk + 0.05 * gr), cx=ease)
         flash = 0.18
     else:
         base = _case_base(src, opts["fit"], opts.get("mirror", False), opts.get("desat", False),
-                          opts.get("tone"))
+                          opts.get("tone"), opts.get("variante", 0))
         u = min(max((t - start) / max(end - start, 1e-6), 0.0), 1.0)
         e = u * u * (3 - 2 * u)                         # lissage début / fin
         ca = S.get("cam_amp", 1.0)
@@ -522,7 +588,7 @@ def _shot_frame(shot, t):
             frame = _parallax(base, depth, cam, e, opts, 0.05 * p)
             box = _crop_box(base.size, 1.05 + 0.05 * p, 0.5, opts["cy"])
         else:
-            box = _crop_box(base.size, max(zoom + 0.05 * p, 0.9), cx, opts["cy"])
+            box = _crop_box(base.size, max(zoom + 0.05 * p + 0.12 * pk + 0.08 * gr, 0.9), cx, opts["cy"])
             frame = base.resize(S["inner"], Image.BILINEAR, box=box)
         if (S.get("flou_fond") or S.get("brume_prof")) and opts["fit"] == "cover" and opts.get("parallaxe", True):
             dimg = _depth(src, opts.get("mirror", False), base.size)
@@ -533,6 +599,8 @@ def _shot_frame(shot, t):
         flash = 0.22
     if p > 0.5:
         frame = Image.blend(frame, Image.new("RGB", frame.size, (255, 255, 255)), (p - 0.5) * flash)
+    if pk > 0.15:                                      # éclair bref sur le pic, plafonné (photosensibilité)
+        frame = Image.blend(frame, Image.new("RGB", frame.size, (255, 255, 255)), min(0.22, (pk - 0.15) * 0.4))
     if opts.get("flammes"):                            # feu au pied de l'image, sous la fumée et les braises
         frame = FX.fire(frame, t, S.get("flammes_hauteur", 0.3), S.get("flammes_intensite", 1.0))
     if opts.get("smoke"):                              # fumée derrière les particules (braises devant)
@@ -589,6 +657,8 @@ def _section(t):
 def _post_effects(frame, t, starts):
     """Effets appliqués à l'image complète : lumière, rythme, pellicule, son."""
     env, bi = _beat_env(t)
+    w, kp = _force(t)                                  # option « beat_energie » : énergie du passage + pics
+    env = min(1.5, max(env * w, kp))
     k = bisect.bisect_right(starts, t)
     near_cut = min((abs(t - starts[j]) for j in (k - 1, k) if 0 <= j < len(starts)), default=9)
     if S.get("fuites"):
@@ -596,15 +666,21 @@ def _post_effects(frame, t, starts):
     if S.get("projecteurs"):
         frame = FX.spotlights(frame, env, bi, S["projecteurs"])
     zone_ok = S.get("trem_zone", "partout") == "partout" or _section(t) == "refrain"
-    if S.get("tremblement") and zone_ok:
-        frame = FX.shake(frame, t, env * S["tremblement"])
-    if S.get("rvb"):
-        frame = FX.rgb_split(frame, env * S["rvb"])
+    gr, me, ai = _eq(t)                                # égaliseur : graves, médiums, aigus
+    if (S.get("tremblement") and zone_ok) or gr > 0.02:
+        frame = FX.shake(frame, t, max(env * S.get("tremblement", 0) if zone_ok else 0, gr * 0.7))
+    if me > 0.02:                                      # médiums : la lumière et les couleurs respirent
+        frame = ImageEnhance.Brightness(ImageEnhance.Color(frame).enhance(1 + 0.45 * me)).enhance(1 + 0.10 * me)
+    if ai > 0.03:                                      # aigus : scintillement
+        frame = FX.sparkle(frame, ai, seed=int(t * S["fps"]))
+    pk = _punch(t)
+    if S.get("rvb") or pk > 0.1:
+        frame = FX.rgb_split(frame, max(env * S.get("rvb", 0), pk * 1.2 if pk > 0.1 else 0))
     g = S.get("glitch")
     if g:
         hit = False
         if g in ("beats", "les_deux") and env > 0.55:
-            hit = np.random.default_rng(bi * 7919).random() < 0.35   # ~1 beat sur 3
+            hit = kp > 0.6 or np.random.default_rng(bi * 7919).random() < 0.35   # ~1 beat sur 3, et les pics forts
         if g in ("transitions", "les_deux") and near_cut < 0.12:
             hit = True
         if hit:
@@ -616,7 +692,7 @@ def _post_effects(frame, t, starts):
         fi = min(len(vis) - 1, int(round(t * S["fps"])))
         paroles = any(a <= t < b for a, b in S["bar_spans"])
         if fi >= 0 and (S["vis_zone"] == "partout" or not paroles):
-            frame = FX.visualizer(frame, vis[fi], S["vis_style"], S["vis_couleur"], S["vis_hauteur"])
+            frame = FX.visualizer(frame, vis[fi], S["vis_style"], S["vis_couleur"], S["vis_hauteur"], S.get("vis_bandes"))
     return frame
 
 
@@ -1051,13 +1127,30 @@ def render(projet_dir, cfg, preview=False, start=None, duration=None, workers=No
         from .depth import compute
         compute(projet_dir, [s[3] for s in shots if s[2] == "case"])
     vis_data = None
-    if cfg.get("visualiseur") in ("barres", "onde"):     # spectre / onde précalculés pour chaque image
+    eq_r = [float(cfg.get(k) or 0) for k in ("eq_graves", "eq_mediums", "eq_aigus")]
+    eq_data, xa = None, None
+    if cfg.get("visualiseur") in ("barres", "miroir", "cercle", "onde") or any(eq_r):
         from .audio import load_mono, SR
         xa = load_mono(audio)
         nf = int(round(total * fps)) + 2
-        vis_data = (FX.spectrum_frames(xa, SR, fps, nf) if cfg["visualiseur"] == "barres"
-                    else FX.wave_frames(xa, SR, fps, nf))
+    if cfg.get("visualiseur") in ("barres", "miroir", "cercle", "onde"):     # spectre / onde précalculés
+        vis_data = (FX.wave_frames(xa, SR, fps, nf) if cfg["visualiseur"] == "onde"
+                    else FX.spectrum_frames(xa, SR, fps, nf))
+    if any(eq_r):                                      # graves / médiums / aigus pour chaque image
+        eq_data = FX.bands_frames(xa, SR, fps, nf)
     logo, logo_pos = _logo(projet_dir, cfg, W, H)
+    punch, pics, poids_t, poids_v = float(cfg.get("punch") or 0), [], [], []
+    if punch or cfg.get("beat_energie"):               # pics et énergie détectés avec les beats (instrumental.py)
+        from . import instrumental as ins
+        r = ins.charger(projet_dir)
+        if r is None:                                  # projet préparé avant l'analyse rythmique
+            r = ins.analyse(audio, np.load(build / "beats.npy"))
+            ins.sauver(r, build / "rythme.json")
+        pics = [tuple(x) for x in r.get("pics") or []]
+        if cfg.get("beat_energie"):
+            poids_v = ins.poids(r)
+            poids_t = [float(x) for x in np.load(build / "beats.npy")][:len(poids_v)]
+            poids_v = poids_v[:len(poids_t)]
     state = {
         "size": (W, H), "inner": inner, "fps": fps,
         "parallaxe": par * cam_amp, "depth_dir": build / "depth", "cam_amp": cam_amp,
@@ -1080,6 +1173,10 @@ def render(projet_dir, cfg, preview=False, start=None, duration=None, workers=No
         "fondu": max(float(cfg.get("fondu", XFADE)), 1.0 / fps),   # durée de la transition (s)
         "transition": cfg.get("transition", "fondu"),
         "beats": beats,
+        "punch": punch, "pics_t": [t for t, _ in pics], "pics_f": [f for _, f in pics],
+        "poids_t": poids_t, "poids_v": poids_v,
+        "eq": eq_data, "eq_g": eq_r[0], "eq_m": eq_r[1], "eq_a": eq_r[2],
+        "vis_bandes": bool(cfg.get("visualiseur_bandes")),
         "shots": shots, "starts": [s[0] for s in shots],
         "cases": projet_dir / "cases", "solos": projet_dir / cfg.get("solos", "solos"),
         "bar": bar, "bar_y": bar_y, "bar_spans": spans, "logo": logo, "logo_pos": logo_pos,

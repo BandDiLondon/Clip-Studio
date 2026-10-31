@@ -7,6 +7,21 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/); numéros de v
 
 ## [Non publié]
 
+### Ajouté
+- **Chanson instrumentale** (étape 1) : sans paroles ni karaoké, des images abstraites qui suivent le rythme. Analyse
+  de l'énergie (passages calmes, modérés, intenses, en frise à l'étape 2), des mesures et des pics; coupes toutes les
+  2 mesures au calme, à chaque mesure en modéré, tous les 2 beats en intense (réglable), et sur chaque pic marqué.
+  24 à 36 images suffisent : celles qui reviennent sont transformées (miroir, rotation, teinte). Claude choisit le
+  style d'après la musique et décrit chaque image selon son énergie. Publication avec chapitres d'énergie.
+- Option **Effets sur les pics** (étape 6) : zoom, éclair plafonné et décalage RVB sur chaque pic détecté, aussi pour
+  les chansons avec paroles.
+- Option **Effets au beat selon l'énergie** (étape 6) : gonflement, tremblement de caméra, projecteurs, RVB et glitch
+  plus doux dans les passages calmes, plus forts dans les intenses, avec un coup en plus sur chaque pic. Activée
+  d'office pour une chanson instrumentale.
+- **Égaliseur** (étape 6) : effets qui réagissent au son, bande par bande : graves → zoom et tremblement, médiums →
+  lumière et couleurs, aigus → scintillement, chacun avec son curseur. Visualiseur : nouveaux styles **barres miroir**
+  et **anneau au centre**, et couleurs par fréquence.
+
 ## [1.5.1] - 2026-10-16
 
 ### Ajouté

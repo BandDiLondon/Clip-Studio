@@ -7,6 +7,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version number
 
 ## [Unreleased]
 
+### Added
+- **Instrumental song** (step 1): no lyrics or karaoke, abstract images that follow the rhythm. Analysis of the energy
+  (calm, moderate, intense parts, in a timeline in step 2), of the bars and of the peaks; cuts every 2 bars in calm
+  parts, on every bar in moderate parts, every 2 beats in intense parts (adjustable), and on each marked peak. 24 to 36
+  images are enough: those that come back are transformed (mirror, rotation, hue). Claude chooses the style from the
+  music and describes each image according to its energy. Publishing with energy chapters.
+- **Effects on peaks** option (step 6): zoom, capped flash and RGB split on each detected peak, also for songs with
+  lyrics.
+- **Beat effects follow the energy** option (step 6): swell, camera shake, spotlights, RGB and glitch softer in calm
+  parts, stronger in intense ones, with an extra hit on each peak. On by default for an instrumental song.
+- **Equalizer** (step 6): effects that react to the sound, band by band: bass → zoom and shake, mids → light and
+  colors, highs → sparkle, each with its slider. Visualizer: new **mirrored bars** and **ring in the center** styles,
+  and colors by frequency.
+
 ## [1.5.1] - 2026-10-16
 
 ### Added

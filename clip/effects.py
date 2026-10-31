@@ -342,6 +342,60 @@ def spectrum_frames(x, sr, fps, n_frames, bands=40):
     return np.clip(out, 0, 1)
 
 
+BANDES = ((40, 150), (150, 2000), (2000, 12000))   # graves, médiums, aigus (Hz)
+
+
+def bands_frames(x, sr, fps, n_frames):
+    """Graves / médiums / aigus pour chaque image vidéo : tableau (n_frames, 3) entre 0 et 1, comme un égaliseur.
+    Graves et aigus suivent les attaques (énergie au-dessus de sa moyenne des 0,5 s précédentes : grosse caisse, basse,
+    cymbales); les médiums suivent le niveau (guitares, voix, synthés). Montée immédiate, retombée douce."""
+    hop, win = sr / fps, 2048
+    freqs = np.fft.rfftfreq(win, 1 / sr)
+    sel = [(freqs >= a) & (freqs < min(b, sr / 2 - 1)) for a, b in BANDES]
+    wnd = np.hanning(win).astype(np.float32)
+    raw = np.zeros((n_frames, 3), np.float32)
+    for f in range(n_frames):
+        c = int(f * hop)
+        seg = x[max(0, c - win // 2): c + win // 2]
+        if len(seg) < win:
+            seg = np.pad(seg, (0, win - len(seg)))
+        pw = np.abs(np.fft.rfft(seg * wnd)) ** 2
+        raw[f] = [np.log1p(pw[m].sum()) for m in sel]
+    out = np.zeros_like(raw)
+    k = max(1, int(fps * 0.5))
+    for b in range(3):
+        e = raw[:, b].astype(np.float64)
+        if b == 1:
+            v, lo_pct = e, 20
+        else:                                             # attaques : au-dessus de la moyenne récente
+            cs = np.concatenate([[0.0], np.cumsum(e)])
+            idx = np.arange(len(e))
+            lent = (cs[idx] - cs[np.maximum(0, idx - k)]) / np.maximum(1, idx - np.maximum(0, idx - k))
+            lent[0] = e[0]
+            v, lo_pct = np.maximum(0.0, e - lent), 50
+        lo, hi = np.percentile(v, lo_pct), np.percentile(v, 98)
+        v = np.clip((v - lo) / (hi - lo + 1e-9), 0, 1)
+        rel = 0.90 if b == 1 else 0.78
+        for f in range(1, len(v)):
+            v[f] = max(v[f], v[f - 1] * rel)
+        out[:, b] = v
+    return out
+
+
+def sparkle(frame, amount, seed):
+    """Aigus : grain qui pétille et quelques points lumineux, proportionnels à `amount` (0-1)."""
+    if amount <= 0.03:
+        return frame
+    W, H = frame.size
+    rng = np.random.default_rng(seed)
+    a = np.asarray(frame).astype(np.int16)
+    a = a + rng.normal(0, 16 * amount, (H, W, 1)).astype(np.int16)
+    n = int(260 * amount * (W * H) / (1920 * 1080))
+    ys, xs = rng.integers(0, H, n), rng.integers(0, W, n)
+    a[ys, xs] = 255
+    return Image.fromarray(np.clip(a, 0, 255).astype(np.uint8))
+
+
 def wave_frames(x, sr, fps, n_frames, points=160):
     """Forme d'onde autour de chaque image : tableau (n_frames, points) entre -1 et 1."""
     hop = sr / fps
@@ -357,8 +411,16 @@ def wave_frames(x, sr, fps, n_frames, points=160):
     return np.clip(out, -1, 1)
 
 
-def visualizer(frame, data, style, color, height):
-    """Barres de spectre ou onde, en bas de l'image, lumineuses et semi-transparentes."""
+def _couleur_bande(i, n):
+    """Égaliseur coloré : graves rouge orangé → médiums jaune vert → aigus cyan bleu."""
+    import colorsys
+    r, g, b = colorsys.hsv_to_rgb(0.02 + 0.58 * i / max(1, n - 1), 0.85, 1.0)
+    return int(r * 255), int(g * 255), int(b * 255)
+
+
+def visualizer(frame, data, style, color, height, bandes=False):
+    """Égaliseur lumineux et semi-transparent : barres en bas, barres miroir (haut et bas), anneau au centre, ou onde.
+    bandes : une couleur par zone de fréquences au lieu de `color`."""
     W, H = frame.size
     k = _k(frame)
     hpx = height * H
@@ -366,14 +428,31 @@ def visualizer(frame, data, style, color, height):
     layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(layer)
     rgb = tuple(int(color.lstrip("#")[i:i + 2], 16) for i in (0, 2, 4)) if color else (255, 220, 80)
-    if style == "barres":
-        n = len(data)
+    n = len(data)
+    col = (lambda i: (*_couleur_bande(i, n), 200)) if bandes else (lambda i: (*rgb, 200))
+    if style in ("barres", "miroir"):
         margin = W * 0.12
         bw = (W - 2 * margin) / n
+        top = int(40 * k)
         for i, v in enumerate(data):
             x = margin + i * bw
-            d.rounded_rectangle((x + bw * 0.18, base - max(3 * k, v * hpx), x + bw * 0.82, base),
-                                radius=max(1, int(bw * 0.25)), fill=(*rgb, 200))
+            h = max(3 * k, v * hpx)
+            d.rounded_rectangle((x + bw * 0.18, base - h, x + bw * 0.82, base),
+                                radius=max(1, int(bw * 0.25)), fill=col(i))
+            if style == "miroir":                       # même barre descendant du haut
+                d.rounded_rectangle((x + bw * 0.18, top, x + bw * 0.82, top + h),
+                                    radius=max(1, int(bw * 0.25)), fill=col(i))
+    elif style == "cercle":
+        import math
+        cx, cy, r0 = W / 2, H / 2, min(W, H) * 0.17
+        vals = list(data) + list(data)[::-1]             # anneau symétrique (graves en haut et en bas)
+        m = len(vals)
+        lw = max(2, int(2 * math.pi * r0 / m * 0.55))
+        for j, v in enumerate(vals):
+            a = -math.pi / 2 + 2 * math.pi * j / m
+            r1 = r0 + max(3 * k, v * hpx * 1.4)
+            d.line((cx + r0 * math.cos(a), cy + r0 * math.sin(a), cx + r1 * math.cos(a), cy + r1 * math.sin(a)),
+                   fill=col(j if j < n else m - 1 - j), width=lw)
     else:
         pts = [(W * 0.08 + i * (W * 0.84) / (len(data) - 1), base - hpx / 2 + v * hpx / 2) for i, v in enumerate(data)]
         d.line(pts, fill=(*rgb, 220), width=max(2, int(3 * k)), joint="curve")

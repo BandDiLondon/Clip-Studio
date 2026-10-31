@@ -48,6 +48,7 @@ Clip Studio.bat / clip-studio.sh ──► python -m clip web ──► clip/web
 | `clip/depth.py` | depth maps (parallax, background blur) |
 | `clip/ai.py` + `clip/demandes.py` | calling Claude Code; request texts (descriptions, solos, videos) |
 | `clip/evaluate.py` / `clip/publish.py` | storyboard evaluation / YouTube publishing (requests included) |
+| `clip/instrumental.py` | instrumental mode: energy, peaks, cuts, spreading of the abstract images, edit |
 | `clip/ocr.py` | readable text in the cells (RapidOCR, all systems) |
 | `tests/test_clip.py` | quick tests |
 | `scripts/captures.py` | README screenshots |
@@ -64,7 +65,7 @@ macOS). Messages in English with `CLIP_LANG=en`.
 | `check` | checks the environment | — |
 | `web` / `list` / `new` | Clip Studio / list / new project | `projets/<name>/` |
 | `prepare [--force]` | beats + alignment + evaluation + prompts | `build/` |
-| `beats` | beats and tempo | `build/beats.npy` |
+| `beats` | beats and tempo, energy, bars and peaks | `build/beats.npy`, `build/rythme.json` |
 | `align [--repair-only]` | stable-ts alignment + repair | `build/words.json` |
 | `section --index N (--debut T \| --decaler D)` | fixes one section of the alignment: realigned alone from T, or shifted | `build/words.json` |
 | `evaluate [--appliquer]` | storyboard evaluation (Claude) | `build/evaluation.json` |
@@ -93,7 +94,7 @@ projets/<name>/
   retouches/p1_c2.png  replaces a cell (takes priority over cutting)
   solos/solo1.png…     panoramas of the instrumental parts
   videos/p1_c3.mp4…    replaces an image in the edit
-  build/               words.json, beats.npy, shotlist.json, descriptions.json, prompts_*.md, evaluation.json,
+  build/               words.json, beats.npy, rythme.json, shotlist.json, descriptions.json, prompts_*.md, evaluation.json,
                        videos.json, publication.md, texte_detecte.json, karaoke.ass, historique/, .mp4 renders
 ```
 - `words.json`: `{"segments": [{"section", "text", "start", "end", "words": [{"w", "s", "e"}]}]}`.
@@ -132,7 +133,10 @@ to the next; all effects are off by default.
 - **Framing**: `fit` (`cover` | `contain` on a blurred background), `cy` (0 = top, 1 = bottom). Per image:
   `"ajustements": {"p1_c2": {"cy": 0.1, "fit": "contain", "camera": "…", "particules": "…", "fumee": "…", "parallaxe": false}}`.
 - **Rhythm**: `pulse`, `pulse_mesure`, `fondu`, `transition` (fondu | coupe | noir | flash | glissement | zoom),
-  `duree_max_image`, `bpm_hint` (`"auto"` or forced BPM).
+  `duree_max_image`, `bpm_hint` (`"auto"` or forced BPM), `punch` (0-1: zoom, flash and RGB on the peaks), `beat_energie` (beat effects weighted by the energy of the
+  part, from 0.45 at the calmest to 1.45 at the most intense, plus a hit on each peak: `instrumental.poids`).
+- **Instrumental**: `instrumental` (no lyrics), `images_instrumental` (12 to 60, default 30), `densite_coupes` (intense
+  parts: one cut every 1, 2 or 4 beats).
 - **Camera**: `camera` (`zoom` | `auto` based on the "Shot"), `camera_intensite`, `parallaxe`.
 - **Look**: `look` (aucun | cinema | nb | sepia | vhs | neon | froid), `grain`, `vignettage`, `luminosite`,
   `contraste`, `letterbox`, `harmonisation`, `variantes`, `look_sections`.
@@ -141,7 +145,10 @@ to the next; all effects are off by default.
   `flammes_intensite`, `eclairs`, `rayons` + `rayons_intensite`, `flou_fond`, `brume_profondeur`.
   "auto" = based on the words of the description (French and English keywords, `render.py`).
 - **Light and beat**: `fuites_lumiere`, `projecteurs`, `tremblement` + `tremblement_zone`, `rvb_beat`, `glitch` +
-  `glitch_intensite`, `vieux_film`, `visualiseur` + `visualiseur_zone` / `_couleur` / `_hauteur`.
+  `glitch_intensite`, `vieux_film`, `visualiseur` (`barres` | `miroir` | `cercle` | `onde`) + `visualiseur_zone` /
+  `_couleur` / `_hauteur` / `_bandes` (colors by frequency), `eq_graves` / `eq_mediums` / `eq_aigus` (0-1, equalizer:
+  `effects.bands_frames`, 40-150 / 150-2000 / 2000-12000 Hz; bass and highs = attacks above the average of the
+  previous 0.5 s, mids = level; bass → zoom + shake, mids → brightness + saturation, highs → `sparkle`).
 - **Karaoke**: `karaoke_mode` (mot | ligne | aucun), `font`, `karaoke_taille`, `karaoke_couleur`, `karaoke_texte`,
   `karaoke_position`, `karaoke_animation`, `karaoke_suivante`, `karaoke_majuscules`, `karaoke_decalage`, `bar_alpha`.
 - **Texts**: `titre`, `artiste`, `generique`, `logo` + `logo_position`, `mention_ia_ecran` / `_texte` (empty = "Version
@@ -164,7 +171,13 @@ to the next; all effects are off by default.
 
 ## Processing
 - **Beats** (`audio.py`): tempo estimated by tempogram, "octave family" brought between 72 and 144 BPM, then tracked by
-  dynamic programming with a local period.
+  dynamic programming with a local period. **Rhythm** (`instrumental.analyse`, with the beats): energy per beat (RMS
+  volume + attack density, smoothed over 8 beats), levels relative to the track (30% / 70%, parts of at least 4 bars),
+  1st beat (phase out of 4 with the strongest attacks), peaks (local maximum in the strongest 10% and ≥ 3 × the median
+  over ±1 s, one every 4 s on average, never closer than 0.34 s) → `build/rythme.json`.
+- **Instrumental**: cuts on the bar grid (8 / 4 / `densite_coupes` beats depending on the level) + peaks of strength
+  ≥ 0.5, shots ≥ 0.3 s; images spread by level in proportion to the cuts (at least 3 per level), never the same twice
+  in a row; each return carries a `variante` (mirror, 180° rotation, flip, then hue ±20).
 - **Alignment** (`lyrics.py`): stable-ts forced alignment (Whisper medium, CPU, ~4.7 GB of memory at most; small:
   ~1.7 GB) on the known lyrics, in the project language. **Section alignment** when lines are missed (`bad_lines`:
   half of the words or more last under 0.06 s, or are not placed): free transcription of the song (used only to locate
@@ -203,7 +216,8 @@ to the next; all effects are off by default.
   forced tempo; singing start; Whisper model and project language, only when different from `medium` / `fr` so that
   older projects are not realigned). `perimes()` compares; `prepare`, `build` and `render` redo what is out of date.
   Without a signature (old project), the dates are compared.
-- **Edit**: `timeline_sig` (mp3, `words.json`, `beats.npy`, shotlist, solos, intro / outro images). Recomputed before
+- **Edit**: `timeline_sig` (mp3, `words.json`, `beats.npy`, `rythme.json`, shotlist, solos, intro / outro images; in
+  instrumental mode, also `densite_coupes`). Recomputed before
   each render if different.
 - **History**: `_save()` keeps the previous version of `projet.json` in `build/historique/` (30 max, at most one per
   minute; always on a restore). Writing is atomic (`clip.ecrire`: temporary file then replace).

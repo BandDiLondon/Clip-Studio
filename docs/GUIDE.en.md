@@ -9,6 +9,7 @@ when something gets stuck. For the installation, see the [README](../README.en.m
 - [What you need](#what-you-need)
 - [Getting started: your first song](#getting-started-your-first-song)
 - [The 8 steps in detail](#the-8-steps-in-detail)
+- [Instrumental song](#instrumental-song)
 - [Tips for good panels](#tips-for-good-panels)
 - [Processing times](#processing-times)
 - [Backup and history](#backup-and-history)
@@ -120,6 +121,12 @@ logo, "AI Version" notice, format (16:9, 4K, vertical 9:16, square). The setting
 The **automatic** effects (particles, smoke, lightning, light rays, camera move) read the scene descriptions, in French
 or in English: "storm" brings rain and lightning, "fire" embers and smoke, "wide shot" a tracking shot, and so on.
 
+The **Equalizer** group makes the image react to the sound, frame by frame, like the sliders of an equalizer: the
+**bass** (kick drum, bass) makes the image zoom and shake on each hit, even off the beat; the **mids** (guitars,
+vocals, synths) make the light and the colors breathe; the **highs** (cymbals) make the image sparkle. The
+**visualizer** shows the equalizer itself: bars at the bottom, mirrored bars (top and bottom), a ring in the center or
+a waveform, in one color or colored by frequency (bass red-orange → highs cyan-blue).
+
 ### 7. Render
 - **Quick preview**: 960×540 video to check the edit, in about 30 seconds for a 3-minute song.
 - **Final render**: 1080p with sound, in 1 to 1.5 minutes for a 3-minute song; 4 to 6 minutes with many effects (3D
@@ -145,6 +152,27 @@ Options of the step (saved in the project):
   text and color, square 1:1 and vertical 9:16 formats in addition to 16:9.
 - **Profiles**: "Save as profile…" keeps the origin, the credits, the links, the writing and the thumbnail (e.g. "KPR",
   "Fan-made"); "Load" applies them to another project.
+
+---
+
+## Instrumental song
+For a track without lyrics: step 1, check **Instrumental (no lyrics)**. There are no lyrics, no karaoke and no Whisper
+alignment: the rhythm drives the whole edit, with **abstract images**.
+
+- **Prepare** detects the beats, the 1st beat of the bars, the **calm, moderate or intense** parts (relative to the
+  track, shown in a timeline) and the **peaks** (strong accents: snare, hits, attacks).
+- **Cuts**: one image every 2 bars in calm parts, on every bar in moderate parts, every 2 beats in intense parts
+  (adjustable: on every beat or on every bar). Each marked peak forces a cut.
+- **Images**: 30 by default (12 to 60), spread by energy level. An image that comes back is transformed (mirror,
+  rotation, hue): 24 to 36 images are enough for about a hundred cuts.
+- **Style**: leave the style empty in step 2: Claude chooses a visual direction from the music (and the intent), then
+  describes each image according to its energy (slow shapes and muted colors when calm, bursting and saturated in the
+  intense parts). No person or recognizable object.
+- **Effects on peaks** (step 6, set to 0.6 when checking "Instrumental"): short zoom, flash and RGB split on each peak.
+  The flashes are capped and never more than 3 per second (photosensitivity).
+- **Beat effects follow the energy** (step 6, on when checking "Instrumental", also possible with lyrics): swell,
+  camera shake, spotlights, RGB and glitch softer when calm, stronger when intense, with an extra hit on each peak.
+- **Publishing**: chapters taken from the energy parts, no lyrics block, thumbnail in the video's abstract style.
 
 ---
 

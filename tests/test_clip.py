@@ -296,6 +296,132 @@ class Ocr(unittest.TestCase):
             self.assertNotIn("p1_c2", r)
 
 
+class Instrumental(unittest.TestCase):
+    """Mode instrumental : niveaux d'énergie, pics, coupes, répartition des images, montage, prompts, publication."""
+    @staticmethod
+    def rythme(n=96, calme=32, intense=32):
+        # 96 beats à 120 BPM : 32 calmes, 32 modérés, 32 intenses
+        e = [0.2] * calme + [0.5] * (n - calme - intense) + [0.9] * intense
+        from clip import instrumental as ins
+        return [round(i * 0.5, 3) for i in range(n)], {"phase": 0, "energie": e, "niveaux": ins.niveaux(e),
+                                                         "pics": [[6.1, 1.0], [10.1, 0.3]], "duree": 48.0}
+
+    def test_niveaux_et_passages(self):
+        from clip import instrumental as ins
+        beats, r = self.rythme()
+        self.assertEqual([x["niveau"] for x in ins.passages(beats, r)], [0, 1, 2])
+        self.assertEqual(ins.niveaux([0.5] * 40), [1] * 40)              # énergie uniforme : tout modéré
+        lv = ins.niveaux([0.2] * 30 + [0.9] * 3 + [0.2] * 30)           # passage trop court : absorbé
+        self.assertEqual(len(set(lv)), 1)
+        lv = ins.niveaux([0.2] * 40 + [0.9] * 10 + [0.5] * 40)
+        self.assertTrue(all(b - a >= ins.RUN_MIN for a, b, _ in ins._runs(lv)))
+
+    def test_pics(self):
+        from clip import instrumental as ins
+        env = [0.05] * 2000
+        for i in (300, 310, 900, 1500):                                   # 310 : trop près de 300
+            env[i] = 1.0 if i != 1500 else 0.5
+        p = ins.pics(env, 0.0116)
+        self.assertEqual(len(p), 3)
+        self.assertTrue(all(b[0] - a[0] >= ins.PIC_MIN for a, b in zip(p, p[1:])))
+        self.assertEqual(max(f for _, f in p), 1.0)
+
+    def test_coupes_et_montage(self):
+        from clip import instrumental as ins
+        beats, r = self.rythme()
+        c = ins.coupes(beats, r, densite=2)
+        t = lambda a, b: [x for x, _ in c if a <= x < b]
+        self.assertEqual(t(0, 12), [0.0, 4.0, 6.0, 8.0])   # calme : toutes les 8 beats (4 s) + pic fort à 6,1 s
+        self.assertEqual(len(t(18, 30)), 6)             # modéré : toutes les 4 beats (2 s)
+        self.assertEqual(len(t(36, 46)), 10)            # intense : tous les 2 beats (1 s)
+        self.assertNotIn(10.0, t(9, 11))                # pic faible : pas de coupe imposée
+        self.assertEqual(c[0][0], 0.0)
+        cfg = {"images_instrumental": 12, "langue": "fr"}
+        sl = ins.shotlist(cfg, beats, r)
+        self.assertEqual(len(sl["shots"]), 12)
+        self.assertEqual({s["niveau"] for s in sl["shots"]}, {0, 1, 2})
+        ev = ins.plan(beats, r, sl["shots"], cfg)
+        self.assertEqual(len(ev), len(c))
+        self.assertTrue(all(a["img"] != b["img"] for a, b in zip(ev, ev[1:])))
+        niv = {s["id"]: s["niveau"] for s in sl["shots"]}
+        self.assertTrue(all(niv[e["img"]] == n for e, (_, n) in zip(ev, c)))      # image du bon niveau
+        self.assertTrue(any(e.get("variante") for e in ev))                         # images qui reviennent
+        self.assertEqual(ins.nombre_images({"images_instrumental": 500}), ins.IMAGES[1])
+
+    def test_effets_au_beat_selon_l_energie(self):
+        from clip import instrumental as ins, render
+        beats, r = self.rythme()
+        w = ins.poids(r)
+        self.assertEqual(len(w), len(beats))
+        self.assertAlmostEqual(w[0], ins.POIDS[0])                       # passage calme : effets adoucis
+        self.assertAlmostEqual(w[-1], ins.POIDS[1])                      # passage intense : renforcés
+        render.S.clear()
+        self.assertEqual(render._force(10.0), (1.0, 0.0))                # option désactivée : inchangé
+        render.S.update(poids_t=beats, poids_v=w, pics_t=[6.1], pics_f=[1.0])
+        self.assertEqual(render._force(1.0), (ins.POIDS[0], 0.0))
+        self.assertGreater(render._force(6.15)[1], 0.6)                  # coup en plus sur le pic
+        render.S.clear()
+
+    def test_egaliseur(self):
+        import numpy as np
+        from PIL import Image
+        from clip import effects
+        sr, fps = 22050, 30
+        t = np.arange(int(sr * 4)) / sr
+        x = np.zeros_like(t)
+        for k in range(4):                                               # grosse caisse 60 Hz toutes les 0,5 s (0-2 s)
+            m = (t >= k * 0.5) & (t < k * 0.5 + 0.08)
+            x[m] += np.sin(2 * np.pi * 60 * t[m])
+        hiss = np.random.default_rng(1).normal(0, 0.3, len(t))
+        x[t >= 3] += np.diff(np.concatenate([[0], hiss]))[t >= 3]       # cymbale : bruit aigu à partir de 3 s
+        eq = effects.bands_frames(x.astype(np.float32), sr, fps, 4 * fps)
+        self.assertEqual(eq.shape, (4 * fps, 3))
+        self.assertGreater(eq[int(0.52 * fps), 0], 0.5)                  # coup de grosse caisse : graves
+        self.assertLess(eq[int(2.9 * fps), 0], 0.2)                      # silence : retombé
+        self.assertGreater(eq[int(3.05 * fps), 2], 0.5)                  # attaque de la cymbale : aigus
+        im = Image.new("RGB", (320, 180))
+        for style in ("barres", "miroir", "cercle", "onde"):
+            out = effects.visualizer(im, np.linspace(0, 1, 40), style, "#FFDC50", 0.2, bandes=True)
+            self.assertGreater(np.asarray(out).sum(), 0)
+        self.assertGreater(np.asarray(effects.sparkle(im, 1.0, 3)).sum(), 0)
+        self.assertIs(effects.sparkle(im, 0.0, 3), im)
+
+    def test_variantes_du_rendu(self):
+        from PIL import Image
+        from clip import render
+        im = Image.new("RGB", (4, 2), (200, 30, 30))
+        im.putpixel((0, 0), (0, 0, 255))
+        self.assertEqual(render.variante(im, 1).getpixel((3, 0)), (0, 0, 255))      # miroir
+        self.assertEqual(render.variante(im, 2).getpixel((3, 1)), (0, 0, 255))      # rotation 180°
+        self.assertEqual(render.variante(im, 3).getpixel((0, 1)), (0, 0, 255))      # retournement vertical
+        self.assertNotEqual(render.variante(im, 4).getpixel((1, 1)), (200, 30, 30))  # teinte décalée
+
+    def test_prompts_et_publication(self):
+        from clip import instrumental as ins, publish
+        beats, r = self.rythme()
+        cfg = {"langue": "fr", "instrumental": True, "style": "", "images_instrumental": 12,
+               "personnages": {"X": "ne doit pas apparaître"}}
+        sl, md = prompts.skeleton(cfg, ins.shotlist(cfg, beats, r), {})
+        self.assertIn("images abstraites distinctes", md)
+        self.assertNotIn("ne doit pas apparaître", md)
+        self.assertIn("abstraite, énergie", md)
+        self.assertIn("énergie calme", ins.label(cfg, sl["shots"][0], beats, r))
+        cfg.update(titre="T", artiste="A", origine="images")
+        d = publish.description(cfg, {"accroche": "x"}, [], "(instrumental)")
+        self.assertNotIn("(instrumental)", d)
+        self.assertIn(publish.MOTS["fr"]["droits_instru"], d)
+        chaps = publish.chapitres(ins.segments_chapitres(beats, r), 48.0)
+        self.assertEqual([c.split(" ", 1)[1] for c in chaps], ["Calme", "Modéré", "Intense"])
+
+    def test_paroles_facultatives(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d)
+            (p / "son.mp3").write_bytes(b"x")
+            cli._need(p, {"instrumental": True, "audio": "son.mp3", "paroles": None}, "audio", "paroles")
+            with self.assertRaises(cli.Stop):
+                cli._need(p, {"audio": "son.mp3", "paroles": None}, "audio", "paroles")
+
+
 class Import(unittest.TestCase):
     def test_modules(self):
         # tous les modules s'importent (erreur de syntaxe dans un module non testé ailleurs)
