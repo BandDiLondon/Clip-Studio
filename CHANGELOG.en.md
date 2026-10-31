@@ -7,6 +7,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version number
 
 ## [Unreleased]
 
+### Security
+- Interface: the path settings (audio, lyrics, panels, solos, logo) stay inside the project folder, and "Open"
+  only opens folders and videos (CodeQL alerts).
+
 ## [1.6.0] - 2026-10-31
 
 ### Added

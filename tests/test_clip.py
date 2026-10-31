@@ -570,6 +570,42 @@ class Langues(unittest.TestCase):
             srv.shutdown()
             srv.server_close()
 
+    def test_chemins_et_ouverture_restent_dans_le_projet(self):
+        # réglages de chemin : relatifs au projet seulement; « Ouvrir » : dossiers et vidéos seulement
+        import http.client
+        import json as js
+        import threading
+        from clip import web
+        with tempfile.TemporaryDirectory() as d:
+            old = web.PROJETS
+            web.PROJETS = Path(d)
+            (Path(d) / "essai").mkdir()
+            (Path(d) / "essai" / "projet.json").write_text("{}", encoding="utf-8")
+            (Path(d) / "essai" / "outil.bat").write_text("echo", encoding="utf-8")
+            srv = web.Server(("127.0.0.1", 0), web.Handler)
+            threading.Thread(target=srv.serve_forever, daemon=True).start()
+
+            def post(url, body=b""):
+                c = http.client.HTTPConnection("127.0.0.1", srv.server_address[1], timeout=5)
+                c.request("POST", url, body=body)
+                r = c.getresponse()
+                out = r.status, js.loads(r.read() or b"{}")
+                c.close()
+                return out
+            try:
+                for v in ("../autre", "C:/Windows", "/etc", "planches/../../x"):
+                    self.assertEqual(post("/api/projet/essai/config", js.dumps({"planches": v}).encode())[0], 400, v)
+                self.assertEqual(post("/api/projet/essai/config", js.dumps({"solos_list": ["../x.png"]}).encode())[0],
+                                 400)
+                self.assertEqual(post("/api/projet/essai/config", js.dumps({"planches": "mes_planches"}).encode())[0],
+                                 200)
+                self.assertEqual(post("/api/projet/essai/ouvrir?chemin=outil.bat")[0], 400)
+                self.assertEqual(post("/api/projet/essai/ouvrir?chemin=../..")[0], 400)
+            finally:
+                srv.shutdown()
+                srv.server_close()
+                web.PROJETS = old
+
 
 class Ecriture(unittest.TestCase):
     def test_ecriture_atomique(self):

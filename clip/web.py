@@ -162,6 +162,20 @@ def _project(nom):
     return p
 
 
+CHEMINS = ("audio", "paroles", "planches", "solos", "logo")   # réglages qui désignent un fichier / dossier du projet
+OUVRABLES = {".mp4", ".mov", ".webm", ".m4v"}     # « Ouvrir » : dossiers et vidéos seulement (jamais un exécutable)
+
+
+def _chemin_relatif(v):
+    """Chemin de réglage sûr : vide, ou relatif au projet, sans « .. » ni lecteur / racine."""
+    if v is None or v == "":
+        return True
+    if not isinstance(v, str):
+        return False
+    q = Path(v)
+    return not q.is_absolute() and not q.drive and not q.root and ".." not in q.parts
+
+
 PROFILS = PROJETS / "_profils_publication.json"     # profils de l'étape 8, communs à tous les projets
 
 
@@ -464,13 +478,20 @@ class Handler(BaseHTTPRequestHandler):
                                         f"Unknown Whisper model: {data['whisper']}"))
                 if "langue" in data and data["langue"] not in LANGUES:
                     raise ValueError(tr(f"Langue inconnue : {data['langue']}", f"Unknown language: {data['langue']}"))
+                for k in CHEMINS:
+                    if k in data and not _chemin_relatif(data[k]):
+                        raise ValueError(tr(f"Chemin refusé pour « {k} » : il doit rester dans le projet",
+                                            f"Path refused for \"{k}\": it must stay inside the project"))
+                if "solos_list" in data and not (isinstance(data["solos_list"], list)
+                                                 and all(_chemin_relatif(x) for x in data["solos_list"])):
+                    raise ValueError(tr("Chemin refusé dans « solos_list »", "Path refused in \"solos_list\""))
                 cfg.update(data)
                 _save_cfg(p, cfg)
                 return self._json({"ok": True})
             if action == "descriptions":
                 txt = self._body().decode("utf-8-sig").strip()
-                m = re.search(r"\{.*\}", txt, re.S)            # tolère ```json … ``` autour
-                data = json.loads(m.group(0) if m else txt)
+                a, b = txt.find("{"), txt.rfind("}")            # tolère ```json … ``` autour
+                data = json.loads(txt[a:b + 1] if 0 <= a < b else txt)
                 if not isinstance(data, dict):
                     raise ValueError(tr("Le JSON doit être un objet {\"p1_c1\": \"…\"}",
                                         "The JSON must be an object {\"p1_c1\": \"…\"}"))
@@ -518,6 +539,9 @@ class Handler(BaseHTTPRequestHandler):
                 f = (p / q.get("chemin", "")).resolve()
                 if f != p.resolve() and p.resolve() not in f.parents:
                     raise ValueError(tr("Accès refusé", "Access denied"))
+                if not f.is_dir() and f.suffix.lower() not in OUVRABLES:
+                    raise ValueError(tr("Seuls les dossiers et les vidéos s'ouvrent ici",
+                                        "Only folders and videos can be opened here"))
                 _ouvrir(f)                                # explorateur / lecteur vidéo du système
                 return self._json({"ok": True})
             self._err(tr("Action inconnue", "Unknown action"), 404)

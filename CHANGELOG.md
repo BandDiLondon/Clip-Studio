@@ -7,6 +7,10 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/); numéros de v
 
 ## [Non publié]
 
+### Sécurité
+- Interface : les réglages de chemin (audio, paroles, planches, solos, logo) restent dans le dossier du projet, et
+  « Ouvrir » n'ouvre que des dossiers et des vidéos (alertes CodeQL).
+
 ## [1.6.0] - 2026-10-31
 
 ### Ajouté
