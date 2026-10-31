@@ -9,7 +9,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version number
 
 ### Security
 - Interface: the path settings (audio, lyrics, panels, solos, logo) stay inside the project folder, and "Open"
-  only opens folders and videos (CodeQL alerts).
+  only opens the project folder and its videos. Every input of the local server is checked in the forms CodeQL
+  (GitHub code scanning) recognizes: no alerts.
 
 ## [1.6.0] - 2026-10-31
 
