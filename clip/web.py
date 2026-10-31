@@ -172,8 +172,9 @@ def _chemin_relatif(v):
         return True
     if not isinstance(v, str):
         return False
-    q = Path(v)
-    return not q.is_absolute() and not q.drive and not q.root and ".." not in q.parts
+    from pathlib import PurePosixPath, PureWindowsPath   # mêmes règles sous Windows, Linux et macOS
+    return all(not q.is_absolute() and not q.drive and not q.root and ".." not in q.parts
+               for q in (PurePosixPath(v), PureWindowsPath(v)))
 
 
 PROFILS = PROJETS / "_profils_publication.json"     # profils de l'étape 8, communs à tous les projets
