@@ -7,6 +7,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version number
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-10-31
+
 ### Added
 - **Instrumental song** (step 1): no lyrics or karaoke, abstract images that follow the rhythm. Analysis of the energy
   (calm, moderate, intense parts, in a timeline in step 2), of the bars and of the peaks; cuts every 2 bars in calm
@@ -20,6 +22,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version number
 - **Equalizer** (step 6): effects that react to the sound, band by band: bass → zoom and shake, mids → light and
   colors, highs → sparkle, each with its slider. Visualizer: new **mirrored bars** and **ring in the center** styles,
   and colors by frequency.
+
+### Security
+- Pillow 13.0.0, filelock 4.2.1 and setuptools 84.1.0: fix the vulnerabilities reported by GitHub (Dependabot).
 
 ## [1.5.1] - 2026-10-16
 

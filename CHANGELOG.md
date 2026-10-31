@@ -7,6 +7,8 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/); numéros de v
 
 ## [Non publié]
 
+## [1.6.0] - 2026-10-31
+
 ### Ajouté
 - **Chanson instrumentale** (étape 1) : sans paroles ni karaoké, des images abstraites qui suivent le rythme. Analyse
   de l'énergie (passages calmes, modérés, intenses, en frise à l'étape 2), des mesures et des pics; coupes toutes les
@@ -21,6 +23,9 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/); numéros de v
 - **Égaliseur** (étape 6) : effets qui réagissent au son, bande par bande : graves → zoom et tremblement, médiums →
   lumière et couleurs, aigus → scintillement, chacun avec son curseur. Visualiseur : nouveaux styles **barres miroir**
   et **anneau au centre**, et couleurs par fréquence.
+
+### Sécurité
+- Pillow 13.0.0, filelock 4.2.1 et setuptools 84.1.0 : corrigent les failles signalées par GitHub (Dependabot).
 
 ## [1.5.1] - 2026-10-16
 
