@@ -11,6 +11,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/); numéros de v
 - Interface : les réglages de chemin (audio, paroles, planches, solos, logo) restent dans le dossier du projet, et
   « Ouvrir » n'ouvre que le dossier du projet et ses vidéos. Toutes les entrées du serveur local sont vérifiées
   selon les formes reconnues par CodeQL (analyse de code GitHub) : aucune alerte.
+- certifi 2026.10.18 et msgpack 1.2.3 : corrigent les failles signalées par GitHub (Dependabot).
 
 ## [1.6.0] - 2026-10-31
 

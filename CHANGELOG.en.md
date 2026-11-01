@@ -11,6 +11,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version number
 - Interface: the path settings (audio, lyrics, panels, solos, logo) stay inside the project folder, and "Open"
   only opens the project folder and its videos. Every input of the local server is checked in the forms CodeQL
   (GitHub code scanning) recognizes: no alerts.
+- certifi 2026.10.18 and msgpack 1.2.3: fix the vulnerabilities reported by GitHub (Dependabot).
 
 ## [1.6.0] - 2026-10-31
 
