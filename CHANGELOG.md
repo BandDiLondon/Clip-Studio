@@ -7,6 +7,8 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/); numéros de v
 
 ## [Non publié]
 
+## [1.7.0] - 2026-11-07
+
 ### Ajouté
 - **Textes à l'écran** (`textes_ecran`) : sur un passage sans paroles (yodel, chœurs), des syllabes qui traversent
   l'écran ou rebondissent, une par beat, en couleurs. Étape 6, carte « Textes à l'écran », avec un bouton qui propose
