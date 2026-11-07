@@ -7,6 +7,11 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/); numéros de v
 
 ## [Non publié]
 
+### Ajouté
+- **Textes à l'écran** (`textes_ecran`) : sur un passage sans paroles (yodel, chœurs), des syllabes qui traversent
+  l'écran ou rebondissent, une par beat, en couleurs. Étape 6, carte « Textes à l'écran », avec un bouton qui propose
+  les passages sans paroles.
+
 ### Sécurité
 - Interface : les réglages de chemin (audio, paroles, planches, solos, logo) restent dans le dossier du projet, et
   « Ouvrir » n'ouvre que le dossier du projet et ses vidéos. Toutes les entrées du serveur local sont vérifiées

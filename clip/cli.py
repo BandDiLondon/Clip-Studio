@@ -85,6 +85,7 @@ PROJET_TEMPLATE = {
     "mention_ia_ecran": False,
     "mention_ia_texte": None,  # None = « Version IA » / « AI Version » selon la langue du projet
     "mention_ia_position": "bas-droite",
+    "textes_ecran": [],       # [{"debut", "fin", "texte": "Yo-de-lé-ï-hou", "effet": "defile" | "rebond"}] : syllabes au beat
     "transition": "fondu",    # fondu | coupe | noir | flash | glissement | zoom
     "duree_max_image": 0,     # découpe les plans plus longs (s, 0 = non)
     "grain": None,            # None = valeur du look

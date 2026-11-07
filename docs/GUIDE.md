@@ -130,6 +130,11 @@ Le groupe **Égaliseur** fait réagir l'image au son, image par image, comme les
 Le **visualiseur** affiche l'égaliseur lui-même : barres en bas, barres miroir (haut et bas), anneau au centre ou
 onde, d'une couleur ou coloré par fréquence (graves rouge orangé → aigus cyan bleu).
 
+**Textes à l'écran** : sur un passage sans paroles (yodel, chœurs, cri de foule), des syllabes en couleurs, une par
+beat, qui traversent l'écran ou surgissent en rebondissant. « Proposer les passages sans paroles » remplit les trous
+de plus de 8 s du calage; ajuste les temps (m:ss), écris les syllabes séparées par des tirets (`Yo-de-lé-ï-hou`),
+puis enregistre.
+
 ### 7. Rendu
 - **Aperçu rapide** : vidéo 960×540 pour vérifier le montage, en environ 30 secondes pour une chanson de 3 minutes.
 - **Rendu final** : 1080p avec le son, en 1 à 1 min 30 pour une chanson de 3 minutes; 4 à 6 minutes avec beaucoup

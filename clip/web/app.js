@@ -901,11 +901,51 @@ function optInput([k, type, label, help]) {
   if (type === "number") return `<div class="opt"><label>${label}</label><input type="number" step="0.1" data-k="${k}" data-t="num" value="${v ?? ""}">${hp}</div>`;
   return `<div class="opt"><label>${label}</label><input type="text" data-k="${k}" data-t="txt" value="${esc(v ?? "")}">${hp}</div>`;
 }
+// textes à l'écran sur les passages sans paroles (yodel, chœurs) : lignes modifiables avant « Enregistrer »
+let ECRAN = [];
+const ECRAN_EFFETS = [["defile", tr("Défilent de droite à gauche", "Scroll from right to left")], ["rebond", tr("Surgissent et rebondissent", "Pop up and bounce")]];
+function ecranTrous() {
+  // passages de plus de 8 s sans paroles, d'après le calage (intro, solos, fin)
+  const secs = (S.calage && S.calage.sections || []).filter(x => x.debut != null && x.fin != null).sort((a, b) => a.debut - b.debut);
+  const out = [], fin = S.duree || 0;
+  let t = 0;
+  secs.forEach(x => { if (x.debut - t > 8) out.push([t + 0.3, x.debut - 0.3]); t = Math.max(t, x.fin); });
+  if (fin && fin - t > 8) out.push([t + 0.3, fin - 0.5]);
+  return out;
+}
+function ecranLignes() {
+  return ECRAN.length ? ECRAN.map((e, i) => `<div class="row" style="margin:4px 0">
+      <label class="small">${tr("De", "From")} <input type="text" data-ecr="debut" data-i="${i}" value="${fmtT(e.debut || 0)}" style="width:70px"></label>
+      <label class="small">${tr("à", "to")} <input type="text" data-ecr="fin" data-i="${i}" value="${fmtT(e.fin || 0)}" style="width:70px"></label>
+      <input type="text" data-ecr="texte" data-i="${i}" value="${esc(e.texte || "")}" placeholder="Yo-de-lé-ï-hou" style="width:200px">
+      <select data-ecr="effet" data-i="${i}">${ECRAN_EFFETS.map(([v, t]) => `<option value="${v}" ${(e.effet || "defile") === v ? "selected" : ""}>${t}</option>`).join("")}</select>
+      <button data-ecr-del="${i}" title="${tr("Retirer ce passage", "Remove this part")}">✕</button></div>`).join("")
+    : `<p class="muted small">${tr("Aucun passage.", "No part.")}</p>`;
+}
+function ecranLire() {
+  document.querySelectorAll("#main [data-ecr]").forEach(el => {
+    const e = ECRAN[+el.dataset.i], k = el.dataset.ecr;
+    if (!e) return;
+    if (k === "debut" || k === "fin") { const t = parseT(el.value); if (!isNaN(t)) e[k] = t; }
+    else e[k] = el.value.trim();
+  });
+  return ECRAN.filter(e => e.texte && e.fin > e.debut);
+}
+function ecranMaj() { ecranLire(); $("#ecr-lignes").innerHTML = ecranLignes(); ecranBind(); }
+function ecranBind() {
+  document.querySelectorAll("[data-ecr-del]").forEach(b => b.onclick = () => { ecranLire(); ECRAN.splice(+b.dataset.ecrDel, 1); $("#ecr-lignes").innerHTML = ecranLignes(); ecranBind(); });
+}
 V.options = () => `
   <h2>6. ${tr("Options", "Options")}</h2><p class="lead">${tr("Choisis un préréglage, ajuste si besoin, puis enregistre. Les réglages restent d'un rendu à l'autre.", "Pick a preset, adjust if needed, then save. The settings stay from one render to the next.")}</p>
   <div class="card"><h3>${tr("Préréglages", "Presets")}</h3><div class="row">${Object.entries(PRESETS).map(([k, p]) => `<button data-preset="${k}">${p.label}</button>`).join("")}</div>
     <p class="small muted">${tr("Un préréglage remplit le formulaire; rien n'est enregistré avant « Enregistrer ».", "A preset fills in the form; nothing is saved before “Save”.")}</p></div>
   ${OPTS.map(([g, list]) => `<div class="card"><h3>${g}</h3><div class="opts">${list.map(optInput).join("")}</div></div>`).join("")}
+  <div class="card"><h3>${tr("Textes à l'écran", "On-screen texts")}</h3>
+    <p class="small muted">${tr("Sur un passage sans paroles (yodel, chœurs, cri de foule) : des syllabes en couleurs, une par beat. Sépare-les par des tirets.",
+      "Over a part without lyrics (yodel, backing vocals, crowd chant): colored syllables, one per beat. Separate them with dashes.")}</p>
+    <div id="ecr-lignes">${(ECRAN = (S.cfg.textes_ecran || []).map(e => ({...e})), ecranLignes())}</div>
+    <div class="row" style="margin-top:6px"><button id="ecr-add">+ ${tr("Ajouter un passage", "Add a part")}</button>
+      <button id="ecr-trous" title="${tr("Un passage par trou de plus de 8 s dans les paroles calées", "One part per gap of more than 8 s in the aligned lyrics")}">${tr("Proposer les passages sans paroles", "Suggest the parts without lyrics")}</button></div></div>
   <details class="card"><summary><b>${tr("Avancé", "Advanced")}</b> <span class="muted small">— ${tr("cadrage par image, intro / outro", "framing per image, intro / outro")}</span></summary>
     <div class="opts" style="margin-top:12px">
       <div class="opt"><label>${tr("Image fixe sur l'intro", "Still image over the intro")}</label><select data-k="intro_image" data-t="sel"><option value="null">${tr("(automatique)", "(automatic)")}</option>
@@ -933,6 +973,7 @@ function readOpts() {
   });
   const adj = $("#adj").value.trim();
   out.ajustements = adj ? JSON.parse(adj) : {};
+  out.textes_ecran = ecranLire();
   return out;
 }
 V.options_bind = () => {
@@ -946,6 +987,15 @@ V.options_bind = () => {
     toast(tr(`Préréglage ${p.label} appliqué — pense à enregistrer`, `Preset ${p.label} applied — remember to save`));
   });
   $("#dz-logo") && dropzone($("#dz-logo"), "logo", "image/png,image/webp,image/jpeg");
+  ecranBind();
+  $("#ecr-add").onclick = () => { ecranLire(); const d = ECRAN.length ? ECRAN[ECRAN.length - 1] : null;
+    ECRAN.push({debut: d ? d.fin + 1 : 0, fin: d ? d.fin + 11 : 10, texte: d ? d.texte : "", effet: "defile"}); ecranMaj(); };
+  $("#ecr-trous").onclick = () => { ecranLire(); const trous = ecranTrous();
+    if (!trous.length) return toast(tr("Aucun passage sans paroles de plus de 8 s (ou paroles pas encore calées)", "No part without lyrics longer than 8 s (or lyrics not aligned yet)"));
+    const texte = (ECRAN[0] && ECRAN[0].texte) || "Yo-de-lé-ï-hou";
+    trous.forEach(([a, b]) => { if (!ECRAN.some(e => e.debut < b && e.fin > a)) ECRAN.push({debut: +a.toFixed(1), fin: +b.toFixed(1), texte, effet: "defile"}); });
+    ECRAN.sort((x, y) => x.debut - y.debut); $("#ecr-lignes").innerHTML = ecranLignes(); ecranBind();
+    toast(tr("Passages proposés : ajuste-les, puis enregistre", "Parts suggested: adjust them, then save")); };
   $("#logo-del") && ($("#logo-del").onclick = async () => {
     await post(`/api/projet/${encodeURIComponent(nom())}/config`, {logo: null}); toast(tr("Logo retiré", "Logo removed")); refresh(); });
   $("#save-opts").onclick = async () => {

@@ -756,7 +756,41 @@ ALIGN = {"bas": 2, "haut": 8, "centre": 5}
 CORNERS = {"haut-gauche": 7, "haut-droite": 9, "bas-gauche": 1, "bas-droite": 3}
 
 
-def write_ass(segments, path, size, k, titles=(), mention=None):
+TEXTE_COULEURS = ("#FFD23F", "#FF6B35", "#F7F7F7", "#3BCEAC", "#EE4266")
+
+
+def textes_ecran(items, beats, size, scale):
+    """Textes à l'écran hors paroles (ex. yodel) : une syllabe par beat (un beat sur deux au-delà de 140 BPM).
+    « defile » : chaque syllabe traverse l'écran de droite à gauche en vague; « rebond » : elle surgit à une
+    place qui change et rebondit. Retourne des lignes Dialogue (style Y)."""
+    W, H = size
+    out = []
+    for it in items or []:
+        a, b = float(it.get("debut") or 0), float(it.get("fin") or 0)
+        syl = [x for x in str(it.get("texte") or "").replace("-", " ").split() if x]
+        bt = [t for t in beats if a <= t < b]
+        if not syl or len(bt) < 2:
+            continue
+        pas = 2 if (bt[-1] - bt[0]) / (len(bt) - 1) < 60 / 140 else 1
+        for n, t in enumerate(bt[::pas]):
+            s, col = syl[n % len(syl)], _ass_color(TEXTE_COULEURS[n % len(TEXTE_COULEURS)])
+            fin = min(b, t + 1.8)
+            if fin - t < 0.3:
+                break
+            pop = "\\t(0,90,\\fscx150\\fscy150)\\t(90,320,\\fscx100\\fscy100)"
+            rot = (-8, 6, -4, 9)[n % 4]
+            y = int(H * (0.42 + 0.14 * math.sin(n * 0.9)))
+            if it.get("effet") == "rebond":
+                x = int(W * (0.2 + 0.6 * ((n * 0.618) % 1)))
+                tags = f"\\an5\\pos({x},{y})\\frz{rot}\\c{col}\\fad(60,350){pop}"
+            else:
+                tags = (f"\\an5\\move({int(W * 1.08)},{y},{int(-W * 0.08)},{y - int(40 * scale)},0,1800)"
+                        f"\\frz{rot}\\c{col}\\fad(60,200){pop}")
+            out.append(f"Dialogue: 3,{_ass_time(t)},{_ass_time(fin)},Y,,0,0,0,,{{{tags}}}{s}")
+    return out
+
+
+def write_ass(segments, path, size, k, titles=(), mention=None, extra=()):
     """Karaoké + titres. k : réglages (voir karaoke_opts). Retourne les plages où une ligne est affichée."""
     W, H = size
     sc, fs = k["scale"], int(k["taille"] * k["scale"])
@@ -787,8 +821,11 @@ def write_ass(segments, path, size, k, titles=(), mention=None):
         f"Style: M,{k['police']},{int(30 * sc)},&H50FFFFFF&,&H50FFFFFF&,&H80000000&,&H00000000&,-1,0,0,0,"
         f"100,100,{int(2 * sc)},0,1,{max(1, int(2 * sc))},0,{CORNERS.get((mention or {}).get('coin'), 3)},"
         f"{int(30 * sc)},{int(30 * sc)},{int(24 * sc)},1",
+        f"Style: Y,{k['police']},{int(96 * sc)},{WHITE_ASS},{WHITE_ASS},&H00000000&,&H80000000&,-1,0,0,0,"
+        f"100,100,{int(4 * sc)},0,1,{max(1, int(4 * sc))},{max(1, int(3 * sc))},5,0,0,0,1",
         "", "[Events]",
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
+        *extra,
     ]
     for a, b, text, style in titles:
         lines.append(f"Dialogue: 1,{_ass_time(a)},{_ass_time(b)},{style},,0,0,0,,{{\\fad(900,900)}}{text}")
@@ -1099,8 +1136,9 @@ def render(projet_dir, cfg, preview=False, start=None, duration=None, workers=No
         ment = {"texte": cfg.get("mention_ia_texte") or tp(cfg, "Version IA", "AI Version"), "coin": cfg.get("mention_ia_position", "bas-droite"),
                 "debut": d0, "fin": d1}
     ass = build / ("preview.ass" if preview else "karaoke.ass")
-    spans = write_ass(segments, ass, (W, H), k, titles=_titles(cfg, segments, d0, d1, ts), mention=ment)
     beats = np.load(build / "beats.npy").tolist()
+    spans = write_ass(segments, ass, (W, H), k, titles=_titles(cfg, segments, d0, d1, ts), mention=ment,
+                      extra=textes_ecran(cfg.get("textes_ecran"), beats, (W, H), ts))
     if cfg.get("pulse_mesure"):
         beats = _downbeats(beats, segments)
 

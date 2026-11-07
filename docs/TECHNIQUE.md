@@ -149,7 +149,8 @@ Conservés d'un rendu à l'autre; tous les effets sont désactivés par défaut.
   `sparkle`).
 - **Karaoké** : `karaoke_mode` (mot | ligne | aucun), `font`, `karaoke_taille`, `karaoke_couleur`, `karaoke_texte`,
   `karaoke_position`, `karaoke_animation`, `karaoke_suivante`, `karaoke_majuscules`, `karaoke_decalage`, `bar_alpha`.
-- **Textes** : `titre`, `artiste`, `generique`, `logo` + `logo_position`, `mention_ia_ecran` / `_texte` (vide =
+- **Textes** : `textes_ecran` (passages sans paroles, ex. yodel : `[{"debut", "fin", "texte": "Yo-de-lé", "effet":
+  "defile" | "rebond"}]`, une syllabe par beat), `titre`, `artiste`, `generique`, `logo` + `logo_position`, `mention_ia_ecran` / `_texte` (vide =
   « Version IA » ou « AI Version » selon la langue du projet) / `_position`, `origine` (`suno` | `images` | `complete` | `fan` |
   `fan_ia`, pour la mention de la publication; `fan*` : déclaration « aucun droit », droits laissés à l'artiste),
   `publication` (options de l'étape 8 : `credits` {`paroles`, `musique`, `interpretation`, `clip`}, `clip_studio`,

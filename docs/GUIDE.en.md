@@ -127,6 +127,11 @@ vocals, synths) make the light and the colors breathe; the **highs** (cymbals) m
 **visualizer** shows the equalizer itself: bars at the bottom, mirrored bars (top and bottom), a ring in the center or
 a waveform, in one color or colored by frequency (bass red-orange → highs cyan-blue).
 
+**On-screen texts**: over a part without lyrics (yodel, backing vocals, crowd chant), colored syllables, one per
+beat, that cross the screen or pop up and bounce. "Suggest the parts without lyrics" fills in the gaps of more than
+8 s in the alignment; adjust the times (m:ss), write the syllables separated by dashes (`Yo-de-lé-ï-hou`), then
+save.
+
 ### 7. Render
 - **Quick preview**: 960×540 video to check the edit, in about 30 seconds for a 3-minute song.
 - **Final render**: 1080p with sound, in 1 to 1.5 minutes for a 3-minute song; 4 to 6 minutes with many effects (3D

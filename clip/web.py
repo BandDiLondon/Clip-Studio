@@ -320,6 +320,7 @@ def status(nom):
         "paroles_texte": _read(p / cfg["paroles"]) if paroles_ok else "",
         "beats": (b / "beats.npy").exists(), "words": (b / "words.json").exists(), "calage": calage(p, cfg),
         "rythme": rythme(p, cfg) if cfg.get("instrumental") else None,
+        "duree": round(_duree(p / cfg["audio"]), 2) if audio_ok else 0,
         "shots": shots, "planches": planches,
         "a_decrire": _read(b / "a_decrire.md"), "prompts": _read(b / "prompts_planches.md"),
         "desc_erreur": desc_err, "contact": (b / "planche_contact.jpg").exists(),

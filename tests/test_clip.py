@@ -362,6 +362,20 @@ class Instrumental(unittest.TestCase):
         self.assertGreater(render._force(6.15)[1], 0.6)                  # coup en plus sur le pic
         render.S.clear()
 
+    def test_textes_ecran(self):
+        # syllabes de yodel au beat, seulement dans leur passage, en boucle sur le texte; une sur deux si rapide
+        from clip.render import textes_ecran
+        beats = [i * 0.6 for i in range(100)]
+        it = {"debut": 6.0, "fin": 12.0, "texte": "Yo-de-lé", "effet": "defile"}
+        lignes = textes_ecran([it], beats, (1920, 1080), 1.0)
+        self.assertEqual([l.rsplit("}", 1)[1] for l in lignes][:4], ["Yo", "de", "lé", "Yo"])
+        self.assertTrue(all(",Y,," in l and "\\move(" in l for l in lignes))
+        self.assertTrue(all(6.0 <= float(l.split(",")[1].split(":")[2]) < 12.0 for l in lignes))
+        rapide = textes_ecran([it], [i * 0.3 for i in range(100)], (1920, 1080), 1.0)
+        self.assertLessEqual(len(rapide), len(lignes) + 1)
+        self.assertIn("\\pos(", textes_ecran([{**it, "effet": "rebond"}], beats, (1920, 1080), 1.0)[0])
+        self.assertEqual(textes_ecran([{**it, "texte": ""}], beats, (1920, 1080), 1.0), [])
+
     def test_egaliseur(self):
         import numpy as np
         from PIL import Image

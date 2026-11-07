@@ -151,7 +151,8 @@ to the next; all effects are off by default.
   previous 0.5 s, mids = level; bass → zoom + shake, mids → brightness + saturation, highs → `sparkle`).
 - **Karaoke**: `karaoke_mode` (mot | ligne | aucun), `font`, `karaoke_taille`, `karaoke_couleur`, `karaoke_texte`,
   `karaoke_position`, `karaoke_animation`, `karaoke_suivante`, `karaoke_majuscules`, `karaoke_decalage`, `bar_alpha`.
-- **Texts**: `titre`, `artiste`, `generique`, `logo` + `logo_position`, `mention_ia_ecran` / `_texte` (empty = "Version
+- **Texts**: `textes_ecran` (parts without lyrics, e.g. yodel: `[{"debut", "fin", "texte": "Yo-de-lé", "effet":
+  "defile" | "rebond"}]`, one syllable per beat), `titre`, `artiste`, `generique`, `logo` + `logo_position`, `mention_ia_ecran` / `_texte` (empty = "Version
   IA" or "AI Version" depending on the project language) / `_position`, `origine` (`suno` | `images` | `complete` | `fan` |
   `fan_ia`, for the notice of the publishing; `fan*`: "no rights" statement, rights left to the artist),
   `publication` (options of step 8: `credits` {`paroles`, `musique`, `interpretation`, `clip`}, `clip_studio`, `liens`,
