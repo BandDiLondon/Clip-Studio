@@ -7,6 +7,10 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/); numéros de v
 
 ## [Non publié]
 
+### Ajouté
+- Paroles : `(Refrain)`, `(Couplet 2)` ou `REFRAIN` seul sur sa ligne, comme sur les sites de paroles, sont reconnus
+  comme en-têtes (pour leur bloc) au lieu d'être calés comme des vers chantés.
+
 ## [1.7.0] - 2026-11-07
 
 ### Ajouté

@@ -29,7 +29,9 @@ des clips complets réalisés avec Clip Studio (chansons originales de KPR, réi
   chansons en français ou en anglais.
 - Le montage est calé sur les **beats** détectés.
 - Les solos passent en **travelling** sur des photos panoramiques.
-- Des **vidéos** de ~10 s (Flow, Veo…) peuvent remplacer n'importe quelle image.
+- Des **vidéos** de ~10 s (Flow, Veo…) peuvent remplacer n'importe quelle image. En local, sur une carte AMD,
+  [Clip Motion](https://github.com/BandDiLondon/Clip-Motion) (Wan 2.2) anime toutes les cases d'un projet et les
+  installe dans le projet.
 - Une centaine de réglages sont disponibles : caméra, looks, particules, fumée, feu, éclairs, transitions, parallaxe 3D, formats 16:9 / 4K / 9:16 / 1:1…
 - Claude (Claude Code, avec un abonnement Claude Pro/Max) peut rédiger, **uniquement quand tu cliques sur un bouton** : descriptions de scènes, évaluation du storyboard, prompts de solos et de vidéos, titre et description YouTube.
   Ces appels sont conçus pour **ménager ta limite d'utilisation** :
@@ -105,7 +107,8 @@ Clip Studio guide pas à pas, en 8 étapes :
 
 ![Étape Planches : le prompt de chaque planche à copier, et les planches déposées à côté](docs/images/etape-planches.jpg)
 
-**Vidéos** : clique sur une image pour la remplacer par une vidéo de ~10 s.
+**Vidéos** : clique sur une image pour la remplacer par une vidéo de ~10 s. Pour animer tout le clip en local,
+voir [Clip Motion](https://github.com/BandDiLondon/Clip-Motion).
 
 ![Étape Vidéos : la galerie des images du clip, avec le panneau de l'image choisie](docs/images/etape-videos.jpg)
 

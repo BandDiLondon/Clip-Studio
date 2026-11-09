@@ -30,7 +30,9 @@ videos made with Clip Studio (original songs by KPR, reinterpreted as AI version
   French or English.
 - The edit is synced to the detected **beats**.
 - Solos become **tracking shots** across panoramic photos.
-- **Videos** of ~10 s (Flow, Veo…) can replace any image.
+- **Videos** of ~10 s (Flow, Veo…) can replace any image. Locally, on an AMD GPU,
+  [Clip Motion](https://github.com/BandDiLondon/Clip-Motion) (Wan 2.2) animates every panel of a project and installs
+  the clips into it.
 - About a hundred settings are available: camera, looks, particles, smoke, fire, lightning, transitions, 3D parallax,
   16:9 / 4K / 9:16 / 1:1 formats…
 - Claude (Claude Code, with a Claude Pro/Max subscription) can write, **only when you click a button**: scene
@@ -108,7 +110,8 @@ Clip Studio guides you step by step, in 8 steps:
 
 ![Panels step: the prompt of each panel to copy, and the dropped panels next to it](docs/images/etape-planches-en.jpg)
 
-**Videos**: click an image to replace it with a ~10 s video.
+**Videos**: click an image to replace it with a ~10 s video. To animate the whole video locally, see
+[Clip Motion](https://github.com/BandDiLondon/Clip-Motion).
 
 ![Videos step: the gallery of the video's images, with the panel of the chosen image](docs/images/etape-videos-en.jpg)
 

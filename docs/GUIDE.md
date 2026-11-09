@@ -73,7 +73,8 @@ ensuite un préréglage (Ballade, Rock…) à l'étape 6.
 ### 1. Projet
 - **Chanson** : mp3, wav, m4a, flac ou ogg.
 - **Paroles** : le texte **exact** chanté, un vers par ligne, une ligne vide entre les couplets. Les en-têtes `[Verse 1]`,
-  `[Chorus]`, `[Bridge]` sont facultatifs. Sans en-tête, un bloc répété à l'identique est reconnu comme refrain.
+  `[Chorus]`, `[Bridge]` sont facultatifs; `(Refrain)` ou `REFRAIN` seul sur sa ligne (écriture des sites de paroles) sont
+  aussi reconnus, pour leur bloc seulement. Sans en-tête, un bloc répété à l'identique est reconnu comme refrain.
 - **Langue de la chanson** (français ou anglais) : sert au calage des paroles et aux textes rédigés pour ce projet. Si
   tu la changes après « Préparer », les paroles sont recalées au prochain « Préparer » ou au prochain rendu.
 - Si tu remplaces le mp3 ou modifies les paroles plus tard, Clip Studio le détecte : un avertissement s'affiche et le

@@ -7,6 +7,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version number
 
 ## [Unreleased]
 
+### Added
+- Lyrics: `(Chorus)`, `(Verse 2)` or `CHORUS` alone on its line, as lyrics sites write them, are recognized as headers
+  (for their block) instead of being aligned as sung lines.
+
 ## [1.7.0] - 2026-11-07
 
 ### Added

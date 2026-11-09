@@ -5,7 +5,21 @@ import re
 from . import ecrire
 from .i18n import tr
 
-SECTION_RE = re.compile(r"^\s*\[(.+?)\]\s*$")
+# en-tête de section : [Nom] ; aussi (Refrain), (Couplet 2)… et REFRAIN / Refrain seul sur sa ligne (majuscule), écritures
+# courantes des sites de paroles (sinon le mot serait aligné comme un vers chanté)
+_NOMS = r"(?:refrain|chorus|couplet|verse|pont|bridge|intro|outro|solo|fin|yodel|pr[ée]-?refrain|pre-?chorus)(?:\s*\d+)?"
+SECTION_RE = re.compile(r"^\s*(?:\[(.+?)\]|\(((?i:" + _NOMS + r"))\)|((?=[A-ZÉ])(?i:" + _NOMS + r"))\s*:?)\s*$")
+
+
+def section_nom(raw):
+    """Nom de la section si la ligne est un en-tête, sinon None (« REFRAIN » → « Refrain »)."""
+    m = SECTION_RE.match(raw)
+    if not m:
+        return None
+    if m.group(1):
+        return m.group(1)
+    nom = (m.group(2) or m.group(3)).strip()
+    return nom.capitalize() if nom.isupper() or nom.islower() else nom
 
 
 def _bis(name, lines):
@@ -21,13 +35,21 @@ def read_lyrics(path):
     sont distinguées (« Chorus (bis) ») : sinon elles forment un seul bloc et l'alignement les tasse."""
     raw_lines = path.read_text(encoding="utf-8-sig").splitlines()
     if any(SECTION_RE.match(r) for r in raw_lines):
-        section, lines = None, []
+        # [Nom] vaut jusqu'à l'en-tête suivant; (Refrain) / REFRAIN (style des sites de paroles) seulement pour son
+        # bloc : les blocs suivants sans en-tête sont des couplets
+        section, lines, bloc_seul, verse, vide = None, [], False, 0, False
         for raw in raw_lines:
-            m = SECTION_RE.match(raw)
-            if m:
-                section = _bis(m.group(1), lines)
+            nom = section_nom(raw)
+            if nom:
+                section, bloc_seul, vide = _bis(nom, lines), not raw.strip().startswith("["), False
             elif raw.strip():
+                if vide and bloc_seul:
+                    verse += 1
+                    section = _bis(f"Verse {verse}", lines)
                 lines.append((section, raw.strip()))
+                vide = False
+            else:
+                vide = True
         return lines
     blocks, cur = [], []
     for raw in raw_lines + [""]:

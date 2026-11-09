@@ -54,6 +54,16 @@ class Paroles(unittest.TestCase):
             secs = [s for s, _ in lyrics.read_lyrics(f)]
         self.assertEqual(secs, ["Verse 1", "Verse 1", "Chorus", "Chorus", "Verse 2", "Chorus", "Chorus"])
 
+    def test_entetes_des_sites_de_paroles(self):
+        # (Refrain), REFRAIN seul, (Couplet 2) : en-têtes, pas des vers chantés; les parenthèses ordinaires restent
+        with tempfile.TemporaryDirectory() as d:
+            f = Path(d) / "p.txt"
+            f.write_text("(Refrain)\nla la\n\n(Couplet 2)\nun vers (oh oh)\n\nREFRAIN\nla la\n", encoding="utf-8")
+            lines = lyrics.read_lyrics(f)
+        self.assertEqual(lines, [("Refrain", "la la"), ("Couplet 2", "un vers (oh oh)"), ("Refrain", "la la")])
+        from clip.publish import paroles_propres
+        self.assertEqual(paroles_propres("(Refrain)\nla la\n\nREFRAIN\nla la"), "la la\n\nla la")
+
     def test_refrains_consecutifs_separes(self):
         # deux refrains qui se suivent (solo entre les deux) : deux blocs d'alignement, pas un seul
         with tempfile.TemporaryDirectory() as d:

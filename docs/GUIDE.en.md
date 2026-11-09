@@ -72,7 +72,8 @@ Steps 5 (Videos) and 6 (Options) are optional: the default settings already give
 ### 1. Project
 - **Song**: mp3, wav, m4a, flac or ogg.
 - **Lyrics**: the **exact** sung text, one lyric line per line, an empty line between verses. The `[Verse 1]`,
-  `[Chorus]`, `[Bridge]` headers are optional. Without headers, a block repeated identically is recognized as a chorus.
+  `[Chorus]`, `[Bridge]` headers are optional; `(Chorus)` or `CHORUS` alone on its line (as lyrics sites
+  write them) are recognized too, for their block only. Without headers, a block repeated identically is recognized as a chorus.
 - **Song language** (French or English): used by the lyrics alignment and by the texts written for this project. If
   you change it after "Prepare", the lyrics are realigned at the next "Prepare" or render.
 - If you replace the mp3 or change the lyrics later, Clip Studio detects it: a warning is shown and the alignment is
