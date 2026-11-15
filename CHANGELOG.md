@@ -7,6 +7,9 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/); numéros de v
 
 ## [Non publié]
 
+### Annonce
+- **Fin du développement** : Clip Studio n'est plus développé ; ses fonctions seront reprises dans La Fabrique (nouvel outil de l'auteur, à paraître sur ce compte GitHub). Le code reste disponible tel quel (GPLv3).
+
 ### Ajouté
 - Paroles : `(Refrain)`, `(Couplet 2)` ou `REFRAIN` seul sur sa ligne, comme sur les sites de paroles, sont reconnus
   comme en-têtes (pour leur bloc) au lieu d'être calés comme des vers chantés.

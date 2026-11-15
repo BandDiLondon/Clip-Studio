@@ -4,6 +4,13 @@
 
 [Français](README.md) | **English**
 
+> [!WARNING]
+> **Development stopped (November 2026).** Clip Studio is no longer developed. Its features (music videos, word-by-word
+> lyrics alignment, karaoke, beat-synced editing, effects) will be carried over to **La Fabrique**, the author's new
+> tool that also absorbs Clip Motion and runs every step of an AI video locally (story, images, animation, voice,
+> music, editing, vertical, publishing). La Fabrique will be published on this GitHub account.
+> Clip Studio stays available and usable as is (GPLv3), with no new releases or fixes.
+
 [![Tests](https://github.com/BandDiLondon/Clip-Studio/actions/workflows/tests.yml/badge.svg)](https://github.com/BandDiLondon/Clip-Studio/actions/workflows/tests.yml)
 [![Latest version](https://img.shields.io/github/v/release/BandDiLondon/Clip-Studio)](../../releases/latest)
 [![License GPLv3](https://img.shields.io/badge/license-GPLv3-blue)](LICENSE)
